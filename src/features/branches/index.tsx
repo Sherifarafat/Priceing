@@ -35,6 +35,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -380,79 +388,96 @@ export function BranchesView() {
 
       {/* Create / Edit Branch Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className='max-w-md'>
-          <form onSubmit={handleSave}>
-            <DialogHeader>
-              <DialogTitle className='flex items-center gap-2'>
-                <Store className='size-5 text-[#4F46E5]' />
-                {editingBranch ? 'Edit Branch' : 'Create New Branch'}
-              </DialogTitle>
-              <DialogDescription className='text-xs'>
-                Branches inherit catalog products from their parent Merchant and provide a dedicated scanner endpoint.
-              </DialogDescription>
-            </DialogHeader>
+        <DialogContent className='sm:max-w-lg'>
+          <DialogHeader className='text-start'>
+            <DialogTitle>{editingBranch ? 'Edit Branch' : 'Add New Branch'}</DialogTitle>
+            <DialogDescription>
+              {editingBranch
+                ? 'Update the branch details here. '
+                : 'Create new branch here. '}
+              Click save when you&apos;re done.
+            </DialogDescription>
+          </DialogHeader>
 
-            {error && <p className='text-xs text-destructive mt-2'>{error}</p>}
-
-            <div className='space-y-3.5 my-4 text-xs'>
-              {!editingBranch && (
-                <div>
-                  <label className='font-semibold block mb-1.5 text-foreground'>Parent Merchant *</label>
-                  <select
-                    value={targetMerchantId}
-                    onChange={(e) => setTargetMerchantId(e.target.value)}
-                    className='w-full rounded-lg border border-border/80 bg-background px-3 py-2 text-xs text-foreground'
-                  >
-                    {merchants.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
+          <div className='h-105 w-[calc(100%+0.75rem)] overflow-y-auto py-1 pe-3'>
+            <form id='branch-form' onSubmit={handleSave} className='space-y-4 px-0.5'>
+              {/* Parent Merchant */}
+              {merchants.length > 0 && (
+                <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                  <Label className='col-span-2 text-end'>Merchant</Label>
+                  <div className='col-span-4'>
+                    <Select
+                      value={targetMerchantId || merchants[0]?.id}
+                      onValueChange={(val) => setTargetMerchantId(val)}
+                      disabled={!!editingBranch}
+                    >
+                      <SelectTrigger className='w-full'>
+                        <SelectValue placeholder='Select merchant' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {merchants.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
 
-              <div>
-                <label className='font-semibold block mb-1.5 text-foreground'>Branch Name *</label>
+              {/* Branch Name */}
+              <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                <Label className='col-span-2 text-end'>Branch Name</Label>
                 <Input
                   required
-                  placeholder='e.g. Dokki Branch or Downtown Store'
+                  placeholder='e.g., Dokki Branch, Downtown Store'
+                  className='col-span-4'
+                  autoComplete='off'
                   value={branchName}
                   onChange={(e) => setBranchName(e.target.value)}
-                  className='text-xs h-9 rounded-lg'
                 />
               </div>
 
-              <div>
-                <label className='font-semibold block mb-1.5 text-foreground'>Physical Address</label>
+              {/* Physical Address */}
+              <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                <Label className='col-span-2 text-end'>Address</Label>
                 <Input
                   placeholder='Street, Area, City...'
+                  className='col-span-4'
+                  autoComplete='off'
                   value={branchAddress}
                   onChange={(e) => setBranchAddress(e.target.value)}
-                  className='text-xs h-9 rounded-lg'
                 />
               </div>
 
-              <div>
-                <label className='font-semibold block mb-1.5 text-foreground'>Storefront Logo / Image URL (Optional)</label>
+              {/* Storefront Logo / Image */}
+              <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                <Label className='col-span-2 text-end'>Storefront Image</Label>
                 <Input
                   placeholder='https://images.unsplash.com/...'
+                  className='col-span-4'
+                  autoComplete='off'
                   value={branchImageUrl}
                   onChange={(e) => setBranchImageUrl(e.target.value)}
-                  className='text-xs h-9 rounded-lg'
                 />
               </div>
-            </div>
 
-            <DialogFooter className='gap-2 sm:gap-0'>
-              <Button type='button' variant='outline' size='sm' onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button type='submit' size='sm' className='bg-[#4F46E5] hover:bg-indigo-700 text-white'>
-                {editingBranch ? 'Save Changes' : 'Create Branch'}
-              </Button>
-            </DialogFooter>
-          </form>
+              {error && (
+                <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                  <div className='col-span-4 col-start-3 text-xs text-destructive font-medium'>
+                    {error}
+                  </div>
+                </div>
+              )}
+            </form>
+          </div>
+
+          <DialogFooter>
+            <Button type='submit' form='branch-form'>
+              Save changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
