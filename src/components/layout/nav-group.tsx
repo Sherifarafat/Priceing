@@ -66,13 +66,13 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
   const { setOpenMobile } = useSidebar()
   const isActive = checkIsActive(href, item)
   return (
-    <SidebarMenuItem className='my-0.5'>
+    <SidebarMenuItem className='my-[1px]'>
       <SidebarMenuButton
         asChild
         isActive={isActive}
         tooltip={item.title}
       >
-        <Link to={item.url} onClick={() => setOpenMobile(false)} className='flex items-center gap-3'>
+        <Link to={item.url} onClick={() => setOpenMobile(false)} className='flex items-center gap-2.5'>
           {item.icon && <item.icon className='size-4 shrink-0' />}
           <span className='flex-1 truncate font-medium'>{item.title}</span>
           {isActive && (
@@ -93,37 +93,49 @@ function SidebarMenuCollapsible({
   href: string
 }) {
   const { setOpenMobile } = useSidebar()
+  const isChildActive = checkIsActive(href, item, true)
+
   return (
     <Collapsible
       asChild
-      defaultOpen={checkIsActive(href, item, true)}
+      defaultOpen={isChildActive}
       className='group/collapsible'
     >
-      <SidebarMenuItem>
+      <SidebarMenuItem className='my-[1px]'>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={item.title}>
-            {item.icon && <item.icon />}
-            <span>{item.title}</span>
+          <SidebarMenuButton
+            tooltip={item.title}
+            className='hover:bg-sidebar-accent/60 text-sidebar-foreground hover:text-sidebar-accent-foreground data-[state=open]:bg-transparent! data-[state=open]:text-sidebar-foreground! font-medium'
+          >
+            {item.icon && <item.icon className='size-4 shrink-0' />}
+            <span className='truncate flex-1 text-start'>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
-            <ChevronRight className='ms-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 rtl:rotate-180' />
+            <ChevronRight className='ms-auto size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 rtl:rotate-180 text-muted-foreground' />
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent className='CollapsibleContent'>
-          <SidebarMenuSub>
-            {item.items.map((subItem) => (
-              <SidebarMenuSubItem key={subItem.title}>
-                <SidebarMenuSubButton
-                  asChild
-                  isActive={checkIsActive(href, subItem)}
-                >
-                  <Link to={subItem.url} onClick={() => setOpenMobile(false)}>
-                    {subItem.icon && <subItem.icon />}
-                    <span>{subItem.title}</span>
-                    {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
-                  </Link>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
+          <SidebarMenuSub className='ms-3 my-0.5 border-s border-sidebar-border ps-2 space-y-0.5'>
+            {item.items.map((subItem) => {
+              const isSubActive = checkIsActive(href, subItem)
+              return (
+                <SidebarMenuSubItem key={subItem.title}>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={isSubActive}
+                    className='h-7.5 rounded-lg px-2 text-xs'
+                  >
+                    <Link to={subItem.url} onClick={() => setOpenMobile(false)} className='flex items-center gap-2'>
+                      {subItem.icon && <subItem.icon className='size-3.5 shrink-0' />}
+                      <span className='truncate flex-1'>{subItem.title}</span>
+                      {isSubActive && (
+                        <span className='size-1.5 rounded-full bg-[#4F46E5] shrink-0' />
+                      )}
+                      {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              )
+            })}
           </SidebarMenuSub>
         </CollapsibleContent>
       </SidebarMenuItem>

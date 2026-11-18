@@ -1,3 +1,6 @@
+import * as React from 'react'
+import { Link } from '@tanstack/react-router'
+import { Sparkles } from 'lucide-react'
 import { useLayout } from '@/context/layout-provider'
 import {
   Sidebar,
@@ -6,9 +9,12 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { getSaaSSidebarNav, sidebarData } from './data/sidebar-data'
+import { getSaaSSidebarNav } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
-import { NavUser } from './nav-user'
+import { SidebarTrialCard } from './sidebar-trial-card'
+import { SidebarBottomNav } from './sidebar-bottom-nav'
+import { PlanSelectionDialog } from '@/components/plan-selection-dialog'
+import { FeedbackDialog } from '@/components/feedback-dialog'
 import { useSaaSStore } from '@/lib/saas-store'
 
 export function AppSidebar() {
@@ -16,38 +22,73 @@ export function AppSidebar() {
   const { currentUser } = useSaaSStore()
   const navGroups = getSaaSSidebarNav(currentUser.role)
 
-  const userProfile = {
-    name: currentUser.name,
-    email: currentUser.email,
-    avatar: sidebarData.user.avatar,
-  }
+  const [isPlanOpen, setIsPlanOpen] = React.useState(false)
+  const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false)
 
   return (
-    <Sidebar collapsible={collapsible} variant={variant}>
-      <SidebarHeader className='p-4 pb-2'>
-        <div className='flex items-center gap-3 px-1 py-1'>
-          <div className='size-8 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-black text-sm shadow-xs shrink-0'>
-            t<span className='text-[#4F46E5] -ms-0.5 font-black'>.</span>
+    <>
+      <Sidebar collapsible={collapsible} variant={variant}>
+        <SidebarHeader className='px-3.5 py-2.5 pb-2 space-y-2'>
+          <div className='flex items-center gap-2.5 px-1 py-0.5'>
+            <div className='size-8 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-black text-sm shadow-xs shrink-0'>
+              t<span className='text-[#4F46E5] -ms-0.5 font-black'>.</span>
+            </div>
+            <div className='flex flex-col leading-none group-data-[collapsible=icon]:hidden'>
+              <span className='font-black text-lg tracking-tight text-foreground lowercase'>
+                telda<span className='text-[#4F46E5]'>.</span>
+              </span>
+              <span className='text-[9px] font-extrabold tracking-wider uppercase text-neutral-400 mt-0.5'>
+                Business
+              </span>
+            </div>
           </div>
-          <div className='flex flex-col leading-none group-data-[collapsible=icon]:hidden'>
-            <span className='font-black text-lg tracking-tight text-foreground lowercase'>
-              telda<span className='text-[#4F46E5]'>.</span>
-            </span>
-            <span className='text-[9px] font-extrabold tracking-wider uppercase text-neutral-400 mt-0.5'>
-              Business
-            </span>
-          </div>
-        </div>
-      </SidebarHeader>
-      <SidebarContent>
-        {navGroups.map((props) => (
-          <NavGroup key={props.title} {...props} />
-        ))}
-      </SidebarContent>
-      <SidebarFooter className='p-3'>
-        <NavUser user={userProfile} />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+
+          {/* Ask Maya - Quick Action Button with Gradient Border */}
+          <Link
+            to='/ai-chat'
+            className='relative block w-full p-px rounded-xl bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#818CF8] cursor-pointer'
+          >
+            <div className='w-full flex items-center justify-between px-3 py-2 rounded-[11px] bg-white dark:bg-[#09090b] text-sidebar-foreground group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:justify-center'>
+              <div className='flex items-center gap-2'>
+                <div className='size-5 rounded-lg bg-indigo-500/10 text-[#4F46E5] dark:text-indigo-400 flex items-center justify-center shrink-0'>
+                  <Sparkles className='size-3.5 text-[#4F46E5] dark:text-indigo-400' />
+                </div>
+                <span className='text-xs font-bold tracking-tight text-neutral-900 dark:text-white group-data-[collapsible=icon]:hidden'>
+                  Ask Maya
+                </span>
+              </div>
+              <span className='text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-[#4F46E5] dark:text-indigo-400 border border-indigo-500/20 group-data-[collapsible=icon]:hidden'>
+                AI
+              </span>
+            </div>
+          </Link>
+        </SidebarHeader>
+
+        <SidebarContent className='gap-0 py-0.5 overflow-x-hidden'>
+          {navGroups.map((props) => (
+            <NavGroup key={props.title} {...props} />
+          ))}
+        </SidebarContent>
+
+        <SidebarFooter className='p-2.5 pt-1.5 space-y-1.5'>
+          {/* Trial countdown card from screenshot */}
+          <SidebarTrialCard onSelectPlan={() => setIsPlanOpen(true)} />
+
+          {/* Thin subtle divider */}
+          <div className='border-t border-border/40 my-1 group-data-[collapsible=icon]:hidden' />
+
+          {/* Bottom items: Feedback, Settings, Help Center */}
+          <SidebarBottomNav onOpenFeedback={() => setIsFeedbackOpen(true)} />
+        </SidebarFooter>
+
+        <SidebarRail />
+      </Sidebar>
+
+      {/* Plan Selection Modal */}
+      <PlanSelectionDialog open={isPlanOpen} onOpenChange={setIsPlanOpen} />
+
+      {/* Feedback Modal */}
+      <FeedbackDialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen} />
+    </>
   )
 }

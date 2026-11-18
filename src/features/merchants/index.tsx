@@ -9,12 +9,13 @@ import {
   MoreHorizontal,
   Mail,
   MapPin,
-  Coins,
   Edit2,
+  Eye,
+  Camera,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -44,8 +45,10 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { LanguageSwitch } from '@/components/language-switch'
 import { useSaaSStore } from '@/lib/saas-store'
 import { Merchant, MerchantStatus } from '@/types/saas'
+import { MerchantDetailsSheet } from './components/merchant-details-sheet'
 
 export function MerchantsView() {
   const {
@@ -62,16 +65,23 @@ export function MerchantsView() {
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [editingMerchant, setEditingMerchant] = React.useState<Merchant | null>(null)
+  const [selectedMerchantId, setSelectedMerchantId] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+
+  const activeSelectedMerchant = selectedMerchantId
+    ? merchants.find((m) => m.id === selectedMerchantId) ?? null
+    : null
 
   // Form Fields
   const [name, setName] = React.useState('')
+  const [logo, setLogo] = React.useState('')
   const [email, setEmail] = React.useState('')
   const [phone, setPhone] = React.useState('')
   const [address, setAddress] = React.useState('')
   const [merchantTypeId, setMerchantTypeId] = React.useState('')
   const [currencyId, setCurrencyId] = React.useState('')
   const [status, setStatus] = React.useState<MerchantStatus>('Active')
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = React.useState('')
@@ -79,6 +89,7 @@ export function MerchantsView() {
 
   const resetForm = () => {
     setName('')
+    setLogo('')
     setEmail('')
     setPhone('')
     setAddress('')
@@ -96,6 +107,7 @@ export function MerchantsView() {
   const openEdit = (m: Merchant) => {
     setEditingMerchant(m)
     setName(m.name)
+    setLogo(m.logo || '')
     setEmail(m.email)
     setPhone(m.phone)
     setAddress(m.address)
@@ -103,6 +115,17 @@ export function MerchantsView() {
     setCurrencyId(m.currencyId)
     setStatus(m.status)
     setError(null)
+  }
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setLogo(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   const handleSave = (e: React.FormEvent) => {
@@ -121,6 +144,7 @@ export function MerchantsView() {
     if (editingMerchant) {
       updateMerchant(editingMerchant.id, {
         name: name.trim(),
+        logo: logo.trim() || undefined,
         email: email.trim(),
         phone: phone.trim(),
         address: address.trim(),
@@ -132,6 +156,7 @@ export function MerchantsView() {
     } else {
       createMerchant({
         name: name.trim(),
+        logo: logo.trim() || undefined,
         email: email.trim(),
         phone: phone.trim(),
         address: address.trim(),
@@ -162,6 +187,7 @@ export function MerchantsView() {
           </Badge>
         </div>
         <div className='ms-auto flex items-center gap-2'>
+          <LanguageSwitch />
           <ThemeSwitch />
           <ProfileDropdown />
         </div>
@@ -219,7 +245,6 @@ export function MerchantsView() {
                   <TableHead className='ps-5 py-3.5 text-xs font-semibold text-muted-foreground'>Merchant / Business</TableHead>
                   <TableHead className='py-3.5 text-xs font-semibold text-muted-foreground'>Contact Details</TableHead>
                   <TableHead className='py-3.5 text-xs font-semibold text-muted-foreground'>Headquarters</TableHead>
-                  <TableHead className='py-3.5 text-xs font-semibold text-muted-foreground text-center'>Currency</TableHead>
                   <TableHead className='py-3.5 text-xs font-semibold text-muted-foreground text-center'>Branches</TableHead>
                   <TableHead className='py-3.5 text-xs font-semibold text-muted-foreground text-center'>Products</TableHead>
                   <TableHead className='py-3.5 text-xs font-semibold text-muted-foreground text-center'>Status</TableHead>
@@ -229,7 +254,7 @@ export function MerchantsView() {
               <TableBody>
                 {filteredMerchants.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className='h-48 text-center text-muted-foreground text-xs'>
+                    <TableCell colSpan={7} className='h-48 text-center text-muted-foreground text-xs'>
                       <Store className='size-8 mx-auto mb-2 opacity-20' />
                       <p className='font-semibold'>No merchants found</p>
                       <p className='text-[11px] mt-0.5'>Try adjusting your search or status filter.</p>
@@ -237,15 +262,14 @@ export function MerchantsView() {
                   </TableRow>
                 ) : (
                   filteredMerchants.map((merchant) => {
-                    const mType = merchantTypes.find((t) => t.id === merchant.merchantTypeId)
-                    const mCurr = currencies.find((c) => c.id === merchant.currencyId)
                     const branchCount = branches.filter((b) => b.merchantId === merchant.id).length
                     const prodCount = products.filter((p) => p.merchantId === merchant.id).length
 
                     return (
                       <tr
                         key={merchant.id}
-                        className='group border-b border-border/40 hover:bg-muted/30 transition-colors'
+                        onClick={() => setSelectedMerchantId(merchant.id)}
+                        className='group border-b border-border/40 hover:bg-muted/30 transition-colors cursor-pointer'
                       >
                         {/* Merchant / Business */}
                         <td className='ps-5 py-3.5'>
@@ -257,7 +281,7 @@ export function MerchantsView() {
                                 className='size-10 rounded-xl object-cover border border-border/80 shadow-2xs shrink-0'
                               />
                             ) : (
-                              <div className='size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs'>
+                              <div className='size-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs'>
                                 {merchant.name[0]}
                               </div>
                             )}
@@ -265,8 +289,8 @@ export function MerchantsView() {
                               <div className='font-bold text-sm text-foreground truncate group-hover:text-primary transition-colors'>
                                 {merchant.name}
                               </div>
-                              <div className='text-xs text-muted-foreground truncate'>
-                                {mType?.name || 'Retail & Groceries'}
+                              <div className='text-xs text-muted-foreground font-mono truncate'>
+                                {merchant.id}
                               </div>
                             </div>
                           </div>
@@ -293,13 +317,6 @@ export function MerchantsView() {
                             <MapPin className='size-3.5 text-muted-foreground shrink-0' />
                             <span className='truncate'>{merchant.address || '—'}</span>
                           </div>
-                        </td>
-
-                        {/* Currency */}
-                        <td className='py-3.5 text-center'>
-                          <Badge variant='outline' className='font-mono font-bold text-xs bg-muted/30 border-border/70'>
-                            {mCurr?.code} ({mCurr?.symbol})
-                          </Badge>
                         </td>
 
                         {/* Branches Count */}
@@ -335,7 +352,10 @@ export function MerchantsView() {
                         </td>
 
                         {/* Actions */}
-                        <td className='pe-5 py-3.5 text-end'>
+                        <td
+                          className='pe-5 py-3.5 text-end'
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size='icon' variant='ghost' className='size-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground'>
@@ -343,6 +363,9 @@ export function MerchantsView() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align='end' className='w-44 text-xs rounded-xl shadow-lg'>
+                              <DropdownMenuItem onClick={() => setSelectedMerchantId(merchant.id)} className='cursor-pointer rounded-lg'>
+                                <Eye className='mr-2 size-3.5 text-muted-foreground' /> View Details
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openEdit(merchant)} className='cursor-pointer rounded-lg'>
                                 <Edit2 className='mr-2 size-3.5 text-primary' /> Edit Details
                               </DropdownMenuItem>
@@ -396,6 +419,52 @@ export function MerchantsView() {
 
             {error && <p className='text-xs text-destructive mt-2'>{error}</p>}
 
+            {/* Merchant Logo Avatar in Center */}
+            <div className='flex flex-col items-center justify-center my-4 gap-2'>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className='relative group size-20 rounded-full border-2 border-dashed border-border/80 hover:border-primary transition-all flex items-center justify-center bg-muted/40 cursor-pointer overflow-hidden shadow-xs'
+              >
+                {logo ? (
+                  <img src={logo} alt='Merchant Logo' className='size-full object-cover' />
+                ) : (
+                  <div className='flex flex-col items-center justify-center text-muted-foreground gap-1'>
+                    <Camera className='size-6 opacity-40 group-hover:opacity-70 transition-opacity' />
+                    <span className='text-[9px] font-medium'>Upload</span>
+                  </div>
+                )}
+                <div className='absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-semibold'>
+                  Change
+                </div>
+              </div>
+              <input
+                ref={fileInputRef}
+                type='file'
+                accept='image/*'
+                className='hidden'
+                onChange={handleLogoUpload}
+              />
+              <div className='flex items-center gap-1.5 w-full max-w-xs'>
+                <Input
+                  placeholder='Or paste image URL...'
+                  value={logo}
+                  onChange={(e) => setLogo(e.target.value)}
+                  className='text-[10px] h-7 text-center rounded-lg bg-background'
+                />
+                {logo && (
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => setLogo('')}
+                    className='h-7 px-2 text-[10px] text-destructive hover:bg-destructive/10'
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div className='space-y-3 my-4 text-xs'>
               <div>
                 <label className='font-semibold block mb-1'>Merchant Name *</label>
@@ -441,38 +510,6 @@ export function MerchantsView() {
                 />
               </div>
 
-              <div className='grid grid-cols-2 gap-3'>
-                <div>
-                  <label className='font-semibold block mb-1'>Merchant Type</label>
-                  <select
-                    value={merchantTypeId}
-                    onChange={(e) => setMerchantTypeId(e.target.value)}
-                    className='w-full rounded-md border bg-background px-3 py-2 text-xs text-foreground'
-                  >
-                    {merchantTypes.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className='font-semibold block mb-1'>Currency</label>
-                  <select
-                    value={currencyId}
-                    onChange={(e) => setCurrencyId(e.target.value)}
-                    className='w-full rounded-md border bg-background px-3 py-2 text-xs text-foreground'
-                  >
-                    {currencies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.code} - {c.name} ({c.symbol})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
               <div>
                 <label className='font-semibold block mb-1'>Operational Status</label>
                 <select
@@ -507,6 +544,18 @@ export function MerchantsView() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Merchant Details Sheet (Side Drawer from Right) */}
+      <MerchantDetailsSheet
+        merchant={activeSelectedMerchant}
+        open={!!activeSelectedMerchant}
+        onOpenChange={(open) => {
+          if (!open) setSelectedMerchantId(null)
+        }}
+        onEdit={(m) => {
+          openEdit(m)
+        }}
+      />
     </>
   )
 }

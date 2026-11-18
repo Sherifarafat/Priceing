@@ -91,7 +91,7 @@ export function CurrenciesView() {
                 <CardContent className='p-4 space-y-2'>
                   <div className='flex items-center justify-between'>
                     <div className='flex items-center gap-2'>
-                      <div className='flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary font-bold text-xs font-mono'>
+                      <div className='flex size-8 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 font-bold text-xs font-mono'>
                         {currency.symbol}
                       </div>
                       <div>

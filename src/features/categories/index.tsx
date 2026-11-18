@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Plus, Edit2, Trash2, Tags, Package, AlertTriangle } from 'lucide-react'
+import { Plus, Edit2, Trash2, Tags, Package, AlertTriangle, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -23,6 +23,7 @@ export function CategoriesView() {
   const {
     currentUser,
     merchants,
+    branches,
     categories,
     products,
     createCategory,
@@ -31,8 +32,9 @@ export function CategoriesView() {
     hasPermission,
   } = useSaaSStore()
 
-  const merchantId = currentUser.merchantId || merchants[0].id
+  const merchantId = currentUser.merchantId || merchants[0]?.id || ''
   const merchant = merchants.find((m) => m.id === merchantId)
+  const merchantBranches = branches.filter((b) => b.merchantId === merchantId)
 
   // Scoped to current merchant
   const merchantCategories = categories.filter((c) => c.merchantId === merchantId)
@@ -43,6 +45,7 @@ export function CategoriesView() {
   const [editingCategory, setEditingCategory] = React.useState<Category | null>(null)
   const [deletingCategory, setDeletingCategory] = React.useState<Category | null>(null)
   const [catName, setCatName] = React.useState('')
+  const [branchId, setBranchId] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
   const canManage = hasPermission('categories.manage')
@@ -56,13 +59,14 @@ export function CategoriesView() {
     }
 
     if (editingCategory) {
-      updateCategory(editingCategory.id, catName.trim())
+      updateCategory(editingCategory.id, catName.trim(), branchId)
       setEditingCategory(null)
     } else {
-      createCategory(catName.trim())
+      createCategory(catName.trim(), branchId)
       setIsCreateOpen(false)
     }
     setCatName('')
+    setBranchId(null)
   }
 
   // Section 8.2: Category Deletion rule
@@ -120,15 +124,27 @@ export function CategoriesView() {
         <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
           {merchantCategories.map((cat) => {
             const count = merchantProducts.filter((p) => p.categoryId === cat.id).length
+            const assignedBranch = merchantBranches.find((b) => b.id === cat.branchId)
             return (
               <Card key={cat.id} className='hover:border-primary/50 transition-colors'>
                 <CardContent className='p-4 flex items-center justify-between'>
                   <div className='flex items-center gap-3'>
-                    <div className='flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary'>
+                    <div className='flex size-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40'>
                       <Tags className='size-5' />
                     </div>
                     <div>
-                      <h4 className='font-bold text-sm text-foreground'>{cat.name}</h4>
+                      <div className='flex items-center gap-2'>
+                        <h4 className='font-bold text-sm text-foreground'>{cat.name}</h4>
+                        {assignedBranch ? (
+                          <Badge variant='outline' className='text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border-indigo-200/50 py-0 px-1.5'>
+                            {assignedBranch.name}
+                          </Badge>
+                        ) : (
+                          <Badge variant='outline' className='text-[10px] bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-200/40 py-0 px-1.5'>
+                            All Branches
+                          </Badge>
+                        )}
+                      </div>
                       <div className='flex items-center gap-1 text-xs text-muted-foreground mt-0.5'>
                         <Package className='size-3' /> {count} products
                       </div>
@@ -144,6 +160,7 @@ export function CategoriesView() {
                         onClick={() => {
                           setEditingCategory(cat)
                           setCatName(cat.name)
+                          setBranchId(cat.branchId || null)
                           setError(null)
                         }}
                       >
@@ -205,15 +222,36 @@ export function CategoriesView() {
 
             {error && <p className='text-xs text-destructive mt-2'>{error}</p>}
 
-            <div className='my-4'>
-              <label className='font-semibold text-xs block mb-1'>Category Name *</label>
-              <Input
-                required
-                placeholder='e.g. Beverages, Bakery, Snacks...'
-                value={catName}
-                onChange={(e) => setCatName(e.target.value)}
-                className='text-xs'
-              />
+            <div className='my-4 space-y-3.5'>
+              <div>
+                <label className='font-semibold text-xs block mb-1'>Category Name *</label>
+                <Input
+                  required
+                  placeholder='e.g. Beverages, Bakery, Snacks...'
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  className='text-xs'
+                />
+              </div>
+
+              <div>
+                <label className='font-semibold text-xs block mb-1'>Assign to Branch</label>
+                <select
+                  value={branchId || 'ALL'}
+                  onChange={(e) => setBranchId(e.target.value === 'ALL' ? null : e.target.value)}
+                  className='w-full rounded-md border border-border/80 bg-background px-3 py-2 text-xs text-foreground'
+                >
+                  <option value='ALL'>All Branches (Global)</option>
+                  {merchantBranches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+                <p className='text-[10px] text-muted-foreground mt-1'>
+                  Optionally bind this category to a specific store branch.
+                </p>
+              </div>
             </div>
 
             <DialogFooter>

@@ -47,7 +47,7 @@ export function ExcelBulkOperationsView() {
     hasPermission,
   } = useSaaSStore()
 
-  const merchantId = currentUser.merchantId || merchants[0].id
+  const merchantId = currentUser.merchantId || merchants[0]?.id || ''
   const merchant = merchants.find((m) => m.id === merchantId)
   const currency = currencies.find((c) => c.id === merchant?.currencyId) || currencies[0]
 
@@ -389,7 +389,7 @@ export function ExcelBulkOperationsView() {
                                   <Badge
                                     variant='outline'
                                     className={`text-[10px] cursor-pointer ${
-                                      decision === 'UPDATE' ? 'border-blue-500 text-blue-500' : 'border-amber-500 text-amber-500'
+                                      decision === 'UPDATE' ? 'border-[#4F46E5] text-[#4F46E5]' : 'border-amber-500 text-amber-500'
                                     }`}
                                     onClick={() => setIsDuplicateModalOpen(true)}
                                   >
@@ -432,7 +432,7 @@ export function ExcelBulkOperationsView() {
                   <div className='grid grid-cols-2 sm:grid-cols-5 gap-2 font-semibold'>
                     <div>Processed: {importSummary.totalProcessed}</div>
                     <div className='text-green-600'>Imported: {importSummary.successfullyImported}</div>
-                    <div className='text-blue-600'>Updated: {importSummary.updated}</div>
+                    <div className='text-[#4F46E5] dark:text-indigo-400'>Updated: {importSummary.updated}</div>
                     <div className='text-amber-600'>Skipped: {importSummary.skipped}</div>
                     <div className='text-red-600'>Failed: {importSummary.failed}</div>
                   </div>
@@ -497,8 +497,8 @@ export function ExcelBulkOperationsView() {
             </div>
 
             {bulkEditSummary !== null && (
-              <Card className='border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20'>
-                <CardContent className='p-4 text-xs font-semibold text-blue-700 dark:text-blue-300'>
+              <Card className='border-indigo-500/50 bg-indigo-50/50 dark:bg-indigo-950/20'>
+                <CardContent className='p-4 text-xs font-semibold text-indigo-700 dark:text-indigo-300'>
                   Successfully updated {bulkEditSummary} products in catalog.
                 </CardContent>
               </Card>

@@ -34,7 +34,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
               'peer-data-[variant=inset]:has-data-[layout=fixed]:h-[calc(100svh-(var(--spacing)*4))]'
             )}
           >
-            <div className='flex min-h-0 flex-1 flex-col'>
+            <div className='flex min-h-0 flex-1 flex-col h-full'>
               {children ?? <Outlet />}
             </div>
             <Footer />

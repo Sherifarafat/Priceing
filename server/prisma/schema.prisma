@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // Change to "postgresql" when connecting to Supabase / PostgreSQL
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  username    String    @unique
+  password    String
+  name        String
+  role        String    @default("MERCHANT_STAFF") // SUPER_ADMIN | MERCHANT_MANAGER | MERCHANT_STAFF
+  merchantId  String?
+  merchant    Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+  status      String    @default("Active") // Active | Inactive | Suspended
+  permissions String?   // JSON string of permissions
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([username])
+  @@index([email])
+  @@index([merchantId])
+}
+
+model Merchant {
+  id         String     @id @default(uuid())
+  name       String
+  email      String
+  phone      String?
+  address    String?
+  logo       String?
+  status     String     @default("Active") // Active | Suspended
+  branches   Branch[]
+  products   Product[]
+  categories Category[]
+  users      User[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([name])
+}
+
+model Branch {
+  id                String            @id @default(uuid())
+  merchantId        String
+  merchant          Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name              String
+  address           String?
+  imageUrl          String?
+  qrToken           String            @unique
+  qrStatus          String            @default("Active") // Active | Inactive
+  categories        Category[]
+  serviceCategories ServiceCategory[]
+  scans             CustomerScan[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([qrToken])
+  @@index([merchantId])
+}
+
+model Category {
+  id         String    @id @default(uuid())
+  merchantId String
+  merchant   Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name       String
+  branchId   String?
+  branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  products   Product[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([merchantId])
+  @@index([branchId])
+}
+
+model Product {
+  id          String    @id @default(uuid())
+  merchantId  String
+  merchant    Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name        String
+  barcode     String
+  price       Float
+  stocks      Int       @default(0)
+  description String?
+  imageUrl    String?
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  status      String    @default("Active") // Active | Inactive
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([merchantId, barcode])
+  @@index([barcode])
+  @@index([merchantId])
+}
+
+model ServiceCategory {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  branchId    String?
+  branch      Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  status      String        @default("Active")
+  services    ServiceItem[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([branchId])
+}
+
+model ServiceItem {
+  id          String          @id @default(uuid())
+  categoryId  String
+  category    ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  status      String          @default("Active")
+  subServices SubService[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([categoryId])
+}
+
+model SubService {
+  id          String      @id @default(uuid())
+  serviceId   String
+  service     ServiceItem @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name        String
+  price       Float       @default(0)
+  description String?
+  status      String      @default("Active")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([serviceId])
+}
+
+model ProductAddon {
+  id              String   @id @default(uuid())
+  name            String
+  categoryTag     String
+  price           Float    @default(0)
+  applicableScope String   @default("ALL") // ALL | SPECIFIC
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CustomerScan {
+  id          String   @id @default(uuid())
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  barcode     String?
+  productName String?
+  price       Float?
+  scannedAt   DateTime @default(now())
+  userAgent   String?
+  ipAddress   String?
+
+  @@index([branchId])
+  @@index([scannedAt])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String
+  actorEmail  String
+  actionType  String
+  entityType  String
+  entityId    String
+  oldValues   String?  // JSON text
+  newValues   String?  // JSON text
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

@@ -84,7 +84,7 @@ export function MerchantTypesView() {
               <Card key={type.id} className='hover:border-primary/50 transition-colors'>
                 <CardContent className='p-4 flex items-center justify-between'>
                   <div className='flex items-center gap-3'>
-                    <div className='flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary'>
+                    <div className='flex size-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40'>
                       <FolderTree className='size-5' />
                     </div>
                     <div>

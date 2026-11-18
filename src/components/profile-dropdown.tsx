@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useSaaSStore } from '@/lib/saas-store'
+import { useAuthStore } from '@/stores/auth-store'
 
 export function ProfileDropdown() {
   const navigate = useNavigate()
@@ -72,7 +73,7 @@ export function ProfileDropdown() {
             <span>Super Admin</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleSwitch('user-metro-manager')}>
-            <Store className='mr-2 size-4 text-blue-500' />
+            <Store className='mr-2 size-4 text-[#4F46E5] dark:text-indigo-400' />
             <span>Metro Store Manager</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleSwitch('user-metro-staff')}>
@@ -105,6 +106,19 @@ export function ProfileDropdown() {
         >
           <RotateCcw className='mr-2 size-4' />
           <span>Reset Demo Data</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          onClick={() => {
+            useAuthStore.getState().auth.reset()
+            navigate({ to: '/sign-in', replace: true })
+          }}
+          className='cursor-pointer text-destructive focus:text-destructive'
+        >
+          <LogOut className='mr-2 size-4' />
+          <span>Sign Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

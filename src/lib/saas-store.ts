@@ -12,6 +12,11 @@ import {
   StaffPermissionKey,
   MerchantStatus,
   EntityStatus,
+  CustomRole,
+  ServiceCategory,
+  ServiceItem,
+  SubService,
+  ProductAddon,
 } from '@/types/saas'
 
 // Initial Seed Data
@@ -29,288 +34,73 @@ const initialCurrencies: Currency[] = [
   { id: 'curr-eur', code: 'EUR', name: 'Euro', symbol: '€', status: 'Active' },
 ]
 
-const initialMerchants: Merchant[] = [
-  {
-    id: 'merch-metro',
-    name: 'Metro Market',
-    logo: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=100',
-    email: 'contact@metro.com',
-    phone: '+20 2 3760 0000',
-    address: '15 Mossadak St, Dokki, Giza',
-    merchantTypeId: 'type-1',
-    currencyId: 'curr-egp',
-    status: 'Active',
-    createdAt: '2026-01-10T10:00:00Z',
-    updatedAt: '2026-01-10T10:00:00Z',
-  },
-  {
-    id: 'merch-carrefour',
-    name: 'Carrefour Express',
-    logo: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=100',
-    email: 'info@carrefour.com',
-    phone: '+20 2 2480 0000',
-    address: 'City Stars, Nasr City, Cairo',
-    merchantTypeId: 'type-1',
-    currencyId: 'curr-egp',
-    status: 'Active',
-    createdAt: '2026-02-01T12:00:00Z',
-    updatedAt: '2026-02-01T12:00:00Z',
-  },
-  {
-    id: 'merch-hyperone',
-    name: 'HyperOne Supercenter',
-    logo: '',
-    email: 'support@hyperone.com',
-    phone: '+20 2 3850 0000',
-    address: 'Sheikh Zayed Entrance 1, Giza',
-    merchantTypeId: 'type-1',
-    currencyId: 'curr-egp',
-    status: 'Pending',
-    createdAt: '2026-03-01T08:00:00Z',
-    updatedAt: '2026-03-01T08:00:00Z',
-  },
-  {
-    id: 'merch-oldbazaar',
-    name: 'Old Town Spices & Gourmet',
-    logo: '',
-    email: 'bazaar@oldtown.com',
-    phone: '+20 2 2590 0000',
-    address: 'Khan el-Khalili, Cairo',
-    merchantTypeId: 'type-1',
-    currencyId: 'curr-egp',
-    status: 'Suspended',
-    createdAt: '2025-11-15T09:00:00Z',
-    updatedAt: '2026-03-05T14:00:00Z',
-  },
-]
+const initialMerchants: Merchant[] = []
 
-const initialBranches: Branch[] = [
-  {
-    id: 'branch-metro-dokki',
-    merchantId: 'merch-metro',
-    name: 'Dokki Branch',
-    address: '15 Mossadak Street, Dokki, Giza',
-    qrToken: 'qr-metro-dokki-8f2a1b9c',
-    qrStatus: 'Active',
-    createdAt: '2026-01-12T10:00:00Z',
-    updatedAt: '2026-01-12T10:00:00Z',
-  },
-  {
-    id: 'branch-metro-maadi',
-    merchantId: 'merch-metro',
-    name: 'Maadi Degla Branch',
-    address: 'Road 233, Degla, Maadi, Cairo',
-    qrToken: 'qr-metro-maadi-4e7d2a10',
-    qrStatus: 'Active',
-    createdAt: '2026-01-15T11:00:00Z',
-    updatedAt: '2026-01-15T11:00:00Z',
-  },
-  {
-    id: 'branch-metro-nasrcity',
-    merchantId: 'merch-metro',
-    name: 'Nasr City Branch',
-    address: 'Abbas El-Akkad St, Nasr City, Cairo',
-    qrToken: 'qr-metro-nasr-99c15b3e',
-    qrStatus: 'Active',
-    createdAt: '2026-01-20T09:30:00Z',
-    updatedAt: '2026-01-20T09:30:00Z',
-  },
-  {
-    id: 'branch-carrefour-mall',
-    merchantId: 'merch-carrefour',
-    name: 'Mall of Arabia Branch',
-    address: 'Mall of Arabia, Juhayna Square, 6th of October',
-    qrToken: 'qr-carrefour-moa-5a3d7e82',
-    qrStatus: 'Active',
-    createdAt: '2026-02-05T14:00:00Z',
-    updatedAt: '2026-02-05T14:00:00Z',
-  },
-]
+const initialBranches: Branch[] = []
 
-const initialCategories: Category[] = [
-  { id: 'cat-beverages', merchantId: 'merch-metro', name: 'Beverages', createdAt: '2026-01-12T10:00:00Z', updatedAt: '2026-01-12T10:00:00Z' },
-  { id: 'cat-dairy', merchantId: 'merch-metro', name: 'Dairy & Eggs', createdAt: '2026-01-12T10:00:00Z', updatedAt: '2026-01-12T10:00:00Z' },
-  { id: 'cat-snacks', merchantId: 'merch-metro', name: 'Snacks & Chips', createdAt: '2026-01-12T10:00:00Z', updatedAt: '2026-01-12T10:00:00Z' },
-  { id: 'cat-bakery', merchantId: 'merch-metro', name: 'Bakery & Bread', createdAt: '2026-01-12T10:00:00Z', updatedAt: '2026-01-12T10:00:00Z' },
-  { id: 'cat-pantry', merchantId: 'merch-carrefour', name: 'Pantry & Canned Foods', createdAt: '2026-02-02T10:00:00Z', updatedAt: '2026-02-02T10:00:00Z' },
-]
+const initialCategories: Category[] = []
 
-const initialProducts: Product[] = [
-  {
-    id: 'prod-coke',
-    merchantId: 'merch-metro',
-    name: 'Coca Cola Can 330ml',
-    barcode: '5449000000996',
-    price: 15.0,
-    description: 'Original taste carbonated soft drink can 330ml',
-    imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300',
-    categoryId: 'cat-beverages',
-    status: 'Active',
-    createdAt: '2026-01-12T11:00:00Z',
-    updatedAt: '2026-01-12T11:00:00Z',
-  },
-  {
-    id: 'prod-milk',
-    merchantId: 'merch-metro',
-    name: 'Juhayna Full Cream Milk 1L',
-    barcode: '6223000450012',
-    price: 45.0,
-    description: '100% pure fresh cow milk full cream 1 liter bottle',
-    imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300',
-    categoryId: 'cat-dairy',
-    status: 'Active',
-    createdAt: '2026-01-12T11:05:00Z',
-    updatedAt: '2026-01-12T11:05:00Z',
-  },
-  {
-    id: 'prod-chips',
-    merchantId: 'merch-metro',
-    name: 'Lays Potato Chips Salt 85g',
-    barcode: '6221155021201',
-    price: 12.5,
-    description: 'Crispy golden potato chips with classic sea salt',
-    imageUrl: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300',
-    categoryId: 'cat-snacks',
-    status: 'Active',
-    createdAt: '2026-01-12T11:10:00Z',
-    updatedAt: '2026-01-12T11:10:00Z',
-  },
-  {
-    id: 'prod-bread',
-    merchantId: 'merch-metro',
-    name: 'Rich Bake Toast White Bread 500g',
-    barcode: '6222001400234',
-    price: 32.0,
-    description: 'Freshly baked soft white sliced bread loaf',
-    imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300',
-    categoryId: 'cat-bakery',
-    status: 'Active',
-    createdAt: '2026-01-12T11:15:00Z',
-    updatedAt: '2026-01-12T11:15:00Z',
-  },
-  {
-    id: 'prod-water',
-    merchantId: 'merch-metro',
-    name: 'Nestle Pure Life Mineral Water 1.5L',
-    barcode: '6221003001010',
-    price: 8.0,
-    description: 'Natural pure drinking bottled water 1.5 liters',
-    imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=300',
-    categoryId: 'cat-beverages',
-    status: 'Active',
-    createdAt: '2026-01-12T11:20:00Z',
-    updatedAt: '2026-01-12T11:20:00Z',
-  },
-  {
-    id: 'prod-safeer-coffee',
-    merchantId: 'merch-metro',
-    name: 'بن سفير وسط ساده',
-    barcode: '961400121028',
-    price: 85.0,
-    description: 'قهوة بن سفير توليفة مميزة وسط ساده - مذاق غني ورائحة أصيلة',
-    imageUrl: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=300',
-    categoryId: 'cat-beverages',
-    status: 'Active',
-    createdAt: '2026-03-01T10:00:00Z',
-    updatedAt: '2026-03-01T10:00:00Z',
-  },
-  // Carrefour products (demonstrating tenant isolation!)
-  {
-    id: 'prod-carrefour-tuna',
-    merchantId: 'merch-carrefour',
-    name: 'Carrefour Solid Tuna in Olive Oil 185g',
-    barcode: '3560070854123',
-    price: 65.0,
-    description: 'Premium light solid tuna flakes in extra virgin olive oil',
-    imageUrl: 'https://images.unsplash.com/photo-1534483509719-3feaee7c30da?w=300',
-    categoryId: 'cat-pantry',
-    status: 'Active',
-    createdAt: '2026-02-02T11:00:00Z',
-    updatedAt: '2026-02-02T11:00:00Z',
-  },
-]
+const initialProducts: Product[] = []
 
 const initialUsers: User[] = [
   {
-    id: 'user-super-admin',
-    email: 'admin@platform.com',
-    name: 'Platform Super Admin',
+    id: 'user-sherif',
+    email: 'sherif@company.com',
+    username: 'sherif',
+    password: '123456',
+    name: 'Sherif Arafat (Super Admin)',
     role: 'SUPER_ADMIN',
     merchantId: null,
     status: 'Active',
     createdAt: '2026-01-01T00:00:00Z',
   },
+]
+
+const initialAuditLogs: AuditLog[] = []
+
+const initialRoles: CustomRole[] = [
   {
-    id: 'user-metro-manager',
-    email: 'manager@metro.com',
-    name: 'Metro Store Manager',
-    role: 'MERCHANT_MANAGER',
-    merchantId: 'merch-metro',
-    status: 'Active',
-    createdAt: '2026-01-10T10:00:00Z',
+    id: 'role-company-super-admin',
+    name: 'Company Super Admin (Platform Owner)',
+    description: 'Highest system authority. Root company-level role with full access and the exclusive privilege to create and manage merchant roles.',
+    scope: 'COMPANY',
+    merchantId: null,
+    isSystem: true,
+    permissions: ['*'],
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
   },
   {
-    id: 'user-metro-staff',
-    email: 'staff@metro.com',
-    name: 'Ahmed Staff',
-    role: 'MERCHANT_STAFF',
-    merchantId: 'merch-metro',
-    status: 'Active',
-    permissions: {
-      'products.view': true,
-      'products.create': true,
-      'products.edit': true,
-      'products.delete': false,
-      'categories.manage': false,
-      'excel.import': true,
-      'excel.bulk_edit': false,
-      'excel.bulk_delete': false,
-    },
-    createdAt: '2026-01-15T12:00:00Z',
-  },
-  {
-    id: 'user-carrefour-manager',
-    email: 'manager@carrefour.com',
-    name: 'Carrefour Store Manager',
-    role: 'MERCHANT_MANAGER',
-    merchantId: 'merch-carrefour',
-    status: 'Active',
-    createdAt: '2026-02-01T12:00:00Z',
+    id: 'role-merchant-manager',
+    name: 'Merchant Store Manager',
+    description: 'Store manager role for merchants with full authority over products, branches, categories, Excel operations, and store staff.',
+    scope: 'MERCHANT',
+    merchantId: null,
+    isSystem: true,
+    permissions: [
+      'merchant.dashboard.view',
+      'merchant.products.view',
+      'merchant.products.manage',
+      'merchant.categories.manage',
+      'merchant.branches.view',
+      'merchant.branches.manage',
+      'merchant.excel.operations',
+      'merchant.staff.manage',
+      'merchant.analytics.view',
+      'merchant.customer_scan.access',
+    ],
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
   },
 ]
 
-const initialAuditLogs: AuditLog[] = [
-  {
-    id: 'log-1',
-    actorUserId: 'user-super-admin',
-    actorEmail: 'admin@platform.com',
-    actionType: 'MERCHANT_CREATED',
-    entityType: 'Merchant',
-    entityId: 'merch-metro',
-    newValues: { name: 'Metro Market', status: 'Active' },
-    createdAt: '2026-01-10T10:00:00Z',
-  },
-  {
-    id: 'log-2',
-    actorUserId: 'user-super-admin',
-    actorEmail: 'admin@platform.com',
-    actionType: 'BRANCH_CREATED',
-    entityType: 'Branch',
-    entityId: 'branch-metro-dokki',
-    newValues: { name: 'Dokki Branch', qrToken: 'qr-metro-dokki-8f2a1b9c' },
-    createdAt: '2026-01-12T10:00:00Z',
-  },
-  {
-    id: 'log-3',
-    actorUserId: 'user-metro-manager',
-    actorEmail: 'manager@metro.com',
-    actionType: 'PRODUCT_CREATED',
-    entityType: 'Product',
-    entityId: 'prod-coke',
-    newValues: { name: 'Coca Cola Can 330ml', price: 15.0, barcode: '5449000000996' },
-    createdAt: '2026-01-12T11:00:00Z',
-  },
-]
+const initialServiceCategories: ServiceCategory[] = []
+
+const initialServiceItems: ServiceItem[] = []
+
+const initialSubServices: SubService[] = []
+
+const initialProductAddons: ProductAddon[] = []
 
 export interface SaaSState {
   currentUser: User
@@ -321,9 +111,32 @@ export interface SaaSState {
   categories: Category[]
   products: Product[]
   users: User[]
+  roles: CustomRole[]
   auditLogs: AuditLog[]
   customerScanCount: number
   shoppingSessionCount: number
+
+  // Services & Add-ons
+  serviceCategories: ServiceCategory[]
+  serviceItems: ServiceItem[]
+  subServices: SubService[]
+  productAddons: ProductAddon[]
+
+  createServiceCategory: (name: string, description?: string, branchId?: string | null) => ServiceCategory
+  updateServiceCategory: (id: string, name: string, description?: string, status?: EntityStatus, branchId?: string | null) => void
+  deleteServiceCategory: (id: string) => void
+
+  createServiceItem: (data: Omit<ServiceItem, 'id' | 'createdAt' | 'updatedAt'>) => ServiceItem
+  updateServiceItem: (id: string, data: Partial<Omit<ServiceItem, 'id' | 'createdAt'>>) => void
+  deleteServiceItem: (id: string) => void
+
+  createSubService: (data: Omit<SubService, 'id' | 'createdAt' | 'updatedAt'>) => SubService
+  updateSubService: (id: string, data: Partial<Omit<SubService, 'id' | 'createdAt'>>) => void
+  deleteSubService: (id: string) => void
+
+  createProductAddon: (data: Omit<ProductAddon, 'id' | 'createdAt' | 'updatedAt'>) => ProductAddon
+  updateProductAddon: (id: string, data: Partial<Omit<ProductAddon, 'id' | 'createdAt'>>) => void
+  deleteProductAddon: (id: string) => void
 
   // Auth / Context Actions
   switchUser: (userId: string) => void
@@ -339,8 +152,8 @@ export interface SaaSState {
   updateCurrency: (id: string, name: string, symbol: string, status: EntityStatus) => void
 
   // Branch & QR Operations (Super Admin Only)
-  createBranch: (merchantId: string, name: string, address: string) => Branch
-  updateBranch: (id: string, name: string, address: string) => void
+  createBranch: (merchantId: string, name: string, address: string, imageUrl?: string) => Branch
+  updateBranch: (id: string, name: string, address: string, imageUrl?: string) => void
   deleteBranch: (id: string) => void
   regenerateBranchQr: (branchId: string) => { oldToken: string; newToken: string }
 
@@ -348,8 +161,8 @@ export interface SaaSState {
   createProduct: (data: Omit<Product, 'id' | 'merchantId' | 'createdAt' | 'updatedAt'>) => { success: boolean; error?: string; product?: Product }
   updateProduct: (id: string, data: Partial<Omit<Product, 'id' | 'merchantId' | 'createdAt'>>) => { success: boolean; error?: string }
   deleteProduct: (id: string) => void
-  createCategory: (name: string) => Category
-  updateCategory: (id: string, name: string) => void
+  createCategory: (name: string, branchId?: string | null) => Category
+  updateCategory: (id: string, name: string, branchId?: string | null) => void
   deleteCategory: (id: string) => void // Section 8.2: sets products' category to null (Uncategorized)
 
   // Excel Bulk Operations
@@ -370,6 +183,11 @@ export interface SaaSState {
   recordCustomerScan: (merchantId: string, branchId: string, barcode: string) => void
   recordShoppingSession: () => void
 
+  // Role Management (Company Super Admin & Merchant Roles)
+  createRole: (data: Omit<CustomRole, 'id' | 'createdAt' | 'updatedAt'>) => CustomRole
+  updateRole: (id: string, data: Partial<Omit<CustomRole, 'id' | 'createdAt'>>) => void
+  deleteRole: (id: string) => void
+
   // Reset to initial demo state
   resetAllData: () => void
 }
@@ -385,9 +203,14 @@ export const useSaaSStore = create<SaaSState>()(
       categories: initialCategories,
       products: initialProducts,
       users: initialUsers,
+      roles: initialRoles,
       auditLogs: initialAuditLogs,
-      customerScanCount: 142,
-      shoppingSessionCount: 89,
+      customerScanCount: 0,
+      shoppingSessionCount: 0,
+      serviceCategories: initialServiceCategories,
+      serviceItems: initialServiceItems,
+      subServices: initialSubServices,
+      productAddons: initialProductAddons,
 
       switchUser: (userId: string) => {
         const found = get().users.find((u) => u.id === userId)
@@ -509,7 +332,7 @@ export const useSaaSStore = create<SaaSState>()(
       },
 
       // Branch & QR Operations (Section 9 of SRS)
-      createBranch: (merchantId, name, address) => {
+      createBranch: (merchantId, name, address, imageUrl) => {
         const id = `branch-${Date.now()}`
         const now = new Date().toISOString()
         // Secure non-guessable random token
@@ -520,6 +343,7 @@ export const useSaaSStore = create<SaaSState>()(
           merchantId,
           name,
           address,
+          imageUrl: imageUrl || '',
           qrToken,
           qrStatus: 'Active',
           createdAt: now,
@@ -532,7 +356,7 @@ export const useSaaSStore = create<SaaSState>()(
           actionType: 'BRANCH_CREATED',
           entityType: 'Branch',
           entityId: id,
-          newValues: { name, address, qrToken, merchantId },
+          newValues: { name, address, qrToken, merchantId, imageUrl },
           createdAt: now,
         }
         set((state) => ({
@@ -542,10 +366,20 @@ export const useSaaSStore = create<SaaSState>()(
         return branch
       },
 
-      updateBranch: (id, name, address) => {
+      updateBranch: (id, name, address, imageUrl) => {
         const now = new Date().toISOString()
         set((state) => ({
-          branches: state.branches.map((b) => (b.id === id ? { ...b, name, address, updatedAt: now } : b)),
+          branches: state.branches.map((b) =>
+            b.id === id
+              ? {
+                  ...b,
+                  name,
+                  address,
+                  imageUrl: imageUrl !== undefined ? imageUrl : b.imageUrl,
+                  updatedAt: now,
+                }
+              : b
+          ),
         }))
       },
 
@@ -700,19 +534,28 @@ export const useSaaSStore = create<SaaSState>()(
       },
 
       // Categories
-      createCategory: (name) => {
+      createCategory: (name, branchId) => {
         const merchantId = get().currentUser.merchantId!
         const id = `cat-${Date.now()}`
         const now = new Date().toISOString()
-        const newCat: Category = { id, merchantId, name: name.trim(), createdAt: now, updatedAt: now }
+        const newCat: Category = { id, merchantId, name: name.trim(), branchId: branchId || null, createdAt: now, updatedAt: now }
         set((state) => ({ categories: [...state.categories, newCat] }))
         return newCat
       },
 
-      updateCategory: (id, name) => {
+      updateCategory: (id, name, branchId) => {
         const now = new Date().toISOString()
         set((state) => ({
-          categories: state.categories.map((c) => (c.id === id ? { ...c, name: name.trim(), updatedAt: now } : c)),
+          categories: state.categories.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  name: name.trim(),
+                  branchId: branchId !== undefined ? branchId : c.branchId,
+                  updatedAt: now,
+                }
+              : c
+          ),
         }))
       },
 
@@ -951,6 +794,214 @@ export const useSaaSStore = create<SaaSState>()(
         set((state) => ({ shoppingSessionCount: state.shoppingSessionCount + 1 }))
       },
 
+      createRole: (data) => {
+        const id = `role-${Date.now()}`
+        const now = new Date().toISOString()
+        const newRole: CustomRole = {
+          ...data,
+          id,
+          createdAt: now,
+          updatedAt: now,
+        }
+        const currentUser = get().currentUser
+        const newLog: AuditLog = {
+          id: `log-${Date.now()}`,
+          actorUserId: currentUser.id,
+          actorEmail: currentUser.email,
+          actionType: 'ROLE_CREATED',
+          entityType: 'Role',
+          entityId: id,
+          newValues: { name: newRole.name, scope: newRole.scope, merchantId: newRole.merchantId },
+          createdAt: now,
+        }
+        set((state) => ({
+          roles: [...(state.roles || initialRoles), newRole],
+          auditLogs: [newLog, ...state.auditLogs],
+        }))
+        return newRole
+      },
+
+      updateRole: (id, data) => {
+        const now = new Date().toISOString()
+        const currentUser = get().currentUser
+        const existing = (get().roles || initialRoles).find((r) => r.id === id)
+        const newLog: AuditLog = {
+          id: `log-${Date.now()}`,
+          actorUserId: currentUser.id,
+          actorEmail: currentUser.email,
+          actionType: 'ROLE_UPDATED',
+          entityType: 'Role',
+          entityId: id,
+          oldValues: existing ? { name: existing.name, permissions: existing.permissions } : null,
+          newValues: data,
+          createdAt: now,
+        }
+        set((state) => ({
+          roles: (state.roles || initialRoles).map((r) =>
+            r.id === id ? { ...r, ...data, updatedAt: now } : r
+          ),
+          auditLogs: [newLog, ...state.auditLogs],
+        }))
+      },
+
+      deleteRole: (id) => {
+        const currentUser = get().currentUser
+        const existing = (get().roles || initialRoles).find((r) => r.id === id)
+        if (existing?.isSystem) return // Protection: cannot delete system root roles
+
+        const now = new Date().toISOString()
+        const newLog: AuditLog = {
+          id: `log-${Date.now()}`,
+          actorUserId: currentUser.id,
+          actorEmail: currentUser.email,
+          actionType: 'ROLE_DELETED',
+          entityType: 'Role',
+          entityId: id,
+          oldValues: existing ? { name: existing.name } : null,
+          createdAt: now,
+        }
+        set((state) => ({
+          roles: (state.roles || initialRoles).filter((r) => r.id !== id),
+          auditLogs: [newLog, ...state.auditLogs],
+        }))
+      },
+
+      createServiceCategory: (name, description, branchId) => {
+        const now = new Date().toISOString()
+        const newCat: ServiceCategory = {
+          id: `scat-${Date.now()}`,
+          name,
+          description: description || '',
+          branchId: branchId || null,
+          status: 'Active',
+          servicesCount: 0,
+          createdAt: now,
+          updatedAt: now,
+        }
+        set((state) => ({
+          serviceCategories: [...(state.serviceCategories || initialServiceCategories), newCat],
+        }))
+        return newCat
+      },
+
+      updateServiceCategory: (id, name, description, status, branchId) => {
+        const now = new Date().toISOString()
+        set((state) => ({
+          serviceCategories: (state.serviceCategories || initialServiceCategories).map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  name,
+                  description: description !== undefined ? description : c.description,
+                  status: status || c.status,
+                  branchId: branchId !== undefined ? branchId : c.branchId,
+                  updatedAt: now,
+                }
+              : c
+          ),
+        }))
+      },
+
+      deleteServiceCategory: (id) => {
+        set((state) => ({
+          serviceCategories: (state.serviceCategories || initialServiceCategories).filter((c) => c.id !== id),
+          serviceItems: (state.serviceItems || initialServiceItems).filter((s) => s.categoryId !== id),
+        }))
+      },
+
+      createServiceItem: (data) => {
+        const now = new Date().toISOString()
+        const newItem: ServiceItem = {
+          ...data,
+          id: `srv-${Date.now()}`,
+          createdAt: now,
+          updatedAt: now,
+        }
+        set((state) => ({
+          serviceItems: [...(state.serviceItems || initialServiceItems), newItem],
+          serviceCategories: (state.serviceCategories || initialServiceCategories).map((cat) =>
+            cat.id === data.categoryId
+              ? { ...cat, servicesCount: (cat.servicesCount || 0) + 1 }
+              : cat
+          ),
+        }))
+        return newItem
+      },
+
+      updateServiceItem: (id, data) => {
+        const now = new Date().toISOString()
+        set((state) => ({
+          serviceItems: (state.serviceItems || initialServiceItems).map((s) =>
+            s.id === id ? { ...s, ...data, updatedAt: now } : s
+          ),
+        }))
+      },
+
+      deleteServiceItem: (id) => {
+        set((state) => ({
+          serviceItems: (state.serviceItems || initialServiceItems).filter((s) => s.id !== id),
+          subServices: (state.subServices || initialSubServices).filter((sub) => sub.serviceId !== id),
+        }))
+      },
+
+      createSubService: (data) => {
+        const now = new Date().toISOString()
+        const newSub: SubService = {
+          ...data,
+          id: `sub-${Date.now()}`,
+          createdAt: now,
+          updatedAt: now,
+        }
+        set((state) => ({
+          subServices: [...(state.subServices || initialSubServices), newSub],
+        }))
+        return newSub
+      },
+
+      updateSubService: (id, data) => {
+        const now = new Date().toISOString()
+        set((state) => ({
+          subServices: (state.subServices || initialSubServices).map((s) =>
+            s.id === id ? { ...s, ...data, updatedAt: now } : s
+          ),
+        }))
+      },
+
+      deleteSubService: (id) => {
+        set((state) => ({
+          subServices: (state.subServices || initialSubServices).filter((s) => s.id !== id),
+        }))
+      },
+
+      createProductAddon: (data) => {
+        const now = new Date().toISOString()
+        const newAddon: ProductAddon = {
+          ...data,
+          id: `addon-${Date.now()}`,
+          createdAt: now,
+          updatedAt: now,
+        }
+        set((state) => ({
+          productAddons: [...(state.productAddons || initialProductAddons), newAddon],
+        }))
+        return newAddon
+      },
+
+      updateProductAddon: (id, data) => {
+        const now = new Date().toISOString()
+        set((state) => ({
+          productAddons: (state.productAddons || initialProductAddons).map((a) =>
+            a.id === id ? { ...a, ...data, updatedAt: now } : a
+          ),
+        }))
+      },
+
+      deleteProductAddon: (id) => {
+        set((state) => ({
+          productAddons: (state.productAddons || initialProductAddons).filter((a) => a.id !== id),
+        }))
+      },
+
       resetAllData: () => {
         set({
           currentUser: initialUsers[0],
@@ -961,14 +1012,19 @@ export const useSaaSStore = create<SaaSState>()(
           categories: initialCategories,
           products: initialProducts,
           users: initialUsers,
+          roles: initialRoles,
           auditLogs: initialAuditLogs,
-          customerScanCount: 142,
-          shoppingSessionCount: 89,
+          customerScanCount: 0,
+          shoppingSessionCount: 0,
+          serviceCategories: initialServiceCategories,
+          serviceItems: initialServiceItems,
+          subServices: initialSubServices,
+          productAddons: initialProductAddons,
         })
       },
     }),
     {
-      name: 'saas_platform_storage_v2',
+      name: 'saas_platform_storage_v_clean',
     }
   )
 )

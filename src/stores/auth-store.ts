@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import { getCookie, setCookie, removeCookie } from '@/lib/cookies'
 
 const ACCESS_TOKEN = 'thisisjustarandomstring'
+const USER_KEY = 'auth_user_session'
 
-interface AuthUser {
+export interface AuthUser {
   accountNo: string
   email: string
   role: string[]
@@ -22,13 +23,31 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>()((set) => {
-  const cookieState = getCookie(ACCESS_TOKEN)
-  const initToken = cookieState ? JSON.parse(cookieState) : ''
+  let initToken = ''
+  let initUser: AuthUser | null = null
+
+  try {
+    const cookieState = getCookie(ACCESS_TOKEN)
+    initToken = cookieState ? JSON.parse(cookieState) : ''
+    const userCookie = getCookie(USER_KEY)
+    initUser = userCookie ? JSON.parse(userCookie) : null
+  } catch {
+    initToken = ''
+    initUser = null
+  }
+
   return {
     auth: {
-      user: null,
+      user: initUser,
       setUser: (user) =>
-        set((state) => ({ ...state, auth: { ...state.auth, user } })),
+        set((state) => {
+          if (user) {
+            setCookie(USER_KEY, JSON.stringify(user))
+          } else {
+            removeCookie(USER_KEY)
+          }
+          return { ...state, auth: { ...state.auth, user } }
+        }),
       accessToken: initToken,
       setAccessToken: (accessToken) =>
         set((state) => {
@@ -43,6 +62,7 @@ export const useAuthStore = create<AuthState>()((set) => {
       reset: () =>
         set((state) => {
           removeCookie(ACCESS_TOKEN)
+          removeCookie(USER_KEY)
           return {
             ...state,
             auth: { ...state.auth, user: null, accessToken: '' },

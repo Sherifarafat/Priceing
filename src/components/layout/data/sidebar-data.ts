@@ -1,15 +1,18 @@
 import {
   LayoutDashboard,
   Store,
-  QrCode,
   Package,
+  Boxes,
   Tags,
   FileSpreadsheet,
   Users,
   ScrollText,
-  Coins,
-  FolderTree,
   Building2,
+  ShieldCheck,
+  Briefcase,
+  GitFork,
+  PackagePlus,
+  BarChart3,
 } from 'lucide-react'
 import { UserRole } from '@/types/saas'
 import { type SidebarData, type NavGroup } from '../types'
@@ -33,33 +36,86 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
           {
             title: 'Merchants',
             url: '/merchants',
-            icon: Store,
+            icon: Building2,
           },
           {
-            title: 'Branches & QR Codes',
+            title: 'Branches',
             url: '/branches',
-            icon: QrCode,
+            icon: Store,
           },
         ],
       },
       {
-        title: 'Platform Configuration',
+        title: 'Catalog & Services',
         items: [
           {
-            title: 'Merchant Types',
-            url: '/merchant-types',
-            icon: FolderTree,
+            title: 'Product Hub',
+            icon: Boxes,
+            items: [
+              {
+                title: 'Products',
+                url: '/products',
+                icon: Package,
+              },
+              {
+                title: 'Add-ons',
+                url: '/add-ons',
+                icon: PackagePlus,
+              },
+            ],
           },
           {
-            title: 'Currencies',
-            url: '/currencies',
-            icon: Coins,
+            title: 'Services',
+            icon: Briefcase,
+            items: [
+              {
+                title: 'Category',
+                url: '/services/categories',
+                icon: Tags,
+              },
+              {
+                title: 'Services',
+                url: '/services',
+                icon: Briefcase,
+              },
+              {
+                title: 'Sub Services',
+                url: '/services/sub-services',
+                icon: GitFork,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        title: 'Intelligence & Analytics',
+        items: [
+          {
+            title: 'Reports & Analytics',
+            url: '/reports',
+            icon: BarChart3,
           },
         ],
       },
       {
         title: 'Security & Governance',
         items: [
+          {
+            title: 'Roles',
+            icon: ShieldCheck,
+            items: [
+              {
+                title: 'Roles',
+                url: '/roles',
+                icon: ShieldCheck,
+              },
+              {
+                title: 'Users',
+                url: '/users',
+                icon: Users,
+              },
+            ],
+          },
           {
             title: 'Audit Logs',
             url: '/audit-logs',
@@ -81,14 +137,46 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
           icon: LayoutDashboard,
         },
         {
-          title: 'Products Catalog',
-          url: '/products',
-          icon: Package,
+          title: 'Product Hub',
+          icon: Boxes,
+          items: [
+            {
+              title: 'Products',
+              url: '/products',
+              icon: Package,
+            },
+            {
+              title: 'Add-ons',
+              url: '/add-ons',
+              icon: PackagePlus,
+            },
+          ],
         },
         {
-          title: 'Categories',
-          url: '/categories',
-          icon: Tags,
+          title: 'Services',
+          icon: Briefcase,
+          items: [
+            {
+              title: 'Category',
+              url: '/services/categories',
+              icon: Tags,
+            },
+            {
+              title: 'Services',
+              url: '/services',
+              icon: Briefcase,
+            },
+            {
+              title: 'Sub Services',
+              url: '/services/sub-services',
+              icon: GitFork,
+            },
+          ],
+        },
+        {
+          title: 'Reports & Analytics',
+          url: '/reports',
+          icon: BarChart3,
         },
         {
           title: 'Excel Operations',

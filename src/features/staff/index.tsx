@@ -48,7 +48,7 @@ export function StaffManagementView() {
     resetUserPassword,
   } = useSaaSStore()
 
-  const merchantId = currentUser.merchantId || merchants[0].id
+  const merchantId = currentUser.merchantId || merchants[0]?.id || ''
   const merchant = merchants.find((m) => m.id === merchantId)
 
   // Users belonging to this merchant only! (Section 2.1)
@@ -161,7 +161,7 @@ export function StaffManagementView() {
                 <CardContent className='p-4 space-y-4'>
                   <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
                     <div className='flex items-center gap-3'>
-                      <div className='flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold'>
+                      <div className='flex size-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 font-bold'>
                         <Users className='size-5' />
                       </div>
                       <div>

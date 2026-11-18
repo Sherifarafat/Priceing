@@ -49,6 +49,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { LanguageSwitch } from '@/components/language-switch'
 import { MobileScannerModal } from '@/components/mobile-scanner-modal'
 import { useSaaSStore } from '@/lib/saas-store'
 
@@ -221,6 +222,7 @@ export function SaaSDashboard() {
           </Button>
 
           <MobileScannerModal />
+          <LanguageSwitch />
           <ThemeSwitch />
           <ProfileDropdown />
         </div>
@@ -234,7 +236,7 @@ export function SaaSDashboard() {
           <Card className='p-5 rounded-2xl border-border/70 hover:shadow-md transition-shadow'>
             <div className='flex items-center justify-between'>
               <span className='text-xs font-semibold text-muted-foreground'>Products Registered</span>
-              <div className='size-8 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-foreground flex items-center justify-center'>
+              <div className='size-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center'>
                 <Package className='size-4' />
               </div>
             </div>
@@ -249,7 +251,7 @@ export function SaaSDashboard() {
           <Card className='p-5 rounded-2xl border-border/70 hover:shadow-md transition-shadow'>
             <div className='flex items-center justify-between'>
               <span className='text-xs font-semibold text-muted-foreground'>Total Transactions</span>
-              <div className='size-8 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-foreground flex items-center justify-center'>
+              <div className='size-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center'>
                 <Coins className='size-4' />
               </div>
             </div>
@@ -264,7 +266,7 @@ export function SaaSDashboard() {
           <Card className='p-5 rounded-2xl border-border/70 hover:shadow-md transition-shadow'>
             <div className='flex items-center justify-between'>
               <span className='text-xs font-semibold text-muted-foreground'>Live Branches</span>
-              <div className='size-8 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-foreground flex items-center justify-center'>
+              <div className='size-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center'>
                 <Store className='size-4' />
               </div>
             </div>
@@ -420,7 +422,7 @@ export function SaaSDashboard() {
                     {tx.avatar ? (
                       <img src={tx.avatar} alt={tx.merchant} className='size-11 rounded-xl object-cover border border-border/70 shrink-0' />
                     ) : (
-                      <div className='size-11 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-foreground font-bold flex items-center justify-center text-sm shrink-0'>
+                      <div className='size-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 font-bold flex items-center justify-center text-sm shrink-0'>
                         {tx.initial}
                       </div>
                     )}
@@ -469,7 +471,7 @@ export function SaaSDashboard() {
                     return (
                       <tr key={prod.id} className='hover:bg-muted/30 transition-colors'>
                         <td className='py-3 font-medium flex items-center gap-3'>
-                          <div className='size-9 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-foreground shrink-0'>
+                          <div className='size-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center shrink-0'>
                             <ProdIcon className='size-4' />
                           </div>
                           <div>

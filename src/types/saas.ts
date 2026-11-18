@@ -36,6 +36,7 @@ export interface Branch {
   merchantId: string
   name: string
   address: string
+  imageUrl?: string // Branch storefront or logo
   qrToken: string // Non-guessable secure token
   qrStatus: QRStatus
   createdAt: string
@@ -55,6 +56,8 @@ export type StaffPermissionKey =
 export interface User {
   id: string
   email: string
+  username?: string
+  password?: string
   name: string
   role: UserRole
   merchantId?: string | null // Nullable for Platform Super Admin
@@ -67,6 +70,7 @@ export interface Category {
   id: string
   merchantId: string
   name: string
+  branchId?: string | null // Assigned branch (null for all branches)
   createdAt: string
   updatedAt: string
 }
@@ -85,12 +89,74 @@ export interface Product {
   updatedAt: string
 }
 
+export type RoleScope = 'COMPANY' | 'MERCHANT'
+
+export interface ServiceCategory {
+  id: string
+  name: string
+  description?: string
+  branchId?: string | null // Assigned branch (null for all branches)
+  status: EntityStatus
+  servicesCount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ServiceItem {
+  id: string
+  categoryId: string
+  name: string
+  description?: string
+  basePrice: number
+  durationMinutes?: number
+  status: EntityStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SubService {
+  id: string
+  serviceId: string
+  name: string
+  description?: string
+  additionalPrice: number
+  status: EntityStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ProductAddon {
+  id: string
+  name: string
+  description?: string
+  price: number
+  category?: string
+  isRequired?: boolean
+  status: EntityStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export type RoleScopeType = 'COMPANY' | 'MERCHANT'
+
+export interface CustomRole {
+  id: string
+  name: string
+  description: string
+  scope: RoleScope // COMPANY or MERCHANT
+  merchantId?: string | null // null = global or company level, or specific merchant id
+  isSystem?: boolean
+  permissions: string[] // List of permission keys, or ['*'] for all
+  createdAt: string
+  updatedAt: string
+}
+
 export interface AuditLog {
   id: string
   actorUserId: string
   actorEmail: string
   actionType: string // e.g. 'PRODUCT_CREATED', 'PRICE_CHANGED', 'QR_REGENERATED'
-  entityType: 'Merchant' | 'Branch' | 'Product' | 'Category' | 'User' | 'Excel' | 'MerchantType' | 'Currency'
+  entityType: 'Merchant' | 'Branch' | 'Product' | 'Category' | 'User' | 'Excel' | 'MerchantType' | 'Currency' | 'Role'
   entityId: string
   oldValues?: Record<string, unknown> | null
   newValues?: Record<string, unknown> | null

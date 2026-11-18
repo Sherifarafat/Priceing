@@ -52,7 +52,7 @@ export function ProductsView() {
   } = useSaaSStore()
 
   // Current merchant context
-  const merchantId = currentUser.merchantId || merchants[0].id
+  const merchantId = currentUser.merchantId || merchants[0]?.id || ''
   const merchant = merchants.find((m) => m.id === merchantId)
   const currency = currencies.find((c) => c.id === merchant?.currencyId) || currencies[0]
 
@@ -302,7 +302,7 @@ export function ProductsView() {
                               className='size-10 rounded-md object-cover border bg-muted shrink-0'
                             />
                           ) : (
-                            <div className='size-10 rounded-md bg-muted flex items-center justify-center text-muted-foreground shrink-0'>
+                            <div className='size-10 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/50 flex items-center justify-center text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 shrink-0'>
                               <ImageIcon className='size-4' />
                             </div>
                           )}

@@ -1,7 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   BadgeCheck,
-  Bell,
   ChevronsUpDown,
   CreditCard,
   LogOut,
@@ -9,10 +8,8 @@ import {
   Store,
   Users,
   Check,
-  Sparkles,
 } from 'lucide-react'
 import useDialogState from '@/hooks/use-dialog-state'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,14 +29,14 @@ import { SignOutDialog } from '@/components/sign-out-dialog'
 import { useSaaSStore } from '@/lib/saas-store'
 
 type NavUserProps = {
-  user: {
+  user?: {
     name: string
     email: string
     avatar: string
   }
 }
 
-export function NavUser({ user }: NavUserProps) {
+export function NavUser({ user: _user }: NavUserProps) {
   const { isMobile } = useSidebar()
   const navigate = useNavigate()
   const [open, setOpen] = useDialogState()
@@ -106,7 +103,7 @@ export function NavUser({ user }: NavUserProps) {
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size='lg'
-                className='h-12 rounded-xl border border-border/80 px-2.5 bg-background hover:bg-muted/60 transition-all shadow-2xs'
+                className='h-11 rounded-xl border border-border/80 px-2.5 bg-background hover:bg-muted/60 transition-all shadow-2xs'
               >
                 <div className='flex size-8 items-center justify-center rounded-lg bg-black text-white dark:bg-white dark:text-black font-bold text-xs shrink-0 shadow-xs'>
                   {activeProfile.name[0]}
