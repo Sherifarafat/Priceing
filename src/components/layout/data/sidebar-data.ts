@@ -14,6 +14,8 @@ import {
   PackagePlus,
   BarChart3,
   Receipt,
+  FileText,
+  Palette,
 } from 'lucide-react'
 import { UserRole } from '@/types/saas'
 import { type SidebarData, type NavGroup } from '../types'
@@ -85,6 +87,22 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
             title: 'Fees & Taxes',
             url: '/fees',
             icon: Receipt,
+          },
+          {
+            title: 'Invoices',
+            icon: FileText,
+            items: [
+              {
+                title: 'Issued Invoices',
+                url: '/invoices',
+                icon: FileText,
+              },
+              {
+                title: 'Invoice Designer',
+                url: '/invoices/design',
+                icon: Palette,
+              },
+            ],
           },
           {
             title: 'Roles',
@@ -168,6 +186,22 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
           title: 'Fees & Taxes',
           url: '/fees',
           icon: Receipt,
+        },
+        {
+          title: 'Invoices',
+          icon: FileText,
+          items: [
+            {
+              title: 'Issued Invoices',
+              url: '/invoices',
+              icon: FileText,
+            },
+            {
+              title: 'Invoice Designer',
+              url: '/invoices/design',
+              icon: Palette,
+            },
+          ],
         },
         {
           title: 'Excel Operations',

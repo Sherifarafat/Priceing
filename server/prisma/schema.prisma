@@ -38,6 +38,8 @@ model Merchant {
   products   Product[]
   categories Category[]
   users      User[]
+  invoices   Invoice[]
+  invoiceTemplate InvoiceTemplate?
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
@@ -56,6 +58,7 @@ model Branch {
   categories        Category[]
   serviceCategories ServiceCategory[]
   scans             CustomerScan[]
+  invoices          Invoice[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -195,4 +198,76 @@ model Fee {
   updatedAt   DateTime @updatedAt
 
   @@index([merchantId])
+}
+
+model InvoiceTemplate {
+  id              String   @id @default(uuid())
+  merchantId      String   @unique
+  merchant        Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  templateName    String   @default("Standard Invoice")
+  layoutStyle     String   @default("MODERN") // MODERN | CLASSIC | THERMAL_POS
+  primaryColor    String   @default("#4F46E5")
+  accentColor     String   @default("#10B981")
+  businessName    String?
+  logoUrl         String?
+  showLogo        Boolean  @default(true)
+  taxNumber       String?  // الرقم الضريبي
+  commercialReg   String?  // السجل التجاري
+  headerNotice    String?  // ترويسة الفاتورة
+  footerNotice    String?  // شروط وأحكام / تذييل الفاتورة
+  showQrCode      Boolean  @default(true) // Zatca/QR scan
+  showTaxDetails  Boolean  @default(true)
+  showBranchInfo  Boolean  @default(true)
+  showCashierName Boolean  @default(true)
+  paperSize       String   @default("A4") // A4 | 80MM
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([merchantId])
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  invoiceNumber   String        @unique // e.g. INV-2026-0001
+  merchantId      String
+  merchant        Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  branchId        String?
+  branch          Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customerName    String?
+  customerPhone   String?
+  customerTaxNo   String?
+  paymentMethod   String        @default("CASH") // CASH | CARD | ONLINE | QR_SCAN
+  status          String        @default("PAID") // PAID | PENDING | REFUNDED | CANCELLED
+  subtotal        Float         @default(0)
+  taxTotal        Float         @default(0)
+  feesTotal       Float         @default(0)
+  discountTotal   Float         @default(0)
+  grandTotal      Float         @default(0)
+  appliedFees     String?       // JSON text of applied fees snapshots
+  items           InvoiceItem[]
+  notes           String?
+  issuedAt        DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([merchantId])
+  @@index([branchId])
+  @@index([invoiceNumber])
+  @@index([issuedAt])
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String?
+  productName String
+  barcode     String?
+  quantity    Int      @default(1)
+  unitPrice   Float    @default(0)
+  totalPrice  Float    @default(0)
+  feeIds      String?  // JSON text of fee IDs
+  createdAt   DateTime @default(now())
+
+  @@index([invoiceId])
 }

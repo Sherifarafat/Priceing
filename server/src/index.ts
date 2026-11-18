@@ -11,6 +11,7 @@ import scanRoutes from './routes/scan.routes.js'
 import reportsRoutes from './routes/reports.routes.js'
 import usersRoutes from './routes/users.routes.js'
 import feesRoutes from './routes/fees.routes.js'
+import invoicesRoutes from './routes/invoices.routes.js'
 
 dotenv.config()
 
@@ -46,6 +47,7 @@ app.use('/api/scan', scanRoutes)
 app.use('/api/reports', reportsRoutes)
 app.use('/api/users', usersRoutes)
 app.use('/api/fees', feesRoutes)
+app.use('/api/invoices', invoicesRoutes)
 
 // Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

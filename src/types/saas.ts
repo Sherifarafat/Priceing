@@ -4,6 +4,72 @@ export type UserRole = 'SUPER_ADMIN' | 'MERCHANT_MANAGER' | 'MERCHANT_STAFF'
 export type EntityStatus = 'Active' | 'Inactive'
 export type FeeType = 'PERCENTAGE' | 'FIXED'
 
+export type InvoiceStatus = 'PAID' | 'PENDING' | 'REFUNDED' | 'CANCELLED'
+export type InvoicePaymentMethod = 'CASH' | 'CARD' | 'ONLINE' | 'QR_SCAN'
+export type InvoiceLayoutStyle = 'MODERN' | 'CLASSIC' | 'THERMAL_POS'
+export type InvoicePaperSize = 'A4' | '80MM'
+
+export interface InvoiceTemplate {
+  id: string
+  merchantId: string
+  templateName: string
+  layoutStyle: InvoiceLayoutStyle
+  primaryColor: string
+  accentColor: string
+  businessName?: string | null
+  logoUrl?: string | null
+  showLogo: boolean
+  taxNumber?: string | null
+  commercialReg?: string | null
+  headerNotice?: string | null
+  footerNotice?: string | null
+  showQrCode: boolean
+  showTaxDetails: boolean
+  showBranchInfo: boolean
+  showCashierName: boolean
+  paperSize: InvoicePaperSize
+  createdAt: string
+  updatedAt: string
+}
+
+export interface InvoiceItem {
+  id: string
+  invoiceId: string
+  productId?: string | null
+  productName: string
+  barcode?: string | null
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  feeIds?: string[] | string | null
+  createdAt: string
+}
+
+export interface Invoice {
+  id: string
+  invoiceNumber: string
+  merchantId: string
+  merchant?: { id: string; name: string; logo?: string | null }
+  branchId?: string | null
+  branch?: { id: string; name: string; address?: string | null }
+  customerName?: string | null
+  customerPhone?: string | null
+  customerTaxNo?: string | null
+  paymentMethod: InvoicePaymentMethod
+  status: InvoiceStatus
+  subtotal: number
+  taxTotal: number
+  feesTotal: number
+  discountTotal: number
+  grandTotal: number
+  appliedFees?: any
+  items?: InvoiceItem[]
+  notes?: string | null
+  issuedAt: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Fee {
   id: string
   name: string

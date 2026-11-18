@@ -1,4 +1,4 @@
-import { Branch, Category, Merchant, Product, ServiceCategory, ServiceItem, SubService, ProductAddon, User, AuditLog, Fee } from '@/types/saas'
+import { Branch, Category, Merchant, Product, ServiceCategory, ServiceItem, SubService, ProductAddon, User, AuditLog, Fee, Invoice, InvoiceTemplate } from '@/types/saas'
 
 const BASE_URL = '/api'
 
@@ -218,5 +218,29 @@ export const api = {
       request<Fee>(`/fees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<{ success: boolean; message: string }>(`/fees/${id}`, { method: 'DELETE' }),
+  },
+
+  // Invoices & Billing
+  invoices: {
+    getTemplate: (params?: { merchantId?: string }) =>
+      request<InvoiceTemplate>(`/invoices/template${params?.merchantId ? `?merchantId=${params.merchantId}` : ''}`),
+    updateTemplate: (data: Partial<InvoiceTemplate> & { merchantId?: string }) =>
+      request<InvoiceTemplate>('/invoices/template', { method: 'PUT', body: JSON.stringify(data) }),
+    list: (params?: { merchantId?: string; branchId?: string; status?: string; search?: string }) => {
+      const query = new URLSearchParams()
+      if (params?.merchantId) query.set('merchantId', params.merchantId)
+      if (params?.branchId) query.set('branchId', params.branchId)
+      if (params?.status) query.set('status', params.status)
+      if (params?.search) query.set('search', params.search)
+      const qs = query.toString()
+      return request<Invoice[]>(`/invoices${qs ? `?${qs}` : ''}`)
+    },
+    get: (id: string) => request<Invoice & { merchant: any }>(`/invoices/${id}`),
+    create: (data: any) =>
+      request<Invoice>('/invoices', { method: 'POST', body: JSON.stringify(data) }),
+    updateStatus: (id: string, status: string) =>
+      request<Invoice>(`/invoices/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+    delete: (id: string) =>
+      request<{ success: boolean; message: string }>(`/invoices/${id}`, { method: 'DELETE' }),
   },
 }

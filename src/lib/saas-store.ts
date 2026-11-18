@@ -18,6 +18,9 @@ import {
   SubService,
   ProductAddon,
   Fee,
+  Invoice,
+  InvoiceTemplate,
+  InvoiceStatus,
 } from '@/types/saas'
 import { api } from './api-client'
 
@@ -132,6 +135,16 @@ export interface SaaSState {
   updateFee: (id: string, data: Partial<Omit<Fee, 'id' | 'createdAt'>>) => Promise<void>
   deleteFee: (id: string) => Promise<void>
 
+  // Invoices & Billing
+  invoices: Invoice[]
+  invoiceTemplate: InvoiceTemplate | null
+  fetchInvoiceTemplate: (merchantId?: string) => Promise<InvoiceTemplate | null>
+  updateInvoiceTemplate: (data: Partial<InvoiceTemplate> & { merchantId?: string }) => Promise<InvoiceTemplate>
+  fetchInvoices: () => Promise<void>
+  createInvoice: (data: any) => Promise<Invoice>
+  updateInvoiceStatus: (id: string, status: InvoiceStatus) => Promise<void>
+  deleteInvoice: (id: string) => Promise<void>
+
   createServiceCategory: (name: string, description?: string, branchId?: string | null) => ServiceCategory
   updateServiceCategory: (id: string, name: string, description?: string, status?: EntityStatus, branchId?: string | null) => void
   deleteServiceCategory: (id: string) => void
@@ -228,6 +241,8 @@ export const useSaaSStore = create<SaaSState>()(
       subServices: initialSubServices,
       productAddons: initialProductAddons,
       fees: initialFees,
+      invoices: [],
+      invoiceTemplate: null,
 
       switchUser: (userId: string) => {
         const found = get().users.find((u) => u.id === userId)
@@ -1337,9 +1352,121 @@ export const useSaaSStore = create<SaaSState>()(
         }
       },
 
+      fetchInvoiceTemplate: async (merchantId) => {
+        try {
+          const tpl = await api.invoices.getTemplate({ merchantId })
+          if (tpl) {
+            set({ invoiceTemplate: tpl })
+            return tpl
+          }
+        } catch (err: any) {
+          console.warn('Failed to fetch invoice template:', err.message)
+        }
+        return null
+      },
+
+      updateInvoiceTemplate: async (data) => {
+        try {
+          const updated = await api.invoices.updateTemplate(data)
+          set({ invoiceTemplate: updated })
+          return updated
+        } catch (err: any) {
+          console.warn('Failed to update invoice template:', err.message)
+          throw err
+        }
+      },
+
+      fetchInvoices: async () => {
+        try {
+          const list = await api.invoices.list()
+          set({ invoices: list || [] })
+        } catch (err: any) {
+          console.warn('Failed to fetch invoices:', err.message)
+        }
+      },
+
+      createInvoice: async (data) => {
+        const tempId = `inv-${Date.now()}`
+        const now = new Date().toISOString()
+        const tempInvoice: Invoice = {
+          id: tempId,
+          invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+          merchantId: data.merchantId || get().currentUser.merchantId || '',
+          branchId: data.branchId || null,
+          customerName: data.customerName || null,
+          customerPhone: data.customerPhone || null,
+          customerTaxNo: data.customerTaxNo || null,
+          paymentMethod: data.paymentMethod || 'CASH',
+          status: data.status || 'PAID',
+          subtotal: data.subtotal || 0,
+          taxTotal: data.taxTotal || 0,
+          feesTotal: data.feesTotal || 0,
+          discountTotal: data.discountTotal || 0,
+          grandTotal: data.grandTotal || 0,
+          appliedFees: data.appliedFees,
+          items: (data.items || []).map((it: any, idx: number) => ({
+            id: `item-${tempId}-${idx}`,
+            invoiceId: tempId,
+            productId: it.productId,
+            productName: it.productName,
+            barcode: it.barcode,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            totalPrice: it.totalPrice,
+            feeIds: it.feeIds,
+            createdAt: now,
+          })),
+          notes: data.notes,
+          issuedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        }
+
+        set((state) => ({
+          invoices: [tempInvoice, ...state.invoices],
+        }))
+
+        try {
+          const saved = await api.invoices.create(data)
+          if (saved && saved.id) {
+            set((state) => ({
+              invoices: state.invoices.map((inv) => (inv.id === tempId ? saved : inv)),
+            }))
+            return saved
+          }
+        } catch (err: any) {
+          console.warn('Failed to sync invoice to DB:', err.message)
+        }
+        return tempInvoice
+      },
+
+      updateInvoiceStatus: async (id, status) => {
+        set((state) => ({
+          invoices: state.invoices.map((inv) => (inv.id === id ? { ...inv, status } : inv)),
+        }))
+
+        try {
+          await api.invoices.updateStatus(id, status)
+        } catch (err: any) {
+          console.warn('Failed to update invoice status in DB:', err.message)
+        }
+      },
+
+      deleteInvoice: async (id) => {
+        set((state) => ({
+          invoices: state.invoices.filter((inv) => inv.id !== id),
+        }))
+
+        try {
+          await api.invoices.delete(id)
+        } catch (err: any) {
+          console.warn('Failed to delete invoice from DB:', err.message)
+        }
+      },
+
       fetchFromBackend: async () => {
         try {
-          const [merchants, branches, categories, products, scats, sitems, ssubs, saddons, users, fees] = await Promise.all([
+          const [merchants, branches, categories, products, scats, sitems, ssubs, saddons, users, fees, invoices, template] = await Promise.all([
             api.merchants.list().catch(() => []),
             api.branches.list().catch(() => []),
             api.categories.list().catch(() => []),
@@ -1350,6 +1477,8 @@ export const useSaaSStore = create<SaaSState>()(
             api.services.addons.list().catch(() => []),
             api.users.list().catch(() => []),
             api.fees.list().catch(() => []),
+            api.invoices.list().catch(() => []),
+            api.invoices.getTemplate().catch(() => null),
           ])
 
           set((state) => ({
@@ -1363,6 +1492,8 @@ export const useSaaSStore = create<SaaSState>()(
             productAddons: saddons.length > 0 ? saddons : state.productAddons,
             users: users.length > 0 ? users : state.users,
             fees: fees.length > 0 ? fees : state.fees,
+            invoices: invoices.length > 0 ? invoices : state.invoices,
+            invoiceTemplate: template || state.invoiceTemplate,
           }))
         } catch (error) {
           console.warn('Backend sync failed:', error)
@@ -1388,6 +1519,8 @@ export const useSaaSStore = create<SaaSState>()(
           subServices: initialSubServices,
           productAddons: initialProductAddons,
           fees: initialFees,
+      invoices: [],
+      invoiceTemplate: null,
         })
       },
     }),

@@ -38,6 +38,8 @@ import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenti
 import { Route as AuthenticatedExcelIndexRouteImport } from './routes/_authenticated/excel/index'
 import { Route as AuthenticatedFeesIndexRouteImport } from './routes/_authenticated/fees/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
+import { Route as AuthenticatedInvoicesIndexRouteImport } from './routes/_authenticated/invoices/index'
+import { Route as AuthenticatedInvoicesDesignRouteImport } from './routes/_authenticated/invoices/design'
 import { Route as AuthenticatedMerchantTypesIndexRouteImport } from './routes/_authenticated/merchant-types/index'
 import { Route as AuthenticatedMerchantsIndexRouteImport } from './routes/_authenticated/merchants/index'
 import { Route as AuthenticatedProductsIndexRouteImport } from './routes/_authenticated/products/index'
@@ -209,6 +211,18 @@ const AuthenticatedHelpCenterIndexRoute =
     path: '/help-center/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedInvoicesIndexRoute =
+  AuthenticatedInvoicesIndexRouteImport.update({
+    id: '/invoices/',
+    path: '/invoices/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInvoicesDesignRoute =
+  AuthenticatedInvoicesDesignRouteImport.update({
+    id: '/invoices/design',
+    path: '/invoices/design',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMerchantTypesIndexRoute =
   AuthenticatedMerchantTypesIndexRouteImport.update({
     id: '/merchant-types/',
@@ -334,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/branch/$token': typeof BranchTokenRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/invoices/design': typeof AuthenticatedInvoicesDesignRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -352,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/excel/': typeof AuthenticatedExcelIndexRoute
   '/fees/': typeof AuthenticatedFeesIndexRoute
   '/help-center/': typeof AuthenticatedHelpCenterIndexRoute
+  '/invoices/': typeof AuthenticatedInvoicesIndexRoute
   '/merchant-types/': typeof AuthenticatedMerchantTypesIndexRoute
   '/merchants/': typeof AuthenticatedMerchantsIndexRoute
   '/products/': typeof AuthenticatedProductsIndexRoute
@@ -380,6 +396,7 @@ export interface FileRoutesByTo {
   '/branch/$token': typeof BranchTokenRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/invoices/design': typeof AuthenticatedInvoicesDesignRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -398,6 +415,7 @@ export interface FileRoutesByTo {
   '/excel': typeof AuthenticatedExcelIndexRoute
   '/fees': typeof AuthenticatedFeesIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
+  '/invoices': typeof AuthenticatedInvoicesIndexRoute
   '/merchant-types': typeof AuthenticatedMerchantTypesIndexRoute
   '/merchants': typeof AuthenticatedMerchantsIndexRoute
   '/products': typeof AuthenticatedProductsIndexRoute
@@ -431,6 +449,7 @@ export interface FileRoutesById {
   '/branch/$token': typeof BranchTokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/_authenticated/invoices/design': typeof AuthenticatedInvoicesDesignRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -449,6 +468,7 @@ export interface FileRoutesById {
   '/_authenticated/excel/': typeof AuthenticatedExcelIndexRoute
   '/_authenticated/fees/': typeof AuthenticatedFeesIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
+  '/_authenticated/invoices/': typeof AuthenticatedInvoicesIndexRoute
   '/_authenticated/merchant-types/': typeof AuthenticatedMerchantTypesIndexRoute
   '/_authenticated/merchants/': typeof AuthenticatedMerchantsIndexRoute
   '/_authenticated/products/': typeof AuthenticatedProductsIndexRoute
@@ -480,6 +500,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/branch/$token'
     | '/errors/$error'
+    | '/invoices/design'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -498,6 +519,7 @@ export interface FileRouteTypes {
     | '/excel/'
     | '/fees/'
     | '/help-center/'
+    | '/invoices/'
     | '/merchant-types/'
     | '/merchants/'
     | '/products/'
@@ -526,6 +548,7 @@ export interface FileRouteTypes {
     | '/branch/$token'
     | '/'
     | '/errors/$error'
+    | '/invoices/design'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -544,6 +567,7 @@ export interface FileRouteTypes {
     | '/excel'
     | '/fees'
     | '/help-center'
+    | '/invoices'
     | '/merchant-types'
     | '/merchants'
     | '/products'
@@ -576,6 +600,7 @@ export interface FileRouteTypes {
     | '/branch/$token'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
+    | '/_authenticated/invoices/design'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
@@ -594,6 +619,7 @@ export interface FileRouteTypes {
     | '/_authenticated/excel/'
     | '/_authenticated/fees/'
     | '/_authenticated/help-center/'
+    | '/_authenticated/invoices/'
     | '/_authenticated/merchant-types/'
     | '/_authenticated/merchants/'
     | '/_authenticated/products/'
@@ -829,6 +855,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHelpCenterIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/invoices/': {
+      id: '/_authenticated/invoices/'
+      path: '/invoices'
+      fullPath: '/invoices/'
+      preLoaderRoute: typeof AuthenticatedInvoicesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/invoices/design': {
+      id: '/_authenticated/invoices/design'
+      path: '/invoices/design'
+      fullPath: '/invoices/design'
+      preLoaderRoute: typeof AuthenticatedInvoicesDesignRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/merchant-types/': {
       id: '/_authenticated/merchant-types/'
       path: '/merchant-types'
@@ -992,6 +1032,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedInvoicesDesignRoute: typeof AuthenticatedInvoicesDesignRoute
   AuthenticatedAddOnsIndexRoute: typeof AuthenticatedAddOnsIndexRoute
   AuthenticatedAiChatIndexRoute: typeof AuthenticatedAiChatIndexRoute
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
@@ -1003,6 +1044,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedExcelIndexRoute: typeof AuthenticatedExcelIndexRoute
   AuthenticatedFeesIndexRoute: typeof AuthenticatedFeesIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
+  AuthenticatedInvoicesIndexRoute: typeof AuthenticatedInvoicesIndexRoute
   AuthenticatedMerchantTypesIndexRoute: typeof AuthenticatedMerchantTypesIndexRoute
   AuthenticatedMerchantsIndexRoute: typeof AuthenticatedMerchantsIndexRoute
   AuthenticatedProductsIndexRoute: typeof AuthenticatedProductsIndexRoute
@@ -1020,6 +1062,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedInvoicesDesignRoute: AuthenticatedInvoicesDesignRoute,
   AuthenticatedAddOnsIndexRoute: AuthenticatedAddOnsIndexRoute,
   AuthenticatedAiChatIndexRoute: AuthenticatedAiChatIndexRoute,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
@@ -1031,6 +1074,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExcelIndexRoute: AuthenticatedExcelIndexRoute,
   AuthenticatedFeesIndexRoute: AuthenticatedFeesIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
+  AuthenticatedInvoicesIndexRoute: AuthenticatedInvoicesIndexRoute,
   AuthenticatedMerchantTypesIndexRoute: AuthenticatedMerchantTypesIndexRoute,
   AuthenticatedMerchantsIndexRoute: AuthenticatedMerchantsIndexRoute,
   AuthenticatedProductsIndexRoute: AuthenticatedProductsIndexRoute,
