@@ -81,6 +81,7 @@ export interface Product {
   name: string
   barcode: string // Unique within the merchant
   price: number
+  stocks?: number
   description?: string
   imageUrl?: string
   categoryId?: string | null // Nullable - set to null on category deletion

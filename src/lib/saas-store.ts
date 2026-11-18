@@ -18,6 +18,7 @@ import {
   SubService,
   ProductAddon,
 } from '@/types/saas'
+import { api } from './api-client'
 
 // Initial Seed Data
 const initialMerchantTypes: MerchantType[] = [
@@ -190,6 +191,9 @@ export interface SaaSState {
 
   // Reset to initial demo state
   resetAllData: () => void
+
+  // Backend Sync
+  fetchFromBackend: () => Promise<void>
 }
 
 export const useSaaSStore = create<SaaSState>()(
@@ -264,6 +268,26 @@ export const useSaaSStore = create<SaaSState>()(
           users: [...state.users, manager],
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync with backend SQLite database
+        api.merchants
+          .create({
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            address: data.address,
+            logo: data.logo,
+            status: data.status,
+          })
+          .then((saved) => {
+            if (saved && saved.id) {
+              set((state) => ({
+                merchants: state.merchants.map((m) => (m.id === id ? { ...m, id: saved.id } : m)),
+              }))
+            }
+          })
+          .catch((err) => console.warn('Failed to sync merchant to DB:', err.message))
+
         return newMerchant
       },
 
@@ -285,6 +309,9 @@ export const useSaaSStore = create<SaaSState>()(
           merchants: state.merchants.map((m) => (m.id === id ? { ...m, ...data, updatedAt: now } : m)),
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync with backend SQLite database
+        api.merchants.update(id, data).catch((err) => console.warn('Failed to update merchant in DB:', err.message))
       },
 
       setMerchantStatus: (id, status) => {
@@ -305,6 +332,9 @@ export const useSaaSStore = create<SaaSState>()(
           merchants: state.merchants.map((m) => (m.id === id ? { ...m, status, updatedAt: now } : m)),
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync with backend SQLite database
+        api.merchants.update(id, { status }).catch((err) => console.warn('Failed to update merchant status in DB:', err.message))
       },
 
       createMerchantType: (name) => {
@@ -363,6 +393,21 @@ export const useSaaSStore = create<SaaSState>()(
           branches: [branch, ...state.branches],
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync with backend SQLite database
+        api.branches
+          .create({ merchantId, name, address, imageUrl })
+          .then((saved) => {
+            if (saved && saved.id) {
+              set((state) => ({
+                branches: state.branches.map((b) =>
+                  b.id === id ? { ...b, id: saved.id, qrToken: saved.qrToken || b.qrToken } : b
+                ),
+              }))
+            }
+          })
+          .catch((err) => console.warn('Failed to sync branch to DB:', err.message))
+
         return branch
       },
 
@@ -381,6 +426,9 @@ export const useSaaSStore = create<SaaSState>()(
               : b
           ),
         }))
+
+        // Sync with backend SQLite database
+        api.branches.update(id, { name, address, imageUrl }).catch((err) => console.warn('Failed to update branch in DB:', err.message))
       },
 
       deleteBranch: (id) => {
@@ -398,6 +446,9 @@ export const useSaaSStore = create<SaaSState>()(
           branches: state.branches.filter((b) => b.id !== id),
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync with backend SQLite database
+        api.branches.delete(id).catch((err) => console.warn('Failed to delete branch in DB:', err.message))
       },
 
       // Section 9.3: QR Code Regeneration (Old QR becomes invalid immediately!)
@@ -427,13 +478,16 @@ export const useSaaSStore = create<SaaSState>()(
           auditLogs: [log, ...state.auditLogs],
         }))
 
+        // Sync with backend SQLite database
+        api.branches.regenerateQr(branchId).catch((err) => console.warn('Failed to regenerate branch QR in DB:', err.message))
+
         return { oldToken, newToken }
       },
 
       // Products (Scoped to current Merchant)
       createProduct: (data) => {
         const user = get().currentUser
-        const merchantId = user.merchantId
+        const merchantId = user.merchantId || get().merchants[0]?.id
         if (!merchantId) return { success: false, error: 'User does not belong to any Merchant' }
 
         // Section 6.2: Barcode must be unique within the same merchant
@@ -472,6 +526,29 @@ export const useSaaSStore = create<SaaSState>()(
           products: [newProduct, ...state.products],
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync with backend SQLite database
+        api.products
+          .create({
+            name: newProduct.name,
+            barcode: newProduct.barcode,
+            price: newProduct.price,
+            stocks: newProduct.stocks || 0,
+            description: newProduct.description,
+            imageUrl: newProduct.imageUrl,
+            categoryId: newProduct.categoryId,
+            status: newProduct.status,
+            merchantId,
+          })
+          .then((saved) => {
+            if (saved && saved.id) {
+              set((state) => ({
+                products: state.products.map((p) => (p.id === id ? { ...p, id: saved.id } : p)),
+              }))
+            }
+          })
+          .catch((err) => console.warn('Failed to sync product to DB:', err.message))
+
         return { success: true, product: newProduct }
       },
 
@@ -510,6 +587,12 @@ export const useSaaSStore = create<SaaSState>()(
           products: state.products.map((p) => (p.id === id ? { ...p, ...data, updatedAt: now } : p)),
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync with backend SQLite database
+        api.products
+          .update(id, data)
+          .catch((err) => console.warn('Failed to update product in DB:', err.message))
+
         return { success: true }
       },
 
@@ -531,6 +614,11 @@ export const useSaaSStore = create<SaaSState>()(
           products: state.products.filter((p) => p.id !== id),
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync with backend SQLite database
+        api.products
+          .delete(id)
+          .catch((err) => console.warn('Failed to delete product in DB:', err.message))
       },
 
       // Categories
@@ -540,6 +628,19 @@ export const useSaaSStore = create<SaaSState>()(
         const now = new Date().toISOString()
         const newCat: Category = { id, merchantId, name: name.trim(), branchId: branchId || null, createdAt: now, updatedAt: now }
         set((state) => ({ categories: [...state.categories, newCat] }))
+
+        // Sync with backend SQLite database
+        api.categories
+          .create({ name: newCat.name, branchId: newCat.branchId })
+          .then((saved) => {
+            if (saved && saved.id) {
+              set((state) => ({
+                categories: state.categories.map((c) => (c.id === id ? { ...c, id: saved.id } : c)),
+              }))
+            }
+          })
+          .catch((err) => console.warn('Failed to create category in DB:', err.message))
+
         return newCat
       },
 
@@ -557,6 +658,11 @@ export const useSaaSStore = create<SaaSState>()(
               : c
           ),
         }))
+
+        // Sync with backend SQLite database
+        api.categories
+          .update(id, { name: name.trim(), branchId })
+          .catch((err) => console.warn('Failed to update category in DB:', err.message))
       },
 
       // Section 8.2: Category Deletion (Delete category, keep related products, set Category to null / Uncategorized)
@@ -580,6 +686,11 @@ export const useSaaSStore = create<SaaSState>()(
           products: state.products.map((p) => (p.categoryId === id ? { ...p, categoryId: null, updatedAt: now } : p)),
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync with backend SQLite database
+        api.categories
+          .delete(id)
+          .catch((err) => console.warn('Failed to delete category in DB:', err.message))
       },
 
       // Section 7: Excel Bulk Import Execution
@@ -881,6 +992,20 @@ export const useSaaSStore = create<SaaSState>()(
         set((state) => ({
           serviceCategories: [...(state.serviceCategories || initialServiceCategories), newCat],
         }))
+
+        api.services.categories
+          .create({ name, description, branchId })
+          .then((saved) => {
+            if (saved && saved.id) {
+              set((state) => ({
+                serviceCategories: state.serviceCategories.map((c) =>
+                  c.id === newCat.id ? { ...c, id: saved.id } : c
+                ),
+              }))
+            }
+          })
+          .catch((err) => console.warn('Failed to create service category in DB:', err.message))
+
         return newCat
       },
 
@@ -900,6 +1025,10 @@ export const useSaaSStore = create<SaaSState>()(
               : c
           ),
         }))
+
+        api.services.categories
+          .update(id, { name, description, status, branchId })
+          .catch((err) => console.warn('Failed to update service category in DB:', err.message))
       },
 
       deleteServiceCategory: (id) => {
@@ -907,6 +1036,10 @@ export const useSaaSStore = create<SaaSState>()(
           serviceCategories: (state.serviceCategories || initialServiceCategories).filter((c) => c.id !== id),
           serviceItems: (state.serviceItems || initialServiceItems).filter((s) => s.categoryId !== id),
         }))
+
+        api.services.categories
+          .delete(id)
+          .catch((err) => console.warn('Failed to delete service category in DB:', err.message))
       },
 
       createServiceItem: (data) => {
@@ -925,6 +1058,20 @@ export const useSaaSStore = create<SaaSState>()(
               : cat
           ),
         }))
+
+        api.services.items
+          .create(newItem)
+          .then((saved) => {
+            if (saved && saved.id) {
+              set((state) => ({
+                serviceItems: state.serviceItems.map((s) =>
+                  s.id === newItem.id ? { ...s, id: saved.id } : s
+                ),
+              }))
+            }
+          })
+          .catch((err) => console.warn('Failed to create service item in DB:', err.message))
+
         return newItem
       },
 
@@ -935,6 +1082,10 @@ export const useSaaSStore = create<SaaSState>()(
             s.id === id ? { ...s, ...data, updatedAt: now } : s
           ),
         }))
+
+        api.services.items
+          .update(id, data)
+          .catch((err) => console.warn('Failed to update service item in DB:', err.message))
       },
 
       deleteServiceItem: (id) => {
@@ -942,6 +1093,10 @@ export const useSaaSStore = create<SaaSState>()(
           serviceItems: (state.serviceItems || initialServiceItems).filter((s) => s.id !== id),
           subServices: (state.subServices || initialSubServices).filter((sub) => sub.serviceId !== id),
         }))
+
+        api.services.items
+          .delete(id)
+          .catch((err) => console.warn('Failed to delete service item in DB:', err.message))
       },
 
       createSubService: (data) => {
@@ -955,6 +1110,20 @@ export const useSaaSStore = create<SaaSState>()(
         set((state) => ({
           subServices: [...(state.subServices || initialSubServices), newSub],
         }))
+
+        api.services.subServices
+          .create(newSub)
+          .then((saved) => {
+            if (saved && saved.id) {
+              set((state) => ({
+                subServices: state.subServices.map((s) =>
+                  s.id === newSub.id ? { ...s, id: saved.id } : s
+                ),
+              }))
+            }
+          })
+          .catch((err) => console.warn('Failed to create sub service in DB:', err.message))
+
         return newSub
       },
 
@@ -965,12 +1134,20 @@ export const useSaaSStore = create<SaaSState>()(
             s.id === id ? { ...s, ...data, updatedAt: now } : s
           ),
         }))
+
+        api.services.subServices
+          .update(id, data)
+          .catch((err) => console.warn('Failed to update sub service in DB:', err.message))
       },
 
       deleteSubService: (id) => {
         set((state) => ({
           subServices: (state.subServices || initialSubServices).filter((s) => s.id !== id),
         }))
+
+        api.services.subServices
+          .delete(id)
+          .catch((err) => console.warn('Failed to delete sub service in DB:', err.message))
       },
 
       createProductAddon: (data) => {
@@ -984,6 +1161,20 @@ export const useSaaSStore = create<SaaSState>()(
         set((state) => ({
           productAddons: [...(state.productAddons || initialProductAddons), newAddon],
         }))
+
+        api.services.addons
+          .create(newAddon)
+          .then((saved) => {
+            if (saved && saved.id) {
+              set((state) => ({
+                productAddons: state.productAddons.map((a) =>
+                  a.id === newAddon.id ? { ...a, id: saved.id } : a
+                ),
+              }))
+            }
+          })
+          .catch((err) => console.warn('Failed to create product addon in DB:', err.message))
+
         return newAddon
       },
 
@@ -994,12 +1185,48 @@ export const useSaaSStore = create<SaaSState>()(
             a.id === id ? { ...a, ...data, updatedAt: now } : a
           ),
         }))
+
+        api.services.addons
+          .update(id, data)
+          .catch((err) => console.warn('Failed to update product addon in DB:', err.message))
       },
 
       deleteProductAddon: (id) => {
         set((state) => ({
           productAddons: (state.productAddons || initialProductAddons).filter((a) => a.id !== id),
         }))
+
+        api.services.addons
+          .delete(id)
+          .catch((err) => console.warn('Failed to delete product addon in DB:', err.message))
+      },
+
+      fetchFromBackend: async () => {
+        try {
+          const [merchants, branches, categories, products, scats, sitems, ssubs, saddons] = await Promise.all([
+            api.merchants.list().catch(() => []),
+            api.branches.list().catch(() => []),
+            api.categories.list().catch(() => []),
+            api.products.list().catch(() => []),
+            api.services.categories.list().catch(() => []),
+            api.services.items.list().catch(() => []),
+            api.services.subServices.list().catch(() => []),
+            api.services.addons.list().catch(() => []),
+          ])
+
+          set((state) => ({
+            merchants: merchants.length > 0 ? merchants : state.merchants,
+            branches: branches.length > 0 ? branches : state.branches,
+            categories: categories.length > 0 ? categories : state.categories,
+            products: products.length > 0 ? products : state.products,
+            serviceCategories: scats.length > 0 ? scats : state.serviceCategories,
+            serviceItems: sitems.length > 0 ? sitems : state.serviceItems,
+            subServices: ssubs.length > 0 ? ssubs : state.subServices,
+            productAddons: saddons.length > 0 ? saddons : state.productAddons,
+          }))
+        } catch (error) {
+          console.warn('Backend sync failed:', error)
+        }
       },
 
       resetAllData: () => {

@@ -51,9 +51,21 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 // POST /api/products
 router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const targetMerchantId = req.user?.role === 'SUPER_ADMIN' ? (req.body.merchantId || req.user.merchantId) : req.user?.merchantId
+    let targetMerchantId = req.user?.role === 'SUPER_ADMIN' ? (req.body.merchantId || req.user.merchantId) : req.user?.merchantId
     if (!targetMerchantId) {
-      return res.status(400).json({ error: 'Merchant context is required' })
+      const firstMerchant = await prisma.merchant.findFirst()
+      if (firstMerchant) {
+        targetMerchantId = firstMerchant.id
+      } else {
+        const defaultMerchant = await prisma.merchant.create({
+          data: {
+            name: 'Default Merchant',
+            email: 'default@priceing.com',
+            status: 'Active',
+          },
+        })
+        targetMerchantId = defaultMerchant.id
+      }
     }
 
     const { name, barcode, price, stocks, description, imageUrl, categoryId, status } = req.body

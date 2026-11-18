@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { Outlet } from '@tanstack/react-router'
 import { getCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
@@ -7,6 +8,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Footer } from '@/components/layout/footer'
 import { SkipToMain } from '@/components/skip-to-main'
+import { useSaaSStore } from '@/lib/saas-store'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -14,6 +16,11 @@ type AuthenticatedLayoutProps = {
 
 export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
+
+  React.useEffect(() => {
+    // Initial sync with backend database
+    useSaaSStore.getState().fetchFromBackend()
+  }, [])
   return (
     <SearchProvider>
       <LayoutProvider>

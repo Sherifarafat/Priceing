@@ -42,9 +42,25 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 // POST /api/branches (Super Admin only)
 router.post('/', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
-    const { merchantId, name, address, imageUrl } = req.body
-    if (!merchantId || !name) {
-      return res.status(400).json({ error: 'Merchant and Branch Name are required' })
+    let { merchantId, name, address, imageUrl } = req.body
+    if (!name) {
+      return res.status(400).json({ error: 'Branch Name is required' })
+    }
+
+    if (!merchantId) {
+      const firstMerchant = await prisma.merchant.findFirst()
+      if (firstMerchant) {
+        merchantId = firstMerchant.id
+      } else {
+        const defaultMerchant = await prisma.merchant.create({
+          data: {
+            name: 'Default Merchant',
+            email: 'default@priceing.com',
+            status: 'Active',
+          },
+        })
+        merchantId = defaultMerchant.id
+      }
     }
 
     const merchant = await prisma.merchant.findUnique({ where: { id: merchantId } })

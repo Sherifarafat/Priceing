@@ -43,7 +43,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 // POST /api/categories
 router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const targetMerchantId = req.user?.role === 'SUPER_ADMIN' ? (req.body.merchantId || req.user.merchantId) : req.user?.merchantId
+    let targetMerchantId = req.user?.role === 'SUPER_ADMIN' ? (req.body.merchantId || req.user.merchantId) : req.user?.merchantId
+    if (!targetMerchantId) {
+      const firstMerchant = await prisma.merchant.findFirst()
+      if (firstMerchant) targetMerchantId = firstMerchant.id
+    }
     const { name, branchId } = req.body
 
     if (!name) return res.status(400).json({ error: 'Category name is required' })
