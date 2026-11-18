@@ -151,13 +151,22 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
 
-    // Protect root super admin
-    const user = await prisma.user.findUnique({ where: { id: id as string } })
-    if (user?.username === 'sherif') {
-      return res.status(403).json({ error: 'Cannot delete root super admin user' })
+    // Find by ID, username, or email to guarantee deletion even across different id formats
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: id as string },
+          { username: id as string },
+          { email: id as string },
+        ],
+      },
+    })
+
+    if (!user) {
+      return res.json({ message: 'User not found or already deleted' })
     }
 
-    await prisma.user.delete({ where: { id: id as string } })
+    await prisma.user.delete({ where: { id: user.id } })
     res.json({ message: 'User deleted successfully' })
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to delete user' })

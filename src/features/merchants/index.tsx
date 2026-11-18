@@ -41,6 +41,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -408,140 +416,200 @@ export function MerchantsView() {
           }
         }}
       >
-        <DialogContent className='max-w-md'>
-          <form onSubmit={handleSave}>
-            <DialogHeader>
-              <DialogTitle>{editingMerchant ? 'Edit Merchant' : 'Onboard New Merchant'}</DialogTitle>
-              <DialogDescription className='text-xs'>
-                Platform Super Admin provisions new tenant businesses and automatically sets up their primary manager account.
-              </DialogDescription>
-            </DialogHeader>
+        <DialogContent className='sm:max-w-lg'>
+          <DialogHeader className='text-start'>
+            <DialogTitle>{editingMerchant ? 'Edit Merchant' : 'Add New Merchant'}</DialogTitle>
+            <DialogDescription>
+              {editingMerchant
+                ? 'Update the merchant details here. '
+                : 'Create new merchant here. '}
+              Click save when you&apos;re done.
+            </DialogDescription>
+          </DialogHeader>
 
-            {error && <p className='text-xs text-destructive mt-2'>{error}</p>}
-
-            {/* Merchant Logo Avatar in Center */}
-            <div className='flex flex-col items-center justify-center my-4 gap-2'>
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className='relative group size-20 rounded-full border-2 border-dashed border-border/80 hover:border-primary transition-all flex items-center justify-center bg-muted/40 cursor-pointer overflow-hidden shadow-xs'
-              >
-                {logo ? (
-                  <img src={logo} alt='Merchant Logo' className='size-full object-cover' />
-                ) : (
-                  <div className='flex flex-col items-center justify-center text-muted-foreground gap-1'>
-                    <Camera className='size-6 opacity-40 group-hover:opacity-70 transition-opacity' />
-                    <span className='text-[9px] font-medium'>Upload</span>
-                  </div>
-                )}
-                <div className='absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-semibold'>
-                  Change
-                </div>
-              </div>
-              <input
-                ref={fileInputRef}
-                type='file'
-                accept='image/*'
-                className='hidden'
-                onChange={handleLogoUpload}
-              />
-              <div className='flex items-center gap-1.5 w-full max-w-xs'>
-                <Input
-                  placeholder='Or paste image URL...'
-                  value={logo}
-                  onChange={(e) => setLogo(e.target.value)}
-                  className='text-[10px] h-7 text-center rounded-lg bg-background'
-                />
-                {logo && (
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='sm'
-                    onClick={() => setLogo('')}
-                    className='h-7 px-2 text-[10px] text-destructive hover:bg-destructive/10'
-                  >
-                    Remove
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <div className='space-y-3 my-4 text-xs'>
-              <div>
-                <label className='font-semibold block mb-1'>Merchant Name *</label>
+          <div className='h-105 w-[calc(100%+0.75rem)] overflow-y-auto py-1 pe-3'>
+            <form id='merchant-form' onSubmit={handleSave} className='space-y-4 px-0.5'>
+              {/* Merchant Name */}
+              <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                <Label className='col-span-2 text-end'>Merchant Name</Label>
                 <Input
                   required
-                  placeholder='e.g. Spinneys, Seoudi Market...'
+                  placeholder='Spinneys'
+                  className='col-span-4'
+                  autoComplete='off'
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className='text-xs'
                 />
               </div>
 
-              <div className='grid grid-cols-2 gap-3'>
-                <div>
-                  <label className='font-semibold block mb-1'>Contact Email *</label>
-                  <Input
-                    required
-                    type='email'
-                    placeholder='contact@merchant.com'
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className='text-xs'
-                  />
-                </div>
-                <div>
-                  <label className='font-semibold block mb-1'>Phone</label>
-                  <Input
-                    placeholder='+20 ...'
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className='text-xs'
-                  />
-                </div>
+              {/* Contact Email */}
+              <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                <Label className='col-span-2 text-end'>Email</Label>
+                <Input
+                  required
+                  type='email'
+                  placeholder='contact@merchant.com'
+                  className='col-span-4'
+                  autoComplete='off'
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
 
-              <div>
-                <label className='font-semibold block mb-1'>Headquarters Address</label>
+              {/* Phone Number */}
+              <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                <Label className='col-span-2 text-end'>Phone Number</Label>
+                <Input
+                  placeholder='+20 100 000 0000'
+                  className='col-span-4'
+                  autoComplete='off'
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+
+              {/* Headquarters Address */}
+              <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                <Label className='col-span-2 text-end'>Address</Label>
                 <Input
                   placeholder='City, Street, Country'
+                  className='col-span-4'
+                  autoComplete='off'
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className='text-xs'
                 />
               </div>
 
-              <div>
-                <label className='font-semibold block mb-1'>Operational Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as MerchantStatus)}
-                  className='w-full rounded-md border bg-background px-3 py-2 text-xs text-foreground'
-                >
-                  <option value='Active'>Active (Scanning & Dashboard open)</option>
-                  <option value='Pending'>Pending (Onboarding)</option>
-                  <option value='Inactive'>Inactive (Scanning blocked)</option>
-                  <option value='Suspended'>Suspended (Access blocked)</option>
-                </select>
-              </div>
-            </div>
+              {/* Business Type */}
+              {merchantTypes.length > 0 && (
+                <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                  <Label className='col-span-2 text-end'>Business Type</Label>
+                  <div className='col-span-4'>
+                    <Select
+                      value={merchantTypeId || merchantTypes[0]?.id}
+                      onValueChange={(val) => setMerchantTypeId(val)}
+                    >
+                      <SelectTrigger className='w-full'>
+                        <SelectValue placeholder='Select business type' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {merchantTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
 
-            <DialogFooter>
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                onClick={() => {
-                  setIsCreateOpen(false)
-                  setEditingMerchant(null)
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type='submit' size='sm'>
-                {editingMerchant ? 'Save Changes' : 'Create Merchant'}
-              </Button>
-            </DialogFooter>
-          </form>
+              {/* Currency */}
+              {currencies.length > 0 && (
+                <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                  <Label className='col-span-2 text-end'>Currency</Label>
+                  <div className='col-span-4'>
+                    <Select
+                      value={currencyId || currencies[0]?.id}
+                      onValueChange={(val) => setCurrencyId(val)}
+                    >
+                      <SelectTrigger className='w-full'>
+                        <SelectValue placeholder='Select currency' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((curr) => (
+                          <SelectItem key={curr.id} value={curr.id}>
+                            {curr.code} - {curr.name} ({curr.symbol})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {/* Status */}
+              <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                <Label className='col-span-2 text-end'>Status</Label>
+                <div className='col-span-4'>
+                  <Select
+                    value={status}
+                    onValueChange={(val) => setStatus(val as MerchantStatus)}
+                  >
+                    <SelectTrigger className='w-full'>
+                      <SelectValue placeholder='Select status' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='Active'>Active</SelectItem>
+                      <SelectItem value='Pending'>Pending</SelectItem>
+                      <SelectItem value='Inactive'>Inactive</SelectItem>
+                      <SelectItem value='Suspended'>Suspended</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Merchant Logo */}
+              <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                <Label className='col-span-2 text-end'>Logo</Label>
+                <div className='col-span-4 flex items-center gap-3'>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className='relative group size-11 rounded-xl border border-dashed border-border/80 hover:border-primary transition-all flex items-center justify-center bg-muted/40 cursor-pointer overflow-hidden shadow-2xs shrink-0'
+                  >
+                    {logo ? (
+                      <img src={logo} alt='Merchant Logo' className='size-full object-cover' />
+                    ) : (
+                      <Camera className='size-4 text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity' />
+                    )}
+                    <div className='absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-semibold'>
+                      Change
+                    </div>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type='file'
+                    accept='image/*'
+                    className='hidden'
+                    onChange={handleLogoUpload}
+                  />
+                  <div className='flex items-center gap-1.5 flex-1 min-w-0'>
+                    <Input
+                      placeholder='Image URL or click upload...'
+                      value={logo}
+                      onChange={(e) => setLogo(e.target.value)}
+                      className='h-9 text-xs'
+                    />
+                    {logo && (
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => setLogo('')}
+                        className='h-9 px-2 text-xs text-destructive hover:bg-destructive/10'
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {error && (
+                <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                  <div className='col-span-4 col-start-3 text-xs text-destructive font-medium'>
+                    {error}
+                  </div>
+                </div>
+              )}
+            </form>
+          </div>
+
+          <DialogFooter>
+            <Button type='submit' form='merchant-form'>
+              Save changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -1,12 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSaaSStore } from '@/lib/saas-store'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { type User } from '../data/schema'
 
@@ -21,11 +18,7 @@ export function UsersDeleteDialog({
   onOpenChange,
   currentRow,
 }: UserDeleteDialogProps) {
-  const [value, setValue] = useState('')
-
   const handleDelete = async () => {
-    if (value.trim() !== currentRow.username) return
-
     onOpenChange(false)
     try {
       await useSaaSStore.getState().deleteUser(currentRow.id)
@@ -40,7 +33,7 @@ export function UsersDeleteDialog({
       open={open}
       onOpenChange={onOpenChange}
       form='users-delete-form'
-      disabled={value.trim() !== currentRow.username}
+      destructive
       title={
         <span className='text-destructive'>
           <AlertTriangle
@@ -57,39 +50,24 @@ export function UsersDeleteDialog({
             e.preventDefault()
             handleDelete()
           }}
-          className='space-y-4'
+          className='space-y-3'
         >
           <p className='mb-2'>
             Are you sure you want to delete{' '}
-            <span className='font-bold'>{currentRow.username}</span>?
+            <span className='font-bold text-foreground'>{currentRow.username}</span> ({currentRow.email})?
             <br />
-            This action will permanently remove the user with the role of{' '}
-            <span className='font-bold'>
-              {currentRow.role.toUpperCase()}
-            </span>{' '}
-            from the system. This cannot be undone.
+            This action will permanently remove the user from the database.
           </p>
-
-          <Label className='my-2'>
-            Username:
-            <Input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder='Enter username to confirm deletion.'
-              autoFocus
-            />
-          </Label>
 
           <Alert variant='destructive'>
             <AlertTitle>Warning!</AlertTitle>
             <AlertDescription>
-              Please be careful, this operation can not be rolled back.
+              Please be careful, this operation cannot be undone.
             </AlertDescription>
           </Alert>
         </form>
       }
-      confirmText='Delete'
-      destructive
+      confirmText='Delete User'
     />
   )
 }
