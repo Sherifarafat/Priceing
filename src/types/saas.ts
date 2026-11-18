@@ -28,6 +28,15 @@ export interface InvoiceTemplate {
   showBranchInfo: boolean
   showCashierName: boolean
   paperSize: InvoicePaperSize
+  fontFamily?: string
+  headerStyle?: string
+  tableStyle?: string
+  borderRadius?: string
+  watermarkText?: string | null
+  showWatermark?: boolean
+  qrPosition?: string
+  showBarcode?: boolean
+  currencyPosition?: string
   createdAt: string
   updatedAt: string
 }

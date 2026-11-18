@@ -8,11 +8,18 @@ import {
   Check,
   RotateCcw,
   Sparkles,
+  Type,
+  LayoutGrid,
+  Sliders,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Stamp,
+  Barcode as BarcodeIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -23,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -36,12 +44,53 @@ import {
 import { toast } from 'sonner'
 
 const COLOR_PRESETS = [
-  { name: 'Indigo', value: '#4F46E5', class: 'bg-[#4F46E5]' },
-  { name: 'Emerald', value: '#059669', class: 'bg-[#059669]' },
-  { name: 'Sky Blue', value: '#0284C7', class: 'bg-[#0284C7]' },
-  { name: 'Rose', value: '#E11D48', class: 'bg-[#E11D48]' },
-  { name: 'Amber', value: '#D97706', class: 'bg-[#D97706]' },
-  { name: 'Dark Slate', value: '#1E293B', class: 'bg-[#1E293B]' },
+  { name: 'Indigo Corporate', value: '#4F46E5', class: 'bg-[#4F46E5]' },
+  { name: 'Emerald Fresh', value: '#059669', class: 'bg-[#059669]' },
+  { name: 'Sky Electric', value: '#0284C7', class: 'bg-[#0284C7]' },
+  { name: 'Rose Luxury', value: '#E11D48', class: 'bg-[#E11D48]' },
+  { name: 'Amber Bakery', value: '#D97706', class: 'bg-[#D97706]' },
+  { name: 'Slate Minimal', value: '#1E293B', class: 'bg-[#1E293B]' },
+  { name: 'Violet Tech', value: '#7C3AED', class: 'bg-[#7C3AED]' },
+  { name: 'Teal Modern', value: '#0D9488', class: 'bg-[#0D9488]' },
+]
+
+const DESIGN_PRESETS = [
+  {
+    name: 'Modern Indigo',
+    primaryColor: '#4F46E5',
+    layoutStyle: 'MODERN' as InvoiceLayoutStyle,
+    headerStyle: 'BORDER_TOP',
+    tableStyle: 'STRIPED',
+    borderRadius: 'ROUNDED_MD',
+    fontFamily: 'sans',
+  },
+  {
+    name: 'Classic Corporate',
+    primaryColor: '#1E293B',
+    layoutStyle: 'CLASSIC' as InvoiceLayoutStyle,
+    headerStyle: 'SOLID_BANNER',
+    tableStyle: 'GRID',
+    borderRadius: 'ROUNDED_NONE',
+    fontFamily: 'serif',
+  },
+  {
+    name: 'Emerald Minimal',
+    primaryColor: '#059669',
+    layoutStyle: 'MODERN' as InvoiceLayoutStyle,
+    headerStyle: 'SUBTLE_TINT',
+    tableStyle: 'MINIMAL',
+    borderRadius: 'ROUNDED_LG',
+    fontFamily: 'cairo',
+  },
+  {
+    name: 'Thermal Receipt 80mm',
+    primaryColor: '#18181B',
+    layoutStyle: 'THERMAL_POS' as InvoiceLayoutStyle,
+    headerStyle: 'MINIMAL',
+    tableStyle: 'MINIMAL',
+    borderRadius: 'ROUNDED_NONE',
+    fontFamily: 'mono',
+  },
 ]
 
 export function InvoiceDesigner() {
@@ -65,6 +114,14 @@ export function InvoiceDesigner() {
   const [layoutStyle, setLayoutStyle] = React.useState<InvoiceLayoutStyle>('MODERN')
   const [paperSize, setPaperSize] = React.useState<InvoicePaperSize>('A4')
   const [primaryColor, setPrimaryColor] = React.useState('#4F46E5')
+  const [accentColor, setAccentColor] = React.useState('#10B981')
+  const [fontFamily, setFontFamily] = React.useState('sans')
+  const [headerStyle, setHeaderStyle] = React.useState('BORDER_TOP')
+  const [tableStyle, setTableStyle] = React.useState('STRIPED')
+  const [borderRadius, setBorderRadius] = React.useState('ROUNDED_MD')
+  const [currencyPosition, setCurrencyPosition] = React.useState('AFTER')
+
+  // Business Info
   const [businessName, setBusinessName] = React.useState('')
   const [logoUrl, setLogoUrl] = React.useState('')
   const [showLogo, setShowLogo] = React.useState(true)
@@ -72,10 +129,19 @@ export function InvoiceDesigner() {
   const [commercialReg, setCommercialReg] = React.useState('')
   const [headerNotice, setHeaderNotice] = React.useState('')
   const [footerNotice, setFooterNotice] = React.useState('')
+
+  // Toggles & Details
   const [showQrCode, setShowQrCode] = React.useState(true)
+  const [qrPosition, setQrPosition] = React.useState('FOOTER_RIGHT')
   const [showTaxDetails, setShowTaxDetails] = React.useState(true)
   const [showBranchInfo, setShowBranchInfo] = React.useState(true)
   const [showCashierName, setShowCashierName] = React.useState(true)
+  const [showBarcode, setShowBarcode] = React.useState(true)
+  const [showWatermark, setShowWatermark] = React.useState(false)
+  const [watermarkText, setWatermarkText] = React.useState('PAID')
+
+  // Preview zoom scale
+  const [previewScale, setPreviewScale] = React.useState<number>(0.85)
   const [isSaving, setIsSaving] = React.useState(false)
 
   // Load template on mount or merchant change
@@ -86,6 +152,12 @@ export function InvoiceDesigner() {
         setLayoutStyle(tpl.layoutStyle || 'MODERN')
         setPaperSize(tpl.paperSize || 'A4')
         setPrimaryColor(tpl.primaryColor || '#4F46E5')
+        setAccentColor(tpl.accentColor || '#10B981')
+        setFontFamily(tpl.fontFamily || 'sans')
+        setHeaderStyle(tpl.headerStyle || 'BORDER_TOP')
+        setTableStyle(tpl.tableStyle || 'STRIPED')
+        setBorderRadius(tpl.borderRadius || 'ROUNDED_MD')
+        setCurrencyPosition(tpl.currencyPosition || 'AFTER')
         setBusinessName(tpl.businessName || currentMerchant?.name || '')
         setLogoUrl(tpl.logoUrl || currentMerchant?.logo || '')
         setShowLogo(tpl.showLogo !== undefined ? tpl.showLogo : true)
@@ -94,18 +166,35 @@ export function InvoiceDesigner() {
         setHeaderNotice(tpl.headerNotice || 'Thank you for your business!')
         setFooterNotice(
           tpl.footerNotice ||
-            'Goods can be exchanged or returned within 14 days with the original receipt.'
+            'Goods can be exchanged or returned within 14 days with original receipt.'
         )
         setShowQrCode(tpl.showQrCode !== undefined ? tpl.showQrCode : true)
+        setQrPosition(tpl.qrPosition || 'FOOTER_RIGHT')
         setShowTaxDetails(tpl.showTaxDetails !== undefined ? tpl.showTaxDetails : true)
         setShowBranchInfo(tpl.showBranchInfo !== undefined ? tpl.showBranchInfo : true)
         setShowCashierName(tpl.showCashierName !== undefined ? tpl.showCashierName : true)
+        setShowBarcode(tpl.showBarcode !== undefined ? tpl.showBarcode : true)
+        setShowWatermark(tpl.showWatermark !== undefined ? tpl.showWatermark : false)
+        setWatermarkText(tpl.watermarkText || 'PAID')
       } else if (currentMerchant) {
         setBusinessName(currentMerchant.name)
         setLogoUrl(currentMerchant.logo || '')
       }
     })
   }, [selectedMerchantId, fetchInvoiceTemplate, currentMerchant])
+
+  const handleApplyPreset = (preset: typeof DESIGN_PRESETS[0]) => {
+    setPrimaryColor(preset.primaryColor)
+    setLayoutStyle(preset.layoutStyle)
+    setHeaderStyle(preset.headerStyle)
+    setTableStyle(preset.tableStyle)
+    setBorderRadius(preset.borderRadius)
+    setFontFamily(preset.fontFamily)
+    if (preset.layoutStyle === 'THERMAL_POS') {
+      setPaperSize('80MM')
+    }
+    toast.success(`Preset "${preset.name}" applied`)
+  }
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -116,6 +205,12 @@ export function InvoiceDesigner() {
         layoutStyle,
         paperSize,
         primaryColor,
+        accentColor,
+        fontFamily,
+        headerStyle,
+        tableStyle,
+        borderRadius,
+        currencyPosition,
         businessName: businessName.trim(),
         logoUrl: logoUrl.trim(),
         showLogo,
@@ -124,9 +219,13 @@ export function InvoiceDesigner() {
         headerNotice: headerNotice.trim(),
         footerNotice: footerNotice.trim(),
         showQrCode,
+        qrPosition,
         showTaxDetails,
         showBranchInfo,
         showCashierName,
+        showBarcode,
+        showWatermark,
+        watermarkText: watermarkText.trim(),
       })
       toast.success('Invoice template saved successfully!')
     } catch (err: any) {
@@ -140,32 +239,73 @@ export function InvoiceDesigner() {
     setLayoutStyle('MODERN')
     setPaperSize('A4')
     setPrimaryColor('#4F46E5')
+    setAccentColor('#10B981')
+    setFontFamily('sans')
+    setHeaderStyle('BORDER_TOP')
+    setTableStyle('STRIPED')
+    setBorderRadius('ROUNDED_MD')
+    setCurrencyPosition('AFTER')
     setBusinessName(currentMerchant?.name || 'My Store')
     setLogoUrl(currentMerchant?.logo || '')
     setShowLogo(true)
     setTaxNumber('300012345678901')
     setCommercialReg('1010203040')
     setHeaderNotice('Thank you for your business!')
-    setFooterNotice('Goods can be exchanged or returned within 14 days with the original receipt.')
+    setFooterNotice('Goods can be exchanged or returned within 14 days with original receipt.')
     setShowQrCode(true)
+    setQrPosition('FOOTER_RIGHT')
     setShowTaxDetails(true)
     setShowBranchInfo(true)
     setShowCashierName(true)
+    setShowBarcode(true)
+    setShowWatermark(false)
+    setWatermarkText('PAID')
     toast.info('Template reset to default settings')
   }
 
-  // Sample items for preview
+  // Sample data for preview
   const sampleItems = [
-    { name: 'Wireless Bluetooth Earbuds Pro', qty: 1, price: 850.0, total: 850.0 },
-    { name: 'Organic Colombian Coffee 500g', qty: 2, price: 125.0, total: 250.0 },
-    { name: 'Fast Charging USB-C Cable 2M', qty: 1, price: 95.0, total: 95.0 },
+    { name: 'Wireless Bluetooth Earbuds Pro', qty: 1, price: 850.0, total: 850.0, barcode: '622100012345' },
+    { name: 'Organic Colombian Coffee 500g', qty: 2, price: 125.0, total: 250.0, barcode: '622100067890' },
+    { name: 'Fast Charging USB-C Cable 2M', qty: 1, price: 95.0, total: 95.0, barcode: '622100034567' },
   ]
   const sampleSubtotal = 1195.0
   const sampleTax = showTaxDetails ? sampleSubtotal * 0.14 : 0
   const sampleGrandTotal = sampleSubtotal + sampleTax
 
+  const formatPrice = (val: number) => {
+    const formatted = val.toFixed(2)
+    return currencyPosition === 'BEFORE' ? `EGP ${formatted}` : `${formatted} EGP`
+  }
+
+  // Font family class
+  const getFontFamilyClass = () => {
+    switch (fontFamily) {
+      case 'serif':
+        return 'font-serif'
+      case 'mono':
+        return 'font-mono'
+      case 'cairo':
+        return 'font-sans tracking-wide'
+      default:
+        return 'font-sans'
+    }
+  }
+
+  // Border radius style
+  const getBorderRadiusClass = () => {
+    switch (borderRadius) {
+      case 'ROUNDED_NONE':
+        return 'rounded-none'
+      case 'ROUNDED_LG':
+        return 'rounded-2xl'
+      default:
+        return 'rounded-xl'
+    }
+  }
+
   return (
-    <>
+    <div className='flex flex-col h-screen overflow-hidden bg-background'>
       <Header fixed>
         <div className='flex items-center gap-2'>
           <h1 className='font-semibold text-sm'>
@@ -185,40 +325,24 @@ export function InvoiceDesigner() {
         </div>
       </Header>
 
-      <Main className='space-y-6'>
+      {/* Main Single-View Studio Container */}
+      <Main className='flex-1 flex flex-col p-4 md:p-6 overflow-hidden'>
         {/* Top Control Bar */}
-        <div className='flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3'>
-          <div>
-            <h2 className='text-xl font-bold tracking-tight'>Invoice Template Designer</h2>
-            <p className='text-xs text-muted-foreground mt-0.5'>
-              Customize your store invoice layout, branding, tax numbers, and footer notices with live preview.
-            </p>
+        <div className='flex items-center justify-between gap-3 pb-3 border-b border-border/60 shrink-0'>
+          <div className='flex items-center gap-2'>
+            <h2 className='text-lg font-bold tracking-tight'>Live Invoice Studio</h2>
+            <Badge variant='outline' className='text-[10px] hidden sm:inline-flex'>
+              Single-View Editor
+            </Badge>
           </div>
-          <div className='flex items-center gap-2 shrink-0'>
-            <Button variant='outline' size='sm' onClick={handleResetDefaults} className='gap-1.5'>
-              <RotateCcw className='size-3.5' />
-              Reset Defaults
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving} className='gap-2'>
-              <Save className='size-4' />
-              {isSaving ? 'Saving...' : 'Save Template'}
-            </Button>
-          </div>
-        </div>
 
-        {/* Merchant Scope Selector for Super Admin */}
-        {isSuperAdmin && merchants.length > 0 && (
-          <Card className='p-3.5 border-border/60 bg-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3'>
-            <div className='flex items-center gap-2 text-sm'>
-              <Building2 className='size-4 text-primary' />
-              <span className='font-semibold'>Customizing invoice for merchant:</span>
-            </div>
-            <div className='w-full sm:w-72'>
+          <div className='flex items-center gap-2'>
+            {isSuperAdmin && merchants.length > 0 && (
               <Select
                 value={selectedMerchantId}
                 onValueChange={(val) => setSelectedMerchantId(val)}
               >
-                <SelectTrigger>
+                <SelectTrigger className='h-8 text-xs w-44'>
                   <SelectValue placeholder='Select Merchant' />
                 </SelectTrigger>
                 <SelectContent>
@@ -229,407 +353,748 @@ export function InvoiceDesigner() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </Card>
-        )}
+            )}
 
-        {/* Editor Grid: Left Controls (5 cols) / Right Preview (7 cols) */}
-        <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'>
-          {/* Controls Column */}
-          <div className='lg:col-span-5 space-y-5'>
-            {/* Design & Layout */}
-            <Card className='p-4 border-border/60 space-y-4'>
-              <div className='flex items-center gap-2 text-sm font-bold border-b pb-2 text-foreground'>
-                <Palette className='size-4 text-primary' />
-                <span>Layout & Visual Style</span>
-              </div>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={handleResetDefaults}
+              className='gap-1.5 h-8 text-xs'
+            >
+              <RotateCcw className='size-3.5' />
+              <span className='hidden sm:inline'>Reset Defaults</span>
+            </Button>
 
-              {/* Layout Mode */}
-              <div className='space-y-1.5'>
-                <Label className='text-xs font-semibold'>Layout Style</Label>
-                <div className='grid grid-cols-3 gap-2'>
-                  <Button
-                    type='button'
-                    variant={layoutStyle === 'MODERN' ? 'default' : 'outline'}
-                    size='sm'
-                    className='text-xs font-semibold h-9'
-                    onClick={() => setLayoutStyle('MODERN')}
-                  >
-                    Modern
-                  </Button>
-                  <Button
-                    type='button'
-                    variant={layoutStyle === 'CLASSIC' ? 'default' : 'outline'}
-                    size='sm'
-                    className='text-xs font-semibold h-9'
-                    onClick={() => setLayoutStyle('CLASSIC')}
-                  >
-                    Classic
-                  </Button>
-                  <Button
-                    type='button'
-                    variant={layoutStyle === 'THERMAL_POS' ? 'default' : 'outline'}
-                    size='sm'
-                    className='text-xs font-semibold h-9'
-                    onClick={() => {
-                      setLayoutStyle('THERMAL_POS')
-                      setPaperSize('80MM')
-                    }}
-                  >
-                    POS 80mm
-                  </Button>
-                </div>
-              </div>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              size='sm'
+              className='gap-1.5 h-8 text-xs font-semibold'
+            >
+              <Save className='size-3.5' />
+              {isSaving ? 'Saving...' : 'Save Template'}
+            </Button>
+          </div>
+        </div>
 
-              {/* Paper Size */}
-              <div className='space-y-1.5'>
-                <Label className='text-xs font-semibold'>Paper Format</Label>
-                <Select
-                  value={paperSize}
-                  onValueChange={(val) => setPaperSize(val as InvoicePaperSize)}
-                >
-                  <SelectTrigger className='h-9 text-xs'>
-                    <SelectValue placeholder='Select paper size' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='A4'>Standard A4 Sheet (Office / Laser)</SelectItem>
-                    <SelectItem value='80MM'>80mm Receipt Roll (Thermal POS)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        {/* 2-Column Split Workspace (Fixed Height, No Page Scroll) */}
+        <div className='flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 pt-3 overflow-hidden'>
+          {/* LEFT: Controls Panel with Tabs (Scrolls internally) */}
+          <div className='lg:col-span-5 flex flex-col h-full overflow-hidden border border-border/60 rounded-xl bg-card shadow-2xs'>
+            <Tabs defaultValue='style' className='flex flex-col h-full'>
+              {/* Tab Header Bar */}
+              <TabsList className='grid grid-cols-4 p-1 bg-muted/60 rounded-none border-b border-border/60 shrink-0'>
+                <TabsTrigger value='style' className='text-xs gap-1 py-1.5'>
+                  <Palette className='size-3.5' />
+                  <span>Style</span>
+                </TabsTrigger>
+                <TabsTrigger value='layout' className='text-xs gap-1 py-1.5'>
+                  <LayoutGrid className='size-3.5' />
+                  <span>Layout</span>
+                </TabsTrigger>
+                <TabsTrigger value='identity' className='text-xs gap-1 py-1.5'>
+                  <Building2 className='size-3.5' />
+                  <span>Identity</span>
+                </TabsTrigger>
+                <TabsTrigger value='toggles' className='text-xs gap-1 py-1.5'>
+                  <Sliders className='size-3.5' />
+                  <span>Toggles</span>
+                </TabsTrigger>
+              </TabsList>
 
-              {/* Primary Color Palette */}
-              <div className='space-y-1.5'>
-                <Label className='text-xs font-semibold'>Brand Primary Color</Label>
-                <div className='flex items-center gap-2'>
-                  {COLOR_PRESETS.map((color) => (
-                    <button
-                      key={color.value}
-                      type='button'
-                      onClick={() => setPrimaryColor(color.value)}
-                      className={`size-7 rounded-full transition-transform flex items-center justify-center ${
-                        color.class
-                      } ${
-                        primaryColor === color.value
-                          ? 'ring-2 ring-primary ring-offset-2 scale-110'
-                          : 'hover:scale-105'
-                      }`}
-                      title={color.name}
-                    >
-                      {primaryColor === color.value && (
-                        <Check className='size-3.5 text-white' />
-                      )}
-                    </button>
-                  ))}
-                  <div className='relative ml-auto flex items-center gap-1.5'>
-                    <input
-                      type='color'
-                      value={primaryColor}
-                      onChange={(e) => setPrimaryColor(e.target.value)}
-                      className='size-7 rounded-md cursor-pointer border'
-                    />
-                    <span className='text-[11px] font-mono text-muted-foreground uppercase'>
-                      {primaryColor}
-                    </span>
+              {/* Tab Contents: Scrollable Inside This Container */}
+              <div className='flex-1 overflow-y-auto p-4 space-y-4 text-xs'>
+                {/* 1. Style & Presets */}
+                <TabsContent value='style' className='mt-0 space-y-4'>
+                  {/* Quick Theme Presets */}
+                  <div className='space-y-1.5'>
+                    <Label className='text-xs font-bold flex items-center gap-1.5'>
+                      <Sparkles className='size-3.5 text-primary' /> One-Click Theme Presets
+                    </Label>
+                    <div className='grid grid-cols-2 gap-2'>
+                      {DESIGN_PRESETS.map((preset) => (
+                        <button
+                          key={preset.name}
+                          type='button'
+                          onClick={() => handleApplyPreset(preset)}
+                          className='p-2 rounded-lg border border-border/80 hover:border-primary text-start transition-all hover:bg-muted/40 flex items-center gap-2 group'
+                        >
+                          <span
+                            className='size-3 rounded-full shrink-0'
+                            style={{ backgroundColor: preset.primaryColor }}
+                          />
+                          <span className='font-semibold truncate text-[11px]'>{preset.name}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </div>
-            </Card>
 
-            {/* Merchant / Business Info */}
-            <Card className='p-4 border-border/60 space-y-3.5'>
-              <div className='flex items-center gap-2 text-sm font-bold border-b pb-2 text-foreground'>
-                <Building2 className='size-4 text-primary' />
-                <span>Store & Tax Identity</span>
-              </div>
+                  {/* Primary Color Palette */}
+                  <div className='space-y-1.5 border-t pt-3'>
+                    <Label className='text-xs font-semibold'>Primary Brand Color</Label>
+                    <div className='flex items-center gap-2 flex-wrap'>
+                      {COLOR_PRESETS.map((color) => (
+                        <button
+                          key={color.value}
+                          type='button'
+                          onClick={() => setPrimaryColor(color.value)}
+                          className={`size-6 rounded-full transition-transform flex items-center justify-center ${
+                            color.class
+                          } ${
+                            primaryColor === color.value
+                              ? 'ring-2 ring-primary ring-offset-2 scale-110'
+                              : 'hover:scale-105'
+                          }`}
+                          title={color.name}
+                        >
+                          {primaryColor === color.value && (
+                            <Check className='size-3 text-white' />
+                          )}
+                        </button>
+                      ))}
+                      <div className='flex items-center gap-1 ml-auto'>
+                        <input
+                          type='color'
+                          value={primaryColor}
+                          onChange={(e) => setPrimaryColor(e.target.value)}
+                          className='size-6 rounded cursor-pointer border'
+                        />
+                        <span className='font-mono text-[10px] uppercase text-muted-foreground'>
+                          {primaryColor}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-              <div>
-                <Label className='text-xs'>Store / Brand Name</Label>
-                <Input
-                  className='h-8.5 text-xs mt-1'
-                  placeholder='e.g., Al-Baraka Supermarket'
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                />
-              </div>
+                  {/* Header Banner Style */}
+                  <div className='space-y-1.5 border-t pt-3'>
+                    <Label className='text-xs font-semibold'>Header Banner Styling</Label>
+                    <div className='grid grid-cols-2 gap-2'>
+                      {[
+                        { id: 'BORDER_TOP', label: 'Top Colored Stripe' },
+                        { id: 'SOLID_BANNER', label: 'Solid Colored Banner' },
+                        { id: 'SUBTLE_TINT', label: 'Light Pastel Tint' },
+                        { id: 'MINIMAL', label: 'Clean Minimalist' },
+                      ].map((item) => (
+                        <Button
+                          key={item.id}
+                          type='button'
+                          size='sm'
+                          variant={headerStyle === item.id ? 'default' : 'outline'}
+                          className='h-8 text-[11px] justify-start px-2 font-medium'
+                          onClick={() => setHeaderStyle(item.id)}
+                        >
+                          {item.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div>
-                <Label className='text-xs'>Logo URL</Label>
-                <Input
-                  className='h-8.5 text-xs mt-1'
-                  placeholder='https://...'
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                />
-              </div>
+                  {/* Table Styling */}
+                  <div className='space-y-1.5 border-t pt-3'>
+                    <Label className='text-xs font-semibold'>Items Table Styling</Label>
+                    <div className='grid grid-cols-3 gap-2'>
+                      {[
+                        { id: 'STRIPED', label: 'Zebra Striped' },
+                        { id: 'GRID', label: 'Full Grid' },
+                        { id: 'MINIMAL', label: 'Minimal Lines' },
+                      ].map((item) => (
+                        <Button
+                          key={item.id}
+                          type='button'
+                          size='sm'
+                          variant={tableStyle === item.id ? 'default' : 'outline'}
+                          className='h-8 text-[11px]'
+                          onClick={() => setTableStyle(item.id)}
+                        >
+                          {item.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className='grid grid-cols-2 gap-3'>
-                <div>
-                  <Label className='text-xs'>Tax ID (الرقم الضريبي)</Label>
-                  <Input
-                    className='h-8.5 text-xs mt-1 font-mono'
-                    placeholder='300012345678901'
-                    value={taxNumber}
-                    onChange={(e) => setTaxNumber(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className='text-xs'>Commercial Reg (السجل)</Label>
-                  <Input
-                    className='h-8.5 text-xs mt-1 font-mono'
-                    placeholder='1010203040'
-                    value={commercialReg}
-                    onChange={(e) => setCommercialReg(e.target.value)}
-                  />
-                </div>
-              </div>
+                  {/* Corner Roundness */}
+                  <div className='space-y-1.5 border-t pt-3'>
+                    <Label className='text-xs font-semibold'>Corners & Roundness</Label>
+                    <div className='grid grid-cols-3 gap-2'>
+                      {[
+                        { id: 'ROUNDED_NONE', label: 'Sharp 0px' },
+                        { id: 'ROUNDED_MD', label: 'Medium 8px' },
+                        { id: 'ROUNDED_LG', label: 'Soft 16px' },
+                      ].map((item) => (
+                        <Button
+                          key={item.id}
+                          type='button'
+                          size='sm'
+                          variant={borderRadius === item.id ? 'default' : 'outline'}
+                          className='h-8 text-[11px]'
+                          onClick={() => setBorderRadius(item.id)}
+                        >
+                          {item.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
 
-              <div>
-                <Label className='text-xs'>Header Notice / Slogan</Label>
-                <Input
-                  className='h-8.5 text-xs mt-1'
-                  placeholder='e.g., Welcome to our store!'
-                  value={headerNotice}
-                  onChange={(e) => setHeaderNotice(e.target.value)}
-                />
-              </div>
+                {/* 2. Layout & Typography */}
+                <TabsContent value='layout' className='mt-0 space-y-4'>
+                  {/* Layout Style */}
+                  <div className='space-y-1.5'>
+                    <Label className='text-xs font-semibold'>Invoice Layout Architecture</Label>
+                    <div className='grid grid-cols-3 gap-2'>
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant={layoutStyle === 'MODERN' ? 'default' : 'outline'}
+                        className='h-8 text-xs'
+                        onClick={() => setLayoutStyle('MODERN')}
+                      >
+                        Modern A4
+                      </Button>
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant={layoutStyle === 'CLASSIC' ? 'default' : 'outline'}
+                        className='h-8 text-xs'
+                        onClick={() => setLayoutStyle('CLASSIC')}
+                      >
+                        Classic A4
+                      </Button>
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant={layoutStyle === 'THERMAL_POS' ? 'default' : 'outline'}
+                        className='h-8 text-xs'
+                        onClick={() => {
+                          setLayoutStyle('THERMAL_POS')
+                          setPaperSize('80MM')
+                        }}
+                      >
+                        POS 80mm
+                      </Button>
+                    </div>
+                  </div>
 
-              <div>
-                <Label className='text-xs'>Terms, Conditions & Return Policy</Label>
-                <Textarea
-                  rows={2}
-                  className='text-xs mt-1'
-                  placeholder='Return & exchange policy details...'
-                  value={footerNotice}
-                  onChange={(e) => setFooterNotice(e.target.value)}
-                />
-              </div>
-            </Card>
+                  {/* Paper Format */}
+                  <div className='space-y-1.5 border-t pt-3'>
+                    <Label className='text-xs font-semibold'>Print Paper Format</Label>
+                    <Select
+                      value={paperSize}
+                      onValueChange={(val) => setPaperSize(val as InvoicePaperSize)}
+                    >
+                      <SelectTrigger className='h-8 text-xs'>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='A4'>A4 Standard Document Sheet</SelectItem>
+                        <SelectItem value='80MM'>80mm Thermal Cashier Roll</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            {/* Display Toggles */}
-            <Card className='p-4 border-border/60 space-y-3'>
-              <div className='flex items-center gap-2 text-sm font-bold border-b pb-2 text-foreground'>
-                <Eye className='size-4 text-primary' />
-                <span>Invoice Elements Visibility</span>
-              </div>
+                  {/* Typography Font */}
+                  <div className='space-y-1.5 border-t pt-3'>
+                    <Label className='text-xs font-semibold flex items-center gap-1.5'>
+                      <Type className='size-3.5 text-primary' /> Typography & Font Family
+                    </Label>
+                    <div className='grid grid-cols-2 gap-2'>
+                      {[
+                        { id: 'sans', label: 'Clean Sans-Serif' },
+                        { id: 'cairo', label: 'Modern Cairo / Arabic' },
+                        { id: 'serif', label: 'Classic Serif' },
+                        { id: 'mono', label: 'Monospace Code' },
+                      ].map((font) => (
+                        <Button
+                          key={font.id}
+                          type='button'
+                          size='sm'
+                          variant={fontFamily === font.id ? 'default' : 'outline'}
+                          className='h-8 text-[11px]'
+                          onClick={() => setFontFamily(font.id)}
+                        >
+                          {font.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className='flex items-center justify-between text-xs py-1'>
-                <Label htmlFor='toggle-logo' className='cursor-pointer'>
-                  Show Store Logo
-                </Label>
-                <Switch
-                  id='toggle-logo'
-                  checked={showLogo}
-                  onCheckedChange={setShowLogo}
-                />
-              </div>
+                  {/* Currency Symbol Position */}
+                  <div className='space-y-1.5 border-t pt-3'>
+                    <Label className='text-xs font-semibold'>Currency Position</Label>
+                    <div className='grid grid-cols-2 gap-2'>
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant={currencyPosition === 'AFTER' ? 'default' : 'outline'}
+                        className='h-8 text-[11px]'
+                        onClick={() => setCurrencyPosition('AFTER')}
+                      >
+                        120.00 EGP (After)
+                      </Button>
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant={currencyPosition === 'BEFORE' ? 'default' : 'outline'}
+                        className='h-8 text-[11px]'
+                        onClick={() => setCurrencyPosition('BEFORE')}
+                      >
+                        EGP 120.00 (Before)
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
 
-              <div className='flex items-center justify-between text-xs py-1'>
-                <Label htmlFor='toggle-qr' className='cursor-pointer'>
-                  Show QR Verification Code (ZATCA compliant)
-                </Label>
-                <Switch
-                  id='toggle-qr'
-                  checked={showQrCode}
-                  onCheckedChange={setShowQrCode}
-                />
-              </div>
+                {/* 3. Store Identity & Content */}
+                <TabsContent value='identity' className='mt-0 space-y-3.5'>
+                  <div>
+                    <Label className='text-xs font-semibold'>Store / Brand Name</Label>
+                    <Input
+                      className='h-8 text-xs mt-1'
+                      placeholder='Store Name'
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                    />
+                  </div>
 
-              <div className='flex items-center justify-between text-xs py-1'>
-                <Label htmlFor='toggle-tax' className='cursor-pointer'>
-                  Show Tax & Fee Breakdown Table
-                </Label>
-                <Switch
-                  id='toggle-tax'
-                  checked={showTaxDetails}
-                  onCheckedChange={setShowTaxDetails}
-                />
-              </div>
+                  <div>
+                    <Label className='text-xs font-semibold'>Store Logo URL</Label>
+                    <Input
+                      className='h-8 text-xs mt-1'
+                      placeholder='https://...'
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                    />
+                  </div>
 
-              <div className='flex items-center justify-between text-xs py-1'>
-                <Label htmlFor='toggle-branch' className='cursor-pointer'>
-                  Show Branch Address & Contact
-                </Label>
-                <Switch
-                  id='toggle-branch'
-                  checked={showBranchInfo}
-                  onCheckedChange={setShowBranchInfo}
-                />
-              </div>
+                  <div className='grid grid-cols-2 gap-2.5'>
+                    <div>
+                      <Label className='text-xs font-semibold'>Tax ID (الرقم الضريبي)</Label>
+                      <Input
+                        className='h-8 text-xs mt-1 font-mono'
+                        placeholder='300012345678901'
+                        value={taxNumber}
+                        onChange={(e) => setTaxNumber(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className='text-xs font-semibold'>Commercial Reg (السجل)</Label>
+                      <Input
+                        className='h-8 text-xs mt-1 font-mono'
+                        placeholder='1010203040'
+                        value={commercialReg}
+                        onChange={(e) => setCommercialReg(e.target.value)}
+                      />
+                    </div>
+                  </div>
 
-              <div className='flex items-center justify-between text-xs py-1'>
-                <Label htmlFor='toggle-cashier' className='cursor-pointer'>
-                  Show Cashier / Staff Operator Name
-                </Label>
-                <Switch
-                  id='toggle-cashier'
-                  checked={showCashierName}
-                  onCheckedChange={setShowCashierName}
-                />
+                  <div>
+                    <Label className='text-xs font-semibold'>Header Notice / Slogan</Label>
+                    <Input
+                      className='h-8 text-xs mt-1'
+                      placeholder='e.g., Thank you for shopping with us!'
+                      value={headerNotice}
+                      onChange={(e) => setHeaderNotice(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className='text-xs font-semibold'>Terms, Notes & Return Policy</Label>
+                    <Textarea
+                      rows={2}
+                      className='text-xs mt-1'
+                      placeholder='Return within 14 days with original receipt...'
+                      value={footerNotice}
+                      onChange={(e) => setFooterNotice(e.target.value)}
+                    />
+                  </div>
+                </TabsContent>
+
+                {/* 4. Toggles & Visibility */}
+                <TabsContent value='toggles' className='mt-0 space-y-3'>
+                  <div className='flex items-center justify-between py-1'>
+                    <Label htmlFor='tog-logo' className='cursor-pointer text-xs font-medium'>
+                      Display Store Logo
+                    </Label>
+                    <Switch id='tog-logo' checked={showLogo} onCheckedChange={setShowLogo} />
+                  </div>
+
+                  <div className='flex items-center justify-between py-1 border-t pt-2'>
+                    <Label htmlFor='tog-qr' className='cursor-pointer text-xs font-medium'>
+                      Display QR Verification Code
+                    </Label>
+                    <Switch id='tog-qr' checked={showQrCode} onCheckedChange={setShowQrCode} />
+                  </div>
+
+                  {showQrCode && (
+                    <div className='space-y-1.5 pl-4 border-l-2 border-primary/30'>
+                      <Label className='text-[11px] text-muted-foreground'>QR Code Position</Label>
+                      <Select value={qrPosition} onValueChange={setQrPosition}>
+                        <SelectTrigger className='h-7 text-xs'>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value='FOOTER_RIGHT'>Footer Right</SelectItem>
+                          <SelectItem value='FOOTER_CENTER'>Footer Center</SelectItem>
+                          <SelectItem value='HEADER_RIGHT'>Header Top Right</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className='flex items-center justify-between py-1 border-t pt-2'>
+                    <Label htmlFor='tog-tax' className='cursor-pointer text-xs font-medium'>
+                      Display Tax Breakdown & VAT
+                    </Label>
+                    <Switch
+                      id='tog-tax'
+                      checked={showTaxDetails}
+                      onCheckedChange={setShowTaxDetails}
+                    />
+                  </div>
+
+                  <div className='flex items-center justify-between py-1 border-t pt-2'>
+                    <Label htmlFor='tog-branch' className='cursor-pointer text-xs font-medium'>
+                      Display Branch Location & Address
+                    </Label>
+                    <Switch
+                      id='tog-branch'
+                      checked={showBranchInfo}
+                      onCheckedChange={setShowBranchInfo}
+                    />
+                  </div>
+
+                  <div className='flex items-center justify-between py-1 border-t pt-2'>
+                    <Label htmlFor='tog-cashier' className='cursor-pointer text-xs font-medium'>
+                      Display Cashier Name
+                    </Label>
+                    <Switch
+                      id='tog-cashier'
+                      checked={showCashierName}
+                      onCheckedChange={setShowCashierName}
+                    />
+                  </div>
+
+                  <div className='flex items-center justify-between py-1 border-t pt-2'>
+                    <Label htmlFor='tog-barcode' className='cursor-pointer text-xs font-medium'>
+                      Display Invoice Barcode
+                    </Label>
+                    <Switch
+                      id='tog-barcode'
+                      checked={showBarcode}
+                      onCheckedChange={setShowBarcode}
+                    />
+                  </div>
+
+                  <div className='flex items-center justify-between py-1 border-t pt-2'>
+                    <Label htmlFor='tog-watermark' className='cursor-pointer text-xs font-medium flex items-center gap-1.5'>
+                      <Stamp className='size-3.5 text-primary' /> Diagonal Watermark Stamp
+                    </Label>
+                    <Switch
+                      id='tog-watermark'
+                      checked={showWatermark}
+                      onCheckedChange={setShowWatermark}
+                    />
+                  </div>
+
+                  {showWatermark && (
+                    <div className='space-y-1.5 pl-4 border-l-2 border-primary/30'>
+                      <Label className='text-[11px] text-muted-foreground'>Watermark Text</Label>
+                      <Input
+                        className='h-7 text-xs font-bold uppercase'
+                        placeholder='PAID / مدفوع'
+                        value={watermarkText}
+                        onChange={(e) => setWatermarkText(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </TabsContent>
               </div>
-            </Card>
+            </Tabs>
           </div>
 
-          {/* Live Preview Column */}
-          <div className='lg:col-span-7 sticky top-20'>
-            <div className='flex items-center justify-between mb-2'>
-              <div className='flex items-center gap-2 text-xs font-semibold text-muted-foreground'>
-                <Sparkles className='size-4 text-primary' />
-                <span>Real-Time Invoice Preview ({layoutStyle} - {paperSize})</span>
+          {/* RIGHT: Live Preview Panel (Pinned & Perfectly Centered in Viewport) */}
+          <div className='lg:col-span-7 flex flex-col h-full overflow-hidden border border-border/60 rounded-xl bg-muted/30 shadow-2xs'>
+            {/* Preview Toolbar */}
+            <div className='p-2.5 px-4 border-b border-border/60 bg-muted/60 flex items-center justify-between shrink-0'>
+              <div className='flex items-center gap-2'>
+                <Eye className='size-3.5 text-primary' />
+                <span className='font-bold text-xs'>Live Invoice Preview</span>
+                <Badge variant='outline' className='text-[10px] py-0 px-1 font-mono uppercase'>
+                  {layoutStyle} • {paperSize}
+                </Badge>
               </div>
-              <Badge variant='secondary' className='text-[10px]'>
-                Interactive Sample
-              </Badge>
+
+              {/* Zoom Controls */}
+              <div className='flex items-center gap-1.5'>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='size-7'
+                  onClick={() => setPreviewScale((s) => Math.max(0.6, s - 0.05))}
+                  title='Zoom Out'
+                >
+                  <ZoomOut className='size-3.5' />
+                </Button>
+                <span className='text-[11px] font-mono w-10 text-center font-semibold text-muted-foreground'>
+                  {Math.round(previewScale * 100)}%
+                </span>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='size-7'
+                  onClick={() => setPreviewScale((s) => Math.min(1.2, s + 0.05))}
+                  title='Zoom In'
+                >
+                  <ZoomIn className='size-3.5' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='size-7'
+                  onClick={() => setPreviewScale(0.85)}
+                  title='Fit View'
+                >
+                  <Maximize2 className='size-3.5' />
+                </Button>
+              </div>
             </div>
 
-            {/* Paper Preview Container */}
-            <div className='rounded-2xl border border-border/80 bg-muted/40 p-4 sm:p-6 shadow-xs flex justify-center overflow-x-auto'>
+            {/* Scrollable / Centered Preview Canvas */}
+            <div className='flex-1 overflow-auto p-4 flex items-start justify-center'>
               <div
-                className={`bg-white text-zinc-900 rounded-xl shadow-lg p-6 sm:p-8 transition-all font-sans ${
-                  paperSize === '80MM' || layoutStyle === 'THERMAL_POS'
-                    ? 'w-full max-w-[360px] text-xs leading-relaxed'
-                    : 'w-full max-w-[620px] text-xs'
-                }`}
                 style={{
-                  borderTop: `6px solid ${primaryColor}`,
+                  transform: `scale(${previewScale})`,
+                  transformOrigin: 'top center',
+                  transition: 'transform 0.15s ease',
                 }}
+                className={`relative bg-white text-zinc-900 shadow-xl border border-zinc-200 p-6 sm:p-7 shrink-0 ${getFontFamilyClass()} ${getBorderRadiusClass()} ${
+                  paperSize === '80MM' || layoutStyle === 'THERMAL_POS'
+                    ? 'w-[360px] text-xs'
+                    : 'w-[580px] text-xs'
+                }`}
               >
-                {/* Header */}
-                <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4 border-zinc-200'>
-                  <div className='flex items-center gap-3'>
-                    {showLogo && logoUrl && (
-                      <img
-                        src={logoUrl}
-                        alt='Store Logo'
-                        className='size-12 object-contain rounded-md border border-zinc-200'
-                        onError={(e) => {
-                          ;(e.target as HTMLElement).style.display = 'none'
-                        }}
-                      />
-                    )}
+                {/* Optional Watermark */}
+                {showWatermark && (
+                  <div className='absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden'>
+                    <span className='text-zinc-200/70 font-black text-6xl tracking-widest -rotate-45 uppercase border-4 border-dashed border-zinc-200/60 p-4 rounded-xl'>
+                      {watermarkText || 'PAID'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Header Banner according to headerStyle */}
+                {headerStyle === 'BORDER_TOP' && (
+                  <div
+                    className='h-1.5 -mx-6 -mt-6 sm:-mx-7 sm:-mt-7 mb-4'
+                    style={{ backgroundColor: primaryColor }}
+                  />
+                )}
+
+                {headerStyle === 'SOLID_BANNER' && (
+                  <div
+                    className='-mx-6 -mt-6 sm:-mx-7 sm:-mt-7 p-4 mb-4 text-white flex items-center justify-between'
+                    style={{ backgroundColor: primaryColor }}
+                  >
                     <div>
-                      <h3
-                        className='text-base font-bold tracking-tight'
-                        style={{ color: primaryColor }}
-                      >
-                        {businessName || currentMerchant?.name || 'My Store Name'}
+                      <h3 className='font-bold text-base'>
+                        {businessName || currentMerchant?.name || 'My Store'}
                       </h3>
-                      {showBranchInfo && currentBranch && (
-                        <p className='text-[11px] text-zinc-500'>
-                          {currentBranch.name} • {currentBranch.address || 'Cairo, Egypt'}
-                        </p>
-                      )}
-                      {taxNumber && (
-                        <p className='text-[10px] text-zinc-500 font-mono'>
-                          Tax ID: {taxNumber}
-                        </p>
-                      )}
-                      {commercialReg && (
-                        <p className='text-[10px] text-zinc-500 font-mono'>
-                          CR: {commercialReg}
-                        </p>
-                      )}
+                      <p className='text-[10px] text-white/80'>Official Sales Receipt</p>
                     </div>
+                    <span className='font-mono font-bold text-xs bg-white/20 px-2 py-0.5 rounded'>
+                      #INV-2026-001
+                    </span>
                   </div>
+                )}
 
-                  {/* Invoice Meta */}
-                  <div className='text-left sm:text-right'>
-                    <div
-                      className='inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs text-white'
-                      style={{ backgroundColor: primaryColor }}
+                {headerStyle === 'SUBTLE_TINT' && (
+                  <div
+                    className='-mx-6 -mt-6 sm:-mx-7 sm:-mt-7 p-4 mb-4 border-b flex items-center justify-between'
+                    style={{ backgroundColor: `${primaryColor}12` }}
+                  >
+                    <div>
+                      <h3 className='font-bold text-base' style={{ color: primaryColor }}>
+                        {businessName || currentMerchant?.name || 'My Store'}
+                      </h3>
+                      <p className='text-[10px] text-zinc-500'>Tax Sales Invoice</p>
+                    </div>
+                    <span
+                      className='font-mono font-bold text-xs px-2 py-0.5 rounded'
+                      style={{ color: primaryColor, backgroundColor: `${primaryColor}25` }}
                     >
-                      TAX INVOICE
-                    </div>
-                    <p className='font-mono font-bold text-xs text-zinc-800 mt-1'>
-                      #INV-2026-0089
-                    </p>
-                    <p className='text-[10px] text-zinc-500'>
-                      Date: {new Date().toLocaleDateString('en-GB')}
-                    </p>
-                    {showCashierName && (
-                      <p className='text-[10px] text-zinc-500'>Cashier: Sherif A.</p>
-                    )}
+                      #INV-2026-001
+                    </span>
                   </div>
-                </div>
+                )}
 
-                {/* Header Slogan/Notice */}
+                {/* Main Header Info (if not solid banner) */}
+                {headerStyle !== 'SOLID_BANNER' && headerStyle !== 'SUBTLE_TINT' && (
+                  <div className='flex items-start justify-between border-b pb-3.5 border-zinc-200'>
+                    <div className='flex items-center gap-3'>
+                      {showLogo && logoUrl && (
+                        <img
+                          src={logoUrl}
+                          alt='Logo'
+                          className='size-11 object-contain rounded border border-zinc-200'
+                          onError={(e) => {
+                            ;(e.target as HTMLElement).style.display = 'none'
+                          }}
+                        />
+                      )}
+                      <div>
+                        <h3 className='text-base font-bold' style={{ color: primaryColor }}>
+                          {businessName || currentMerchant?.name || 'My Store'}
+                        </h3>
+                        {showBranchInfo && currentBranch && (
+                          <p className='text-[10px] text-zinc-500'>
+                            {currentBranch.name} • {currentBranch.address || 'Cairo, Egypt'}
+                          </p>
+                        )}
+                        {taxNumber && (
+                          <p className='text-[9px] text-zinc-500 font-mono'>Tax ID: {taxNumber}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className='text-right'>
+                      <div
+                        className='inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold text-white'
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        TAX INVOICE
+                      </div>
+                      <p className='font-mono font-bold text-xs mt-1'>#INV-2026-001</p>
+                      <p className='text-[9px] text-zinc-400'>
+                        Date: {new Date().toLocaleDateString('en-GB')}
+                      </p>
+                      {showQrCode && qrPosition === 'HEADER_RIGHT' && (
+                        <div className='size-10 bg-zinc-100 border p-0.5 mt-1 ml-auto flex items-center justify-center rounded'>
+                          <QrCode className='size-9 text-zinc-800' />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Slogan / Notice */}
                 {headerNotice && (
-                  <div className='py-2 text-center text-[11px] font-medium text-zinc-600 bg-zinc-50 border-b border-zinc-100'>
+                  <div className='py-1.5 text-center text-[10px] font-medium text-zinc-600 bg-zinc-50 border-b border-zinc-100 my-2 rounded'>
                     {headerNotice}
                   </div>
                 )}
 
                 {/* Customer Details Box */}
-                <div className='my-3 p-2.5 bg-zinc-50 rounded-lg border border-zinc-200/80 flex justify-between items-center text-[11px]'>
+                <div className='my-2.5 p-2 bg-zinc-50 rounded border border-zinc-200 text-[10px] flex justify-between items-center'>
                   <div>
-                    <span className='text-zinc-500'>Billed To: </span>
-                    <span className='font-bold text-zinc-800'>Ahmed Hassan</span>
-                    <span className='text-zinc-500 ml-2'>• 01012345678</span>
+                    <span className='text-zinc-400'>Billed To: </span>
+                    <span className='font-bold text-zinc-800'>Hassan Ibrahim</span>
+                    <span className='text-zinc-400 ml-1.5'>• 01099887766</span>
                   </div>
-                  <Badge variant='outline' className='text-[9px] bg-emerald-50 text-emerald-700 border-emerald-300'>
-                    PAID (CASH)
-                  </Badge>
+                  {showCashierName && (
+                    <span className='text-zinc-500 font-medium'>Cashier: Omar K.</span>
+                  )}
                 </div>
 
-                {/* Items Table */}
-                <table className='w-full my-3 border-collapse text-left'>
+                {/* Items Table with Selected Table Style */}
+                <table className='w-full my-2.5 border-collapse text-left text-[11px]'>
                   <thead>
                     <tr
-                      className='text-[11px] font-bold border-b border-zinc-300'
+                      className={`text-[10px] font-bold ${
+                        tableStyle === 'GRID'
+                          ? 'border border-zinc-300 bg-zinc-100'
+                          : 'border-b border-zinc-300'
+                      }`}
                       style={{ color: primaryColor }}
                     >
-                      <th className='py-1.5'>Item</th>
-                      <th className='py-1.5 text-center'>Qty</th>
-                      <th className='py-1.5 text-right'>Price</th>
-                      <th className='py-1.5 text-right'>Total</th>
+                      <th className='py-1.5 px-2'>Item Name</th>
+                      <th className='py-1.5 px-2 text-center'>Qty</th>
+                      <th className='py-1.5 px-2 text-right'>Price</th>
+                      <th className='py-1.5 px-2 text-right'>Total</th>
                     </tr>
                   </thead>
-                  <tbody className='divide-y divide-zinc-100 text-[11px] text-zinc-700'>
+                  <tbody
+                    className={
+                      tableStyle === 'STRIPED'
+                        ? 'divide-y divide-zinc-100 text-zinc-700'
+                        : tableStyle === 'GRID'
+                        ? 'border border-zinc-300 divide-y divide-zinc-200 text-zinc-700'
+                        : 'divide-y divide-zinc-100 text-zinc-700'
+                    }
+                  >
                     {sampleItems.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className='py-1.5 font-medium'>{item.name}</td>
-                        <td className='py-1.5 text-center font-mono'>{item.qty}</td>
-                        <td className='py-1.5 text-right font-mono'>{item.price.toFixed(2)}</td>
-                        <td className='py-1.5 text-right font-mono font-bold'>{item.total.toFixed(2)}</td>
+                      <tr
+                        key={idx}
+                        className={
+                          tableStyle === 'STRIPED' && idx % 2 === 1 ? 'bg-zinc-50/70' : ''
+                        }
+                      >
+                        <td className='py-1 px-2 font-medium'>
+                          <div>{item.name}</div>
+                          <div className='text-[8px] text-zinc-400 font-mono'>{item.barcode}</div>
+                        </td>
+                        <td className='py-1 px-2 text-center font-mono'>{item.qty}</td>
+                        <td className='py-1 px-2 text-right font-mono'>{formatPrice(item.price)}</td>
+                        <td className='py-1 px-2 text-right font-mono font-bold'>
+                          {formatPrice(item.total)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
-                {/* Totals Section */}
-                <div className='border-t border-zinc-200 pt-3 flex flex-col items-end space-y-1 text-[11px]'>
-                  <div className='flex justify-between w-48 text-zinc-600'>
+                {/* Summary / Totals */}
+                <div className='border-t border-zinc-200 pt-2 flex flex-col items-end space-y-1 text-[10px]'>
+                  <div className='flex justify-between w-44 text-zinc-600'>
                     <span>Subtotal:</span>
-                    <span className='font-mono font-semibold'>{sampleSubtotal.toFixed(2)} EGP</span>
+                    <span className='font-mono font-semibold'>{formatPrice(sampleSubtotal)}</span>
                   </div>
                   {showTaxDetails && (
-                    <div className='flex justify-between w-48 text-zinc-600'>
+                    <div className='flex justify-between w-44 text-zinc-600'>
                       <span>VAT (14%):</span>
-                      <span className='font-mono font-semibold'>{sampleTax.toFixed(2)} EGP</span>
+                      <span className='font-mono font-semibold'>{formatPrice(sampleTax)}</span>
                     </div>
                   )}
                   <div
-                    className='flex justify-between w-48 pt-1.5 border-t border-zinc-300 font-bold text-xs text-zinc-900'
+                    className='flex justify-between w-44 pt-1 border-t border-zinc-300 font-bold text-xs text-zinc-900'
                     style={{ color: primaryColor }}
                   >
                     <span>Grand Total:</span>
-                    <span className='font-mono text-sm'>{sampleGrandTotal.toFixed(2)} EGP</span>
+                    <span className='font-mono text-sm'>{formatPrice(sampleGrandTotal)}</span>
                   </div>
                 </div>
 
-                {/* Footer with QR Code & Terms */}
-                <div className='mt-6 pt-3 border-t border-dashed border-zinc-300 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left'>
-                  {footerNotice && (
-                    <p className='text-[10px] text-zinc-500 max-w-xs leading-relaxed'>
-                      {footerNotice}
-                    </p>
-                  )}
-                  {showQrCode && (
-                    <div className='flex flex-col items-center shrink-0'>
-                      <div className='size-14 bg-zinc-100 border border-zinc-300 rounded p-1 flex items-center justify-center'>
-                        <QrCode className='size-12 text-zinc-800' />
+                {/* Footer Notes & QR & Barcode */}
+                <div className='mt-4 pt-3 border-t border-dashed border-zinc-300 flex flex-col gap-2'>
+                  <div
+                    className={`flex items-center justify-between text-[9px] text-zinc-500 ${
+                      qrPosition === 'FOOTER_CENTER' ? 'flex-col text-center gap-2' : ''
+                    }`}
+                  >
+                    {footerNotice && (
+                      <p className='max-w-[280px] leading-relaxed'>{footerNotice}</p>
+                    )}
+                    {showQrCode && qrPosition !== 'HEADER_RIGHT' && (
+                      <div className='flex flex-col items-center shrink-0'>
+                        <div className='size-12 bg-zinc-50 border p-0.5 rounded flex items-center justify-center'>
+                          <QrCode className='size-10 text-zinc-800' />
+                        </div>
+                        <span className='text-[7px] text-zinc-400 mt-0.5 font-mono'>
+                          ZATCA E-Invoice
+                        </span>
                       </div>
-                      <span className='text-[8px] text-zinc-400 mt-0.5 font-mono'>Verify E-Invoice</span>
+                    )}
+                  </div>
+
+                  {/* Printable Barcode */}
+                  {showBarcode && (
+                    <div className='pt-2 flex flex-col items-center justify-center border-t border-zinc-100'>
+                      <div className='flex items-center gap-1 text-zinc-700 opacity-80'>
+                        <BarcodeIcon className='h-6 w-36' />
+                      </div>
+                      <span className='text-[8px] font-mono text-zinc-400 tracking-widest'>
+                        *INV-2026-001*
+                      </span>
                     </div>
                   )}
                 </div>
@@ -638,6 +1103,6 @@ export function InvoiceDesigner() {
           </div>
         </div>
       </Main>
-    </>
+    </div>
   )
 }

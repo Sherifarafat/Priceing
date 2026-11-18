@@ -220,6 +220,15 @@ model InvoiceTemplate {
   showBranchInfo  Boolean  @default(true)
   showCashierName Boolean  @default(true)
   paperSize       String   @default("A4") // A4 | 80MM
+  fontFamily      String   @default("sans") // sans | serif | mono | cairo
+  headerStyle     String   @default("BORDER_TOP") // BORDER_TOP | SOLID_BANNER | SUBTLE_TINT | MINIMAL
+  tableStyle      String   @default("STRIPED") // STRIPED | BORDERED | MINIMAL | GRID
+  borderRadius    String   @default("ROUNDED_MD") // ROUNDED_NONE | ROUNDED_MD | ROUNDED_LG
+  watermarkText   String?  @default("PAID")
+  showWatermark   Boolean  @default(false)
+  qrPosition      String   @default("FOOTER_RIGHT") // HEADER_RIGHT | FOOTER_CENTER | FOOTER_RIGHT
+  showBarcode     Boolean  @default(true)
+  currencyPosition String  @default("AFTER") // BEFORE | AFTER
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

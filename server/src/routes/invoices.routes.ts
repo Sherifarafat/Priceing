@@ -89,6 +89,15 @@ router.put('/template', authenticate, async (req: AuthRequest, res: Response) =>
       showBranchInfo,
       showCashierName,
       paperSize,
+      fontFamily,
+      headerStyle,
+      tableStyle,
+      borderRadius,
+      watermarkText,
+      showWatermark,
+      qrPosition,
+      showBarcode,
+      currencyPosition,
     } = req.body
 
     const template = await prisma.invoiceTemplate.upsert({
@@ -111,6 +120,15 @@ router.put('/template', authenticate, async (req: AuthRequest, res: Response) =>
         showBranchInfo: showBranchInfo !== undefined ? Boolean(showBranchInfo) : true,
         showCashierName: showCashierName !== undefined ? Boolean(showCashierName) : true,
         paperSize: paperSize || 'A4',
+        fontFamily: fontFamily || 'sans',
+        headerStyle: headerStyle || 'BORDER_TOP',
+        tableStyle: tableStyle || 'STRIPED',
+        borderRadius: borderRadius || 'ROUNDED_MD',
+        watermarkText: watermarkText || null,
+        showWatermark: showWatermark !== undefined ? Boolean(showWatermark) : false,
+        qrPosition: qrPosition || 'FOOTER_RIGHT',
+        showBarcode: showBarcode !== undefined ? Boolean(showBarcode) : true,
+        currencyPosition: currencyPosition || 'AFTER',
       },
       update: {
         templateName: templateName !== undefined ? templateName : undefined,
@@ -129,6 +147,15 @@ router.put('/template', authenticate, async (req: AuthRequest, res: Response) =>
         showBranchInfo: showBranchInfo !== undefined ? Boolean(showBranchInfo) : undefined,
         showCashierName: showCashierName !== undefined ? Boolean(showCashierName) : undefined,
         paperSize: paperSize !== undefined ? paperSize : undefined,
+        fontFamily: fontFamily !== undefined ? fontFamily : undefined,
+        headerStyle: headerStyle !== undefined ? headerStyle : undefined,
+        tableStyle: tableStyle !== undefined ? tableStyle : undefined,
+        borderRadius: borderRadius !== undefined ? borderRadius : undefined,
+        watermarkText: watermarkText !== undefined ? watermarkText : undefined,
+        showWatermark: showWatermark !== undefined ? Boolean(showWatermark) : undefined,
+        qrPosition: qrPosition !== undefined ? qrPosition : undefined,
+        showBarcode: showBarcode !== undefined ? Boolean(showBarcode) : undefined,
+        currencyPosition: currencyPosition !== undefined ? currencyPosition : undefined,
       },
     })
 
