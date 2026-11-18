@@ -21,18 +21,13 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
   if (role === 'SUPER_ADMIN') {
     return [
       {
-        title: 'Platform Overview',
+        title: '',
         items: [
           {
             title: 'Platform Dashboard',
             url: '/',
             icon: LayoutDashboard,
           },
-        ],
-      },
-      {
-        title: 'Merchant Network',
-        items: [
           {
             title: 'Merchants',
             url: '/merchants',
@@ -43,11 +38,6 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
             url: '/branches',
             icon: Store,
           },
-        ],
-      },
-      {
-        title: 'Catalog & Services',
-        items: [
           {
             title: 'Product Hub',
             icon: Boxes,
@@ -85,21 +75,11 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
               },
             ],
           },
-        ],
-      },
-      {
-        title: 'Intelligence & Analytics',
-        items: [
           {
             title: 'Reports & Analytics',
             url: '/reports',
             icon: BarChart3,
           },
-        ],
-      },
-      {
-        title: 'Security & Governance',
-        items: [
           {
             title: 'Roles',
             icon: ShieldCheck,
