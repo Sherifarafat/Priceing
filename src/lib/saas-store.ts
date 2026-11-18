@@ -175,6 +175,9 @@ export interface SaaSState {
   executeBulkDelete: (barcodes: string[]) => number
 
   // Staff User Management
+  createUser: (data: Partial<User> & { password?: string }) => Promise<User>
+  updateUser: (id: string, data: Partial<User> & { password?: string }) => Promise<void>
+  deleteUser: (id: string) => Promise<void>
   createStaffUser: (name: string, email: string, permissions: Record<StaffPermissionKey, boolean>) => User
   updateStaffUser: (id: string, name: string, status: EntityStatus) => void
   updateStaffPermissions: (id: string, permissions: Record<StaffPermissionKey, boolean>) => void
@@ -849,7 +852,59 @@ export const useSaaSStore = create<SaaSState>()(
         return count
       },
 
-      // Staff Management
+      // Staff & General User Management
+      createUser: async (data) => {
+        const id = `user-${Date.now()}`
+        const now = new Date().toISOString()
+        const newUser: User = {
+          id,
+          name: data.name || (data.email ? data.email.split('@')[0] : 'User'),
+          email: data.email || '',
+          username: data.username || (data.email ? data.email.split('@')[0] : undefined),
+          role: data.role || 'MERCHANT_STAFF',
+          merchantId: data.merchantId || null,
+          status: data.status || 'Active',
+          permissions: data.permissions,
+          createdAt: now,
+        }
+        set((state) => ({ users: [newUser, ...state.users] }))
+
+        try {
+          const saved = await api.users.create(data)
+          if (saved && saved.id) {
+            set((state) => ({
+              users: state.users.map((u) => (u.id === id ? { ...u, id: saved.id } : u)),
+            }))
+            return saved
+          }
+        } catch (err: any) {
+          console.warn('Failed to sync user to backend DB:', err.message)
+        }
+        return newUser
+      },
+
+      updateUser: async (id, data) => {
+        set((state) => ({
+          users: state.users.map((u) => (u.id === id ? { ...u, ...data } : u)),
+        }))
+        try {
+          await api.users.update(id, data)
+        } catch (err: any) {
+          console.warn('Failed to update user in DB:', err.message)
+        }
+      },
+
+      deleteUser: async (id) => {
+        set((state) => ({
+          users: state.users.filter((u) => u.id !== id),
+        }))
+        try {
+          await api.users.delete(id)
+        } catch (err: any) {
+          console.warn('Failed to delete user from DB:', err.message)
+        }
+      },
+
       createStaffUser: (name, email, permissions) => {
         const user = get().currentUser
         const merchantId = user.merchantId!
@@ -866,6 +921,18 @@ export const useSaaSStore = create<SaaSState>()(
           createdAt: now,
         }
         set((state) => ({ users: [...state.users, newStaff] }))
+
+        api.users
+          .create({ name, email, role: 'MERCHANT_STAFF', merchantId, permissions, password: 'password123' })
+          .then((saved) => {
+            if (saved && saved.id) {
+              set((state) => ({
+                users: state.users.map((u) => (u.id === id ? { ...u, id: saved.id } : u)),
+              }))
+            }
+          })
+          .catch((err) => console.warn('Failed to create staff user in DB:', err.message))
+
         return newStaff
       },
 
@@ -1203,7 +1270,7 @@ export const useSaaSStore = create<SaaSState>()(
 
       fetchFromBackend: async () => {
         try {
-          const [merchants, branches, categories, products, scats, sitems, ssubs, saddons] = await Promise.all([
+          const [merchants, branches, categories, products, scats, sitems, ssubs, saddons, users] = await Promise.all([
             api.merchants.list().catch(() => []),
             api.branches.list().catch(() => []),
             api.categories.list().catch(() => []),
@@ -1212,6 +1279,7 @@ export const useSaaSStore = create<SaaSState>()(
             api.services.items.list().catch(() => []),
             api.services.subServices.list().catch(() => []),
             api.services.addons.list().catch(() => []),
+            api.users.list().catch(() => []),
           ])
 
           set((state) => ({
@@ -1223,6 +1291,7 @@ export const useSaaSStore = create<SaaSState>()(
             serviceItems: sitems.length > 0 ? sitems : state.serviceItems,
             subServices: ssubs.length > 0 ? ssubs : state.subServices,
             productAddons: saddons.length > 0 ? saddons : state.productAddons,
+            users: users.length > 0 ? users : state.users,
           }))
         } catch (error) {
           console.warn('Backend sync failed:', error)

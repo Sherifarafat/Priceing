@@ -9,6 +9,7 @@ import categoriesRoutes from './routes/categories.routes.js'
 import servicesRoutes from './routes/services.routes.js'
 import scanRoutes from './routes/scan.routes.js'
 import reportsRoutes from './routes/reports.routes.js'
+import usersRoutes from './routes/users.routes.js'
 
 dotenv.config()
 
@@ -42,6 +43,7 @@ app.use('/api/categories', categoriesRoutes)
 app.use('/api/services', servicesRoutes)
 app.use('/api/scan', scanRoutes)
 app.use('/api/reports', reportsRoutes)
+app.use('/api/users', usersRoutes)
 
 // Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -39,12 +39,28 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(credentials),
       }),
+    register: (data: { name?: string; email: string; username?: string; password?: string; role?: string; merchantId?: string }) =>
+      request<{ token: string; user: User }>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     me: () => request<{ user: User }>('/auth/me'),
     switchDemoUser: (userId: string) =>
       request<{ token: string; user: User }>('/auth/switch-demo-user', {
         method: 'POST',
         body: JSON.stringify({ userId }),
       }),
+  },
+
+  // Users
+  users: {
+    list: () => request<User[]>('/users'),
+    create: (data: Partial<User> & { password?: string }) =>
+      request<User>('/users', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<User> & { password?: string }) =>
+      request<User>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/users/${id}`, { method: 'DELETE' }),
   },
 
   // Merchants

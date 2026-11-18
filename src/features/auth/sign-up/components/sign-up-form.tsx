@@ -2,10 +2,13 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useNavigate } from '@tanstack/react-router'
 import { Loader2, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { IconFacebook, IconGithub } from '@/assets/brand-icons'
-import { sleep, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { api } from '@/lib/api-client'
+import { useSaaSStore } from '@/lib/saas-store'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -40,6 +43,7 @@ export function SignUpForm({
   ...props
 }: React.HTMLAttributes<HTMLFormElement>) {
   const [isLoading, setIsLoading] = useState(false)
+  const navigate = useNavigate()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,17 +54,21 @@ export function SignUpForm({
     },
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
+  async function onSubmit(data: z.infer<typeof formSchema>) {
     setIsLoading(true)
-
-    toast.promise(sleep(2000), {
-      loading: 'Creating account...',
-      success: () => {
-        setIsLoading(false)
-        return `Account created for ${data.email}.`
-      },
-      error: 'Error',
-    })
+    try {
+      await api.auth.register({
+        email: data.email,
+        password: data.password,
+      })
+      toast.success(`Account created successfully for ${data.email}!`)
+      await useSaaSStore.getState().fetchFromBackend()
+      navigate({ to: '/sign-in' })
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create account')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

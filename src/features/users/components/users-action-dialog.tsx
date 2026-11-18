@@ -3,7 +3,9 @@
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { showSubmittedData } from '@/lib/show-submitted-data'
+import { toast } from 'sonner'
+import { useSaaSStore } from '@/lib/saas-store'
+import { UserRole } from '@/types/saas'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -127,9 +129,41 @@ export function UsersActionDialog({
         },
   })
 
-  const onSubmit = (values: UserForm) => {
+  const onSubmit = async (values: UserForm) => {
+    try {
+      const roleMap: Record<string, UserRole> = {
+        superadmin: 'SUPER_ADMIN',
+        admin: 'MERCHANT_MANAGER',
+        manager: 'MERCHANT_MANAGER',
+        cashier: 'MERCHANT_STAFF',
+      }
+      const saasRole = roleMap[values.role] || 'MERCHANT_STAFF'
+      const fullName = `${values.firstName} ${values.lastName}`.trim()
+
+      if (isEdit && currentRow) {
+        await useSaaSStore.getState().updateUser(currentRow.id, {
+          name: fullName,
+          email: values.email,
+          username: values.username,
+          role: saasRole,
+          password: values.password || undefined,
+        })
+        toast.success(`User ${fullName} updated successfully.`)
+      } else {
+        await useSaaSStore.getState().createUser({
+          name: fullName,
+          email: values.email,
+          username: values.username,
+          role: saasRole,
+          password: values.password,
+          status: 'Active',
+        })
+        toast.success(`User ${fullName} created successfully.`)
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save user')
+    }
     form.reset()
-    showSubmittedData(values)
     onOpenChange(false)
   }
 
