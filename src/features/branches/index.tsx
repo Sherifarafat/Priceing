@@ -107,7 +107,7 @@ export function BranchesView() {
     }
 
     if (editingBranch) {
-      updateBranch(editingBranch.id, branchName.trim(), branchAddress.trim(), branchImageUrl.trim())
+      updateBranch(editingBranch.id, branchName.trim(), branchAddress.trim(), branchImageUrl.trim(), targetMerchantId)
       toast.success(`Branch "${branchName}" updated successfully`)
     } else {
       createBranch(targetMerchantId, branchName.trim(), branchAddress.trim(), branchImageUrl.trim())
@@ -409,7 +409,6 @@ export function BranchesView() {
                     <Select
                       value={targetMerchantId || merchants[0]?.id}
                       onValueChange={(val) => setTargetMerchantId(val)}
-                      disabled={!!editingBranch}
                     >
                       <SelectTrigger className='w-full'>
                         <SelectValue placeholder='Select merchant' />

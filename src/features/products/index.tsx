@@ -45,6 +45,7 @@ export function ProductsView() {
     currencies,
     categories,
     products,
+    fees,
     createProduct,
     updateProduct,
     deleteProduct,
@@ -59,6 +60,9 @@ export function ProductsView() {
   // Scoped to this merchant only! (Section 2.1)
   const merchantProducts = products.filter((p) => p.merchantId === merchantId)
   const merchantCategories = categories.filter((c) => c.merchantId === merchantId)
+  const applicableFees = (fees || []).filter(
+    (f) => f.status === 'Active' && (!f.merchantId || f.merchantId === merchantId)
+  )
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = React.useState('')
@@ -79,6 +83,7 @@ export function ProductsView() {
   const [formImageUrl, setFormImageUrl] = React.useState('')
   const [formCategoryId, setFormCategoryId] = React.useState<string>('')
   const [formStatus, setFormStatus] = React.useState<EntityStatus>('Active')
+  const [formFeeIds, setFormFeeIds] = React.useState<string[]>([])
 
   // Reset form
   const resetForm = () => {
@@ -89,6 +94,7 @@ export function ProductsView() {
     setFormImageUrl('')
     setFormCategoryId('')
     setFormStatus('Active')
+    setFormFeeIds([])
     setFormError(null)
   }
 
@@ -106,6 +112,7 @@ export function ProductsView() {
     setFormImageUrl(prod.imageUrl || '')
     setFormCategoryId(prod.categoryId || '')
     setFormStatus(prod.status)
+    setFormFeeIds(prod.feeIds || [])
     setFormError(null)
   }
 
@@ -137,6 +144,7 @@ export function ProductsView() {
         description: formDescription.trim(),
         imageUrl: formImageUrl.trim(),
         categoryId: formCategoryId || null,
+        feeIds: formFeeIds,
         status: formStatus,
       })
       if (!res.success) {
@@ -153,6 +161,7 @@ export function ProductsView() {
         description: formDescription.trim(),
         imageUrl: formImageUrl.trim(),
         categoryId: formCategoryId || null,
+        feeIds: formFeeIds,
         status: formStatus,
       })
       if (!res.success) {
@@ -332,8 +341,27 @@ export function ProductsView() {
                             </span>
                           )}
                         </td>
-                        <td className='p-3.5 font-bold font-mono text-sm text-foreground'>
-                          {currency.symbol} {prod.price.toFixed(2)}
+                        <td className='p-3.5'>
+                          <div className='font-bold font-mono text-sm text-foreground'>
+                            {currency.symbol} {prod.price.toFixed(2)}
+                          </div>
+                          {prod.feeIds && prod.feeIds.length > 0 && (
+                            <div className='flex flex-wrap gap-1 mt-1'>
+                              {prod.feeIds.map((fid) => {
+                                const fee = fees.find((f) => f.id === fid)
+                                if (!fee) return null
+                                return (
+                                  <Badge
+                                    key={fid}
+                                    variant='outline'
+                                    className='text-[10px] py-0 px-1.5 font-normal bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200/60'
+                                  >
+                                    +{fee.name} ({fee.type === 'PERCENTAGE' ? `${fee.value}%` : `${fee.value} EGP`})
+                                  </Badge>
+                                )
+                              })}
+                            </div>
+                          )}
                         </td>
                         <td className='p-3.5'>
                           <Badge
@@ -518,6 +546,53 @@ export function ProductsView() {
                   onChange={(e) => setFormDescription(e.target.value)}
                   className='w-full rounded-md border bg-background p-2 text-xs text-foreground'
                 />
+              </div>
+
+              {/* Applicable Fees & Taxes */}
+              <div>
+                <label className='font-semibold block mb-1.5'>
+                  Applied Fees & Taxes (الرسوم والضرائب)
+                </label>
+                {applicableFees.length === 0 ? (
+                  <div className='text-xs text-muted-foreground italic rounded-md border border-dashed p-2 text-center'>
+                    No fees defined yet. Create fees from the Fees & Taxes section in the sidebar.
+                  </div>
+                ) : (
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 border rounded-lg p-2.5 bg-muted/20'>
+                    {applicableFees.map((f) => {
+                      const isChecked = formFeeIds.includes(f.id)
+                      return (
+                        <label
+                          key={f.id}
+                          className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-colors text-xs ${
+                            isChecked
+                              ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800'
+                              : 'bg-background hover:bg-muted/50 border-border/60'
+                          }`}
+                        >
+                          <input
+                            type='checkbox'
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormFeeIds([...formFeeIds, f.id])
+                              } else {
+                                setFormFeeIds(formFeeIds.filter((id) => id !== f.id))
+                              }
+                            }}
+                            className='size-3.5 rounded text-emerald-600 accent-emerald-600'
+                          />
+                          <div className='min-w-0 flex-1'>
+                            <div className='font-medium text-foreground truncate'>{f.name}</div>
+                            <div className='text-[10px] text-muted-foreground'>
+                              {f.type === 'PERCENTAGE' ? `${f.value}% rate` : `${f.value} EGP fixed`}
+                            </div>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 

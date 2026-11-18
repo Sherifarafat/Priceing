@@ -42,7 +42,12 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' },
     })
 
-    res.json(products)
+    const formatted = products.map((p) => ({
+      ...p,
+      feeIds: p.feeIds ? (() => { try { return JSON.parse(p.feeIds) } catch { return [] } })() : [],
+    }))
+
+    res.json(formatted)
   } catch (error: any) {
     res.status(500).json({ error: error.message })
   }
@@ -68,7 +73,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const { name, barcode, price, stocks, description, imageUrl, categoryId, status } = req.body
+    const { name, barcode, price, stocks, description, imageUrl, categoryId, status, feeIds } = req.body
     if (!name || !barcode || price === undefined) {
       return res.status(400).json({ error: 'Name, barcode, and price are required' })
     }
@@ -100,6 +105,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
         imageUrl: imageUrl?.trim() || null,
         categoryId: categoryId || null,
         status: status || 'Active',
+        feeIds: feeIds ? JSON.stringify(feeIds) : null,
       },
       include: {
         category: { select: { id: true, name: true } },
@@ -134,7 +140,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Forbidden' })
     }
 
-    const { name, barcode, price, stocks, description, imageUrl, categoryId, status } = req.body
+    const { name, barcode, price, stocks, description, imageUrl, categoryId, status, feeIds } = req.body
 
     if (barcode && String(barcode).trim() !== existing.barcode) {
       const duplicate = await prisma.product.findFirst({
@@ -162,6 +168,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
         imageUrl: imageUrl !== undefined ? imageUrl : existing.imageUrl,
         categoryId: categoryId !== undefined ? categoryId : existing.categoryId,
         status: status !== undefined ? status : existing.status,
+        feeIds: feeIds !== undefined ? (Array.isArray(feeIds) ? JSON.stringify(feeIds) : feeIds) : undefined,
       },
       include: {
         category: { select: { id: true, name: true } },

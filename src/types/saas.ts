@@ -2,6 +2,19 @@ export type MerchantStatus = 'Pending' | 'Active' | 'Inactive' | 'Suspended'
 export type QRStatus = 'Active' | 'Revoked'
 export type UserRole = 'SUPER_ADMIN' | 'MERCHANT_MANAGER' | 'MERCHANT_STAFF'
 export type EntityStatus = 'Active' | 'Inactive'
+export type FeeType = 'PERCENTAGE' | 'FIXED'
+
+export interface Fee {
+  id: string
+  name: string
+  type: FeeType
+  value: number
+  description?: string
+  status: EntityStatus
+  merchantId?: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 export interface MerchantType {
   id: string
@@ -85,6 +98,7 @@ export interface Product {
   description?: string
   imageUrl?: string
   categoryId?: string | null // Nullable - set to null on category deletion
+  feeIds?: string[]
   status: EntityStatus
   createdAt: string
   updatedAt: string

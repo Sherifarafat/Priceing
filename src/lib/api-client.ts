@@ -1,4 +1,4 @@
-import { Branch, Category, Merchant, Product, ServiceCategory, ServiceItem, SubService, ProductAddon, User, AuditLog } from '@/types/saas'
+import { Branch, Category, Merchant, Product, ServiceCategory, ServiceItem, SubService, ProductAddon, User, AuditLog, Fee } from '@/types/saas'
 
 const BASE_URL = '/api'
 
@@ -206,5 +206,17 @@ export const api = {
         merchantChartData: Array<{ name: string; branches: number; products: number }>
       }>('/reports/analytics'),
     getAuditLogs: () => request<AuditLog[]>('/reports/audit-logs'),
+  },
+
+  // Fees & Taxes
+  fees: {
+    list: (params?: { merchantId?: string }) =>
+      request<Fee[]>(`/fees${params?.merchantId ? `?merchantId=${params.merchantId}` : ''}`),
+    create: (data: Partial<Fee>) =>
+      request<Fee>('/fees', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Fee>) =>
+      request<Fee>(`/fees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<{ success: boolean; message: string }>(`/fees/${id}`, { method: 'DELETE' }),
   },
 }

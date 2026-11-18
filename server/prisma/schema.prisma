@@ -91,6 +91,7 @@ model Product {
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   status      String    @default("Active") // Active | Inactive
+  feeIds      String?   // JSON string array of Fee IDs applied
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -180,4 +181,18 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model Fee {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   @default("PERCENTAGE") // PERCENTAGE | FIXED
+  value       Float    @default(0)
+  description String?
+  status      String   @default("Active") // Active | Inactive
+  merchantId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([merchantId])
 }

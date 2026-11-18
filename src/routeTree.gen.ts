@@ -36,6 +36,7 @@ import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedCurrenciesIndexRouteImport } from './routes/_authenticated/currencies/index'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 import { Route as AuthenticatedExcelIndexRouteImport } from './routes/_authenticated/excel/index'
+import { Route as AuthenticatedFeesIndexRouteImport } from './routes/_authenticated/fees/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
 import { Route as AuthenticatedMerchantTypesIndexRouteImport } from './routes/_authenticated/merchant-types/index'
 import { Route as AuthenticatedMerchantsIndexRouteImport } from './routes/_authenticated/merchants/index'
@@ -197,6 +198,11 @@ const AuthenticatedExcelIndexRoute = AuthenticatedExcelIndexRouteImport.update({
   path: '/excel/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFeesIndexRoute = AuthenticatedFeesIndexRouteImport.update({
+  id: '/fees/',
+  path: '/fees/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHelpCenterIndexRoute =
   AuthenticatedHelpCenterIndexRouteImport.update({
     id: '/help-center/',
@@ -344,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/currencies/': typeof AuthenticatedCurrenciesIndexRoute
   '/excel/': typeof AuthenticatedExcelIndexRoute
+  '/fees/': typeof AuthenticatedFeesIndexRoute
   '/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/merchant-types/': typeof AuthenticatedMerchantTypesIndexRoute
   '/merchants/': typeof AuthenticatedMerchantsIndexRoute
@@ -389,6 +396,7 @@ export interface FileRoutesByTo {
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/currencies': typeof AuthenticatedCurrenciesIndexRoute
   '/excel': typeof AuthenticatedExcelIndexRoute
+  '/fees': typeof AuthenticatedFeesIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/merchant-types': typeof AuthenticatedMerchantTypesIndexRoute
   '/merchants': typeof AuthenticatedMerchantsIndexRoute
@@ -439,6 +447,7 @@ export interface FileRoutesById {
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/currencies/': typeof AuthenticatedCurrenciesIndexRoute
   '/_authenticated/excel/': typeof AuthenticatedExcelIndexRoute
+  '/_authenticated/fees/': typeof AuthenticatedFeesIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/merchant-types/': typeof AuthenticatedMerchantTypesIndexRoute
   '/_authenticated/merchants/': typeof AuthenticatedMerchantsIndexRoute
@@ -487,6 +496,7 @@ export interface FileRouteTypes {
     | '/chats/'
     | '/currencies/'
     | '/excel/'
+    | '/fees/'
     | '/help-center/'
     | '/merchant-types/'
     | '/merchants/'
@@ -532,6 +542,7 @@ export interface FileRouteTypes {
     | '/chats'
     | '/currencies'
     | '/excel'
+    | '/fees'
     | '/help-center'
     | '/merchant-types'
     | '/merchants'
@@ -581,6 +592,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chats/'
     | '/_authenticated/currencies/'
     | '/_authenticated/excel/'
+    | '/_authenticated/fees/'
     | '/_authenticated/help-center/'
     | '/_authenticated/merchant-types/'
     | '/_authenticated/merchants/'
@@ -803,6 +815,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExcelIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/fees/': {
+      id: '/_authenticated/fees/'
+      path: '/fees'
+      fullPath: '/fees/'
+      preLoaderRoute: typeof AuthenticatedFeesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/help-center/': {
       id: '/_authenticated/help-center/'
       path: '/help-center'
@@ -982,6 +1001,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedCurrenciesIndexRoute: typeof AuthenticatedCurrenciesIndexRoute
   AuthenticatedExcelIndexRoute: typeof AuthenticatedExcelIndexRoute
+  AuthenticatedFeesIndexRoute: typeof AuthenticatedFeesIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedMerchantTypesIndexRoute: typeof AuthenticatedMerchantTypesIndexRoute
   AuthenticatedMerchantsIndexRoute: typeof AuthenticatedMerchantsIndexRoute
@@ -1009,6 +1029,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedCurrenciesIndexRoute: AuthenticatedCurrenciesIndexRoute,
   AuthenticatedExcelIndexRoute: AuthenticatedExcelIndexRoute,
+  AuthenticatedFeesIndexRoute: AuthenticatedFeesIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedMerchantTypesIndexRoute: AuthenticatedMerchantTypesIndexRoute,
   AuthenticatedMerchantsIndexRoute: AuthenticatedMerchantsIndexRoute,

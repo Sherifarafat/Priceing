@@ -17,6 +17,7 @@ import {
   ServiceItem,
   SubService,
   ProductAddon,
+  Fee,
 } from '@/types/saas'
 import { api } from './api-client'
 
@@ -103,6 +104,8 @@ const initialSubServices: SubService[] = []
 
 const initialProductAddons: ProductAddon[] = []
 
+const initialFees: Fee[] = []
+
 export interface SaaSState {
   currentUser: User
   merchantTypes: MerchantType[]
@@ -122,6 +125,12 @@ export interface SaaSState {
   serviceItems: ServiceItem[]
   subServices: SubService[]
   productAddons: ProductAddon[]
+
+  // Fees & Taxes
+  fees: Fee[]
+  createFee: (data: Omit<Fee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Fee>
+  updateFee: (id: string, data: Partial<Omit<Fee, 'id' | 'createdAt'>>) => Promise<void>
+  deleteFee: (id: string) => Promise<void>
 
   createServiceCategory: (name: string, description?: string, branchId?: string | null) => ServiceCategory
   updateServiceCategory: (id: string, name: string, description?: string, status?: EntityStatus, branchId?: string | null) => void
@@ -154,7 +163,7 @@ export interface SaaSState {
 
   // Branch & QR Operations (Super Admin Only)
   createBranch: (merchantId: string, name: string, address: string, imageUrl?: string) => Branch
-  updateBranch: (id: string, name: string, address: string, imageUrl?: string) => void
+  updateBranch: (id: string, name: string, address: string, imageUrl?: string, merchantId?: string) => void
   deleteBranch: (id: string) => void
   regenerateBranchQr: (branchId: string) => { oldToken: string; newToken: string }
 
@@ -218,6 +227,7 @@ export const useSaaSStore = create<SaaSState>()(
       serviceItems: initialServiceItems,
       subServices: initialSubServices,
       productAddons: initialProductAddons,
+      fees: initialFees,
 
       switchUser: (userId: string) => {
         const found = get().users.find((u) => u.id === userId)
@@ -414,7 +424,7 @@ export const useSaaSStore = create<SaaSState>()(
         return branch
       },
 
-      updateBranch: (id, name, address, imageUrl) => {
+      updateBranch: (id, name, address, imageUrl, merchantId) => {
         const now = new Date().toISOString()
         set((state) => ({
           branches: state.branches.map((b) =>
@@ -424,6 +434,7 @@ export const useSaaSStore = create<SaaSState>()(
                   name,
                   address,
                   imageUrl: imageUrl !== undefined ? imageUrl : b.imageUrl,
+                  merchantId: merchantId || b.merchantId,
                   updatedAt: now,
                 }
               : b
@@ -431,7 +442,7 @@ export const useSaaSStore = create<SaaSState>()(
         }))
 
         // Sync with backend SQLite database
-        api.branches.update(id, { name, address, imageUrl }).catch((err) => console.warn('Failed to update branch in DB:', err.message))
+        api.branches.update(id, { name, address, imageUrl, merchantId }).catch((err) => console.warn('Failed to update branch in DB:', err.message))
       },
 
       deleteBranch: (id) => {
@@ -541,6 +552,7 @@ export const useSaaSStore = create<SaaSState>()(
             imageUrl: newProduct.imageUrl,
             categoryId: newProduct.categoryId,
             status: newProduct.status,
+            feeIds: newProduct.feeIds,
             merchantId,
           })
           .then((saved) => {
@@ -1268,9 +1280,66 @@ export const useSaaSStore = create<SaaSState>()(
           .catch((err) => console.warn('Failed to delete product addon in DB:', err.message))
       },
 
+      createFee: async (data) => {
+        const now = new Date().toISOString()
+        const newFee: Fee = {
+          ...data,
+          id: `fee-${Date.now()}`,
+          createdAt: now,
+          updatedAt: now,
+        }
+        set((state) => ({
+          fees: [newFee, ...(state.fees || [])],
+        }))
+
+        try {
+          const saved = await api.fees.create(data)
+          if (saved && saved.id) {
+            set((state) => ({
+              fees: state.fees.map((f) => (f.id === newFee.id ? saved : f)),
+            }))
+            return saved
+          }
+        } catch (err: any) {
+          console.warn('Failed to create fee in DB:', err.message)
+        }
+        return newFee
+      },
+
+      updateFee: async (id, data) => {
+        const now = new Date().toISOString()
+        set((state) => ({
+          fees: (state.fees || []).map((f) => (f.id === id ? { ...f, ...data, updatedAt: now } : f)),
+        }))
+
+        try {
+          await api.fees.update(id, data)
+        } catch (err: any) {
+          console.warn('Failed to update fee in DB:', err.message)
+        }
+      },
+
+      deleteFee: async (id) => {
+        set((state) => ({
+          fees: (state.fees || []).filter((f) => f.id !== id),
+          // Also remove feeId from products that had this fee
+          products: state.products.map((p) =>
+            p.feeIds?.includes(id)
+              ? { ...p, feeIds: p.feeIds.filter((fid) => fid !== id) }
+              : p
+          ),
+        }))
+
+        try {
+          await api.fees.delete(id)
+        } catch (err: any) {
+          console.warn('Failed to delete fee in DB:', err.message)
+        }
+      },
+
       fetchFromBackend: async () => {
         try {
-          const [merchants, branches, categories, products, scats, sitems, ssubs, saddons, users] = await Promise.all([
+          const [merchants, branches, categories, products, scats, sitems, ssubs, saddons, users, fees] = await Promise.all([
             api.merchants.list().catch(() => []),
             api.branches.list().catch(() => []),
             api.categories.list().catch(() => []),
@@ -1280,6 +1349,7 @@ export const useSaaSStore = create<SaaSState>()(
             api.services.subServices.list().catch(() => []),
             api.services.addons.list().catch(() => []),
             api.users.list().catch(() => []),
+            api.fees.list().catch(() => []),
           ])
 
           set((state) => ({
@@ -1292,6 +1362,7 @@ export const useSaaSStore = create<SaaSState>()(
             subServices: ssubs.length > 0 ? ssubs : state.subServices,
             productAddons: saddons.length > 0 ? saddons : state.productAddons,
             users: users.length > 0 ? users : state.users,
+            fees: fees.length > 0 ? fees : state.fees,
           }))
         } catch (error) {
           console.warn('Backend sync failed:', error)
@@ -1316,6 +1387,7 @@ export const useSaaSStore = create<SaaSState>()(
           serviceItems: initialServiceItems,
           subServices: initialSubServices,
           productAddons: initialProductAddons,
+          fees: initialFees,
         })
       },
     }),

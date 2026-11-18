@@ -103,7 +103,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthReque
 router.put('/:id', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params.id as string
-    const { name, address, imageUrl, qrStatus } = req.body
+    const { name, address, imageUrl, qrStatus, merchantId } = req.body
     const existing = await prisma.branch.findUnique({ where: { id } })
     if (!existing) return res.status(404).json({ error: 'Branch not found' })
 
@@ -114,6 +114,7 @@ router.put('/:id', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthReq
         address: address !== undefined ? address?.trim() : existing.address,
         imageUrl: imageUrl !== undefined ? imageUrl?.trim() : existing.imageUrl,
         qrStatus: qrStatus !== undefined ? qrStatus : existing.qrStatus,
+        merchantId: merchantId !== undefined ? merchantId : existing.merchantId,
       },
       include: {
         merchant: { select: { id: true, name: true } },

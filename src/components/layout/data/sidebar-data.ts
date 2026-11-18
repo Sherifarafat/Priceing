@@ -13,6 +13,7 @@ import {
   GitFork,
   PackagePlus,
   BarChart3,
+  Receipt,
 } from 'lucide-react'
 import { UserRole } from '@/types/saas'
 import { type SidebarData, type NavGroup } from '../types'
@@ -79,6 +80,11 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
             title: 'Reports & Analytics',
             url: '/reports',
             icon: BarChart3,
+          },
+          {
+            title: 'Fees & Taxes',
+            url: '/fees',
+            icon: Receipt,
           },
           {
             title: 'Roles',
@@ -157,6 +163,11 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
           title: 'Reports & Analytics',
           url: '/reports',
           icon: BarChart3,
+        },
+        {
+          title: 'Fees & Taxes',
+          url: '/fees',
+          icon: Receipt,
         },
         {
           title: 'Excel Operations',
