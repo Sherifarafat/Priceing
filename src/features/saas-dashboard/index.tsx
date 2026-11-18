@@ -1,34 +1,12 @@
-import * as React from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Package,
-  TrendingUp,
-  TrendingDown,
-  Building2,
   Store,
-  QrCode,
   ScanLine,
-  ShoppingCart,
   ExternalLink,
   Bell,
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Plus,
-  Clock,
-  Sparkles,
-  Smartphone,
-  Laptop,
-  CheckCircle2,
-  AlertTriangle,
   Coins,
   Coffee,
-  CreditCard,
-  Send,
-  Zap,
-  Copy,
-  Check,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -41,7 +19,7 @@ import {
   Pie,
   Cell,
 } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Header } from '@/components/layout/header'
@@ -170,7 +148,6 @@ export function SaaSDashboard() {
     branches,
     products,
     customerScanCount,
-    shoppingSessionCount,
   } = useSaaSStore()
 
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN'

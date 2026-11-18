@@ -297,11 +297,6 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
     [facingMode, onBarcode]
   )
 
-  const stopCamera = async () => {
-    await stopScanner()
-    if (mountedRef.current) setCamPhase('idle')
-  }
-
   const toggleCamera = async () => {
     const next: 'environment' | 'user' = facingMode === 'environment' ? 'user' : 'environment'
     setFacingMode(next)

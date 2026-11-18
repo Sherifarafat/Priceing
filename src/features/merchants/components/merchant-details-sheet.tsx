@@ -48,7 +48,6 @@ export function MerchantDetailsSheet({
   onEdit,
 }: MerchantDetailsSheetProps) {
   const {
-    merchantTypes,
     currencies,
     branches,
     products,
@@ -60,7 +59,6 @@ export function MerchantDetailsSheet({
 
   if (!merchant) return null
 
-  const mType = merchantTypes.find((t) => t.id === merchant.merchantTypeId)
   const mCurr = currencies.find((c) => c.id === merchant.currencyId)
   const merchantBranches = branches.filter((b) => b.merchantId === merchant.id)
   const merchantProducts = products.filter((p) => p.merchantId === merchant.id)

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Plus, Edit2, Trash2, Tags, Package, AlertTriangle, Store } from 'lucide-react'
+import { Plus, Edit2, Trash2, Tags, Package, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'

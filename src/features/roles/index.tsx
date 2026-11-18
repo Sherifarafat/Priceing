@@ -2,7 +2,6 @@ import * as React from 'react'
 import {
   Shield,
   Plus,
-  Crown,
   Edit2,
   Trash2,
   Eye,

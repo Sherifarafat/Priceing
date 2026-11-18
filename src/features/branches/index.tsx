@@ -13,7 +13,6 @@ import {
   Edit2,
   CheckCircle2,
   XCircle,
-  Image as ImageIcon,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'

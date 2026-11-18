@@ -4,7 +4,6 @@ import {
   Store,
   Users,
   RotateCcw,
-  Shield,
   LogOut,
   QrCode,
 } from 'lucide-react'

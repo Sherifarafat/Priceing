@@ -8,7 +8,6 @@ import {
   Sparkles,
   CheckCircle2,
   XCircle,
-  DollarSign,
   Briefcase,
 } from 'lucide-react'
 import { Header } from '@/components/layout/header'

@@ -9,8 +9,6 @@ import {
   Sparkles,
   CheckCircle2,
   XCircle,
-  Clock,
-  DollarSign,
 } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'

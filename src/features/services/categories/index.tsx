@@ -37,12 +37,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { useSaaSStore } from '@/lib/saas-store'
 import { ServiceCategory, EntityStatus } from '@/types/saas'
 import { toast } from 'sonner'

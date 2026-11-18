@@ -5,7 +5,6 @@ import {
   Edit2,
   Trash2,
   Lock,
-  Sparkles,
 } from 'lucide-react'
 import {
   Sheet,

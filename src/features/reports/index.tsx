@@ -1,11 +1,8 @@
 import * as React from 'react'
 import {
   BarChart3,
-  TrendingUp,
   FileText,
   Download,
-  Calendar,
-  Filter,
   CheckCircle2,
   Eye,
   FileSpreadsheet,
@@ -36,7 +33,7 @@ import { LanguageSwitch } from '@/components/language-switch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import {
   Table,
   TableBody,
