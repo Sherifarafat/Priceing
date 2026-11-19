@@ -31,11 +31,11 @@ export function AppSidebar() {
         <SidebarHeader className='px-3.5 py-2.5 pb-2 space-y-2'>
           <div className='flex items-center gap-2.5 px-1 py-0.5'>
             <div className='size-8 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-black text-sm shadow-xs shrink-0'>
-              t<span className='text-[#4F46E5] -ms-0.5 font-black'>.</span>
+              t<span className='text-[#3EEA85] -ms-0.5 font-black'>.</span>
             </div>
             <div className='flex flex-col leading-none group-data-[collapsible=icon]:hidden'>
               <span className='font-black text-lg tracking-tight text-foreground lowercase'>
-                telda<span className='text-[#4F46E5]'>.</span>
+                telda<span className='text-[#3EEA85]'>.</span>
               </span>
               <span className='text-[9px] font-extrabold tracking-wider uppercase text-neutral-400 mt-0.5'>
                 Business
@@ -43,21 +43,21 @@ export function AppSidebar() {
             </div>
           </div>
 
-          {/* Ask Maya - Quick Action Button with Gradient Border */}
+          {/* Ask Maya - Quick Action Button with Mint Gradient Border */}
           <Link
             to='/ai-chat'
-            className='relative block w-full p-px rounded-xl bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#818CF8] cursor-pointer'
+            className='relative block w-full p-px rounded-xl bg-gradient-to-r from-[#3EEA85] via-[#22C55E] to-[#10B981] cursor-pointer'
           >
             <div className='w-full flex items-center justify-between px-3 py-2 rounded-[11px] bg-white dark:bg-[#09090b] text-sidebar-foreground group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:justify-center'>
               <div className='flex items-center gap-2'>
-                <div className='size-5 rounded-lg bg-indigo-500/10 text-[#4F46E5] dark:text-indigo-400 flex items-center justify-center shrink-0'>
-                  <Sparkles className='size-3.5 text-[#4F46E5] dark:text-indigo-400' />
+                <div className='size-5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] flex items-center justify-center shrink-0'>
+                  <Sparkles className='size-3.5 text-emerald-600 dark:text-[#3EEA85]' />
                 </div>
                 <span className='text-xs font-bold tracking-tight text-neutral-900 dark:text-white group-data-[collapsible=icon]:hidden'>
                   Ask Maya
                 </span>
               </div>
-              <span className='text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-[#4F46E5] dark:text-indigo-400 border border-indigo-500/20 group-data-[collapsible=icon]:hidden'>
+              <span className='text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-[#3EEA85] border border-emerald-500/20 group-data-[collapsible=icon]:hidden'>
                 AI
               </span>
             </div>

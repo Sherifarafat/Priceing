@@ -147,7 +147,7 @@ export function BranchesView() {
       <Header fixed>
         <div className='flex items-center gap-2'>
           <h1 className='font-semibold text-sm'>Platform Super Admin</h1>
-          <Badge variant='outline' className='text-xs bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border-indigo-200/50'>
+          <Badge variant='outline' className='text-xs bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border-emerald-500/20'>
             Branch Network
           </Badge>
         </div>
@@ -163,7 +163,7 @@ export function BranchesView() {
         <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
           <div>
             <div className='flex items-center gap-2.5'>
-              <div className='size-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center font-bold shadow-2xs'>
+              <div className='size-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center font-bold shadow-2xs'>
                 <Store className='size-5' />
               </div>
               <div>
@@ -179,7 +179,7 @@ export function BranchesView() {
           <Button
             size='sm'
             onClick={openCreate}
-            className='gap-1.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold shadow-xs h-9 px-4 rounded-lg'
+            className='gap-1.5 bg-black hover:bg-neutral-800 text-white font-bold shadow-xs h-9 px-4 rounded-lg'
           >
             <Plus className='size-4' />
             Create Branch
@@ -271,7 +271,7 @@ export function BranchesView() {
                                 className='size-10 rounded-xl object-cover border border-border/70 shrink-0 shadow-2xs'
                               />
                             ) : (
-                              <div className='size-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center font-bold shrink-0 shadow-2xs'>
+                              <div className='size-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center font-bold shrink-0 shadow-2xs'>
                                 <Store className='size-5' />
                               </div>
                             )}
@@ -327,7 +327,7 @@ export function BranchesView() {
                             asChild
                             size='sm'
                             variant='outline'
-                            className='h-7 text-xs px-2.5 rounded-lg gap-1.5 hover:border-[#4F46E5] hover:text-[#4F46E5] transition-colors'
+                            className='h-7 text-xs px-2.5 rounded-lg gap-1.5 hover:border-[#3EEA85] hover:text-[#3EEA85] transition-colors'
                           >
                             <Link to='/branch/$token' params={{ token: branch.qrToken }} target='_blank'>
                               <ExternalLink className='size-3' /> Open Live POS
@@ -541,7 +541,7 @@ export function BranchesView() {
           )}
 
           <DialogFooter className='sm:justify-center'>
-            <Button size='sm' onClick={() => window.print()} className='gap-2 bg-[#4F46E5] hover:bg-indigo-700 text-white'>
+            <Button size='sm' onClick={() => window.print()} className='gap-2 bg-black hover:bg-neutral-800 text-white font-bold'>
               <Printer className='size-4' /> Print QR Standee
             </Button>
           </DialogFooter>

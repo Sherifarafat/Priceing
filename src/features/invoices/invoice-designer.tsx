@@ -44,6 +44,8 @@ import {
 import { toast } from 'sonner'
 
 const COLOR_PRESETS = [
+  { name: 'Electric Mint', value: '#3EEA85', class: 'bg-[#3EEA85]' },
+  { name: 'Carbon Black', value: '#09090B', class: 'bg-[#09090B]' },
   { name: 'Indigo Corporate', value: '#4F46E5', class: 'bg-[#4F46E5]' },
   { name: 'Emerald Fresh', value: '#059669', class: 'bg-[#059669]' },
   { name: 'Sky Electric', value: '#0284C7', class: 'bg-[#0284C7]' },
@@ -55,6 +57,15 @@ const COLOR_PRESETS = [
 ]
 
 const DESIGN_PRESETS = [
+  {
+    name: 'Electric Mint & Carbon (70:30)',
+    primaryColor: '#09090B',
+    layoutStyle: 'MODERN' as InvoiceLayoutStyle,
+    headerStyle: 'BORDER_TOP',
+    tableStyle: 'STRIPED',
+    borderRadius: 'ROUNDED_MD',
+    fontFamily: 'sans',
+  },
   {
     name: 'Modern Indigo',
     primaryColor: '#4F46E5',
@@ -313,7 +324,7 @@ export function InvoiceDesigner() {
           </h1>
           <Badge
             variant='outline'
-            className='text-xs bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border-indigo-200/50'
+            className='text-xs bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border-emerald-500/20'
           >
             Invoice Designer
           </Badge>

@@ -76,7 +76,7 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
           {item.icon && <item.icon className='size-4 shrink-0' />}
           <span className='flex-1 truncate font-medium'>{item.title}</span>
           {isActive && (
-            <span className='size-1.5 rounded-full bg-[#4F46E5] shrink-0' />
+            <span className='size-1.5 rounded-full bg-[#3EEA85] shrink-0' />
           )}
           {item.badge && <NavBadge>{item.badge}</NavBadge>}
         </Link>
@@ -128,7 +128,7 @@ function SidebarMenuCollapsible({
                       {subItem.icon && <subItem.icon className='size-3.5 shrink-0' />}
                       <span className='truncate flex-1'>{subItem.title}</span>
                       {isSubActive && (
-                        <span className='size-1.5 rounded-full bg-[#4F46E5] shrink-0' />
+                        <span className='size-1.5 rounded-full bg-[#3EEA85] shrink-0' />
                       )}
                       {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
                     </Link>

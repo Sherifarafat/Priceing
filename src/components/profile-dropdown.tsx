@@ -72,7 +72,7 @@ export function ProfileDropdown() {
             <span>Super Admin</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleSwitch('user-metro-manager')}>
-            <Store className='mr-2 size-4 text-[#4F46E5] dark:text-indigo-400' />
+            <Store className='mr-2 size-4 text-[#3EEA85]' />
             <span>Metro Store Manager</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleSwitch('user-metro-staff')}>
