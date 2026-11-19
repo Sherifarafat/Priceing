@@ -7,7 +7,7 @@ export interface POSCartItem {
   total: number
 }
 
-export type PaymentMethod = 'CASH' | 'CARD' | 'QR'
+export type PaymentMethod = 'CASH' | 'CARD' | 'QR' | 'INSTAPAY'
 
 export interface POSSession {
   merchant: Merchant
