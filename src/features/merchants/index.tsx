@@ -12,7 +12,13 @@ import {
   Edit2,
   Eye,
   Camera,
+  Sparkles,
+  Copy,
+  LogIn,
 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -59,19 +65,29 @@ import { Merchant, MerchantStatus } from '@/types/saas'
 import { MerchantDetailsSheet } from './components/merchant-details-sheet'
 
 export function MerchantsView() {
+  const navigate = useNavigate()
+  const { auth } = useAuthStore()
   const {
     merchants,
     merchantTypes,
     currencies,
     branches,
     products,
+    users,
     createMerchant,
     updateMerchant,
     setMerchantStatus,
+    switchUser,
   } = useSaaSStore()
 
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
+  const [createdMerchantSuccess, setCreatedMerchantSuccess] = React.useState<{
+    merchant: Merchant
+    username: string
+    password: string
+    managerId: string
+  } | null>(null)
   const [editingMerchant, setEditingMerchant] = React.useState<Merchant | null>(null)
   const [selectedMerchantId, setSelectedMerchantId] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
@@ -161,8 +177,9 @@ export function MerchantsView() {
         status,
       })
       setEditingMerchant(null)
+      toast.success(`Merchant "${name}" updated successfully`)
     } else {
-      createMerchant({
+      const created = createMerchant({
         name: name.trim(),
         logo: logo.trim() || undefined,
         email: email.trim(),
@@ -172,9 +189,47 @@ export function MerchantsView() {
         currencyId: currencyId || currencies[0].id,
         status,
       })
+      const mgrUsername =
+        email.trim().split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') ||
+        `merchant_${created.id.slice(-4)}`
       setIsCreateOpen(false)
+      setCreatedMerchantSuccess({
+        merchant: created,
+        username: mgrUsername,
+        password: '123456',
+        managerId: `user-${created.id}-mgr`,
+      })
+      toast.success(`Merchant "${created.name}" created with manager account!`)
     }
     resetForm()
+  }
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text)
+    toast.success(`${label} copied to clipboard!`)
+  }
+
+  const handleLoginAsManager = (info: { managerId: string; merchant: Merchant; username: string }) => {
+    const mgrUser = users.find((u) => u.id === info.managerId) || {
+      id: info.managerId,
+      name: `${info.merchant.name} Manager`,
+      email: info.merchant.email,
+      username: info.username,
+      role: 'MERCHANT_MANAGER' as const,
+      merchantId: info.merchant.id,
+      status: 'Active' as const,
+      createdAt: new Date().toISOString(),
+    }
+    switchUser(mgrUser.id)
+    auth.setUser({
+      accountNo: mgrUser.id,
+      email: mgrUser.email,
+      role: [mgrUser.role],
+      exp: Date.now() + 24 * 60 * 60 * 1000,
+    })
+    auth.setAccessToken(`auth-token-${mgrUser.id}`)
+    toast.success(`Logged in as ${info.merchant.name} Store Manager!`)
+    navigate({ to: '/' })
   }
 
   const filteredMerchants = merchants.filter((m) => {
@@ -624,6 +679,116 @@ export function MerchantsView() {
           openEdit(m)
         }}
       />
+
+      {/* Success Dialog with Merchant Manager Credentials */}
+      <Dialog
+        open={!!createdMerchantSuccess}
+        onOpenChange={(open) => !open && setCreatedMerchantSuccess(null)}
+      >
+        <DialogContent className='max-w-md rounded-3xl p-6'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-emerald-600 dark:text-emerald-400'>
+              <Sparkles className='size-5' /> Merchant & Store Manager Ready!
+            </DialogTitle>
+            <DialogDescription className='text-xs'>
+              The merchant and dedicated Store Owner account have been provisioned. Use these credentials to sign in or manage the store.
+            </DialogDescription>
+          </DialogHeader>
+
+          {createdMerchantSuccess && (
+            <div className='my-3 space-y-4'>
+              <div className='flex items-center gap-3 p-3 rounded-2xl border border-border/80 bg-muted/20'>
+                {createdMerchantSuccess.merchant.logo ? (
+                  <img
+                    src={createdMerchantSuccess.merchant.logo}
+                    alt={createdMerchantSuccess.merchant.name}
+                    className='size-12 rounded-xl object-cover border border-border/80'
+                  />
+                ) : (
+                  <div className='flex size-12 items-center justify-center rounded-xl bg-neutral-900 text-white font-black text-lg'>
+                    {createdMerchantSuccess.merchant.name[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h4 className='font-bold text-sm text-foreground'>
+                    {createdMerchantSuccess.merchant.name}
+                  </h4>
+                  <p className='text-xs text-muted-foreground'>
+                    {createdMerchantSuccess.merchant.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className='p-4 rounded-2xl border border-primary/20 bg-primary/5 space-y-2.5 text-xs'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-muted-foreground font-medium'>Manager Account:</span>
+                  <Badge className='bg-neutral-900 text-white dark:bg-white dark:text-black font-bold text-[10px]'>
+                    Store Owner / Manager
+                  </Badge>
+                </div>
+
+                <div className='flex items-center justify-between'>
+                  <span className='text-muted-foreground font-medium'>Login Username:</span>
+                  <div className='flex items-center gap-1.5'>
+                    <code className='rounded bg-muted px-2 py-0.5 font-mono font-bold text-foreground text-xs'>
+                      {createdMerchantSuccess.username}
+                    </code>
+                    <Button
+                      size='icon'
+                      variant='ghost'
+                      className='size-6'
+                      onClick={() =>
+                        copyToClipboard(createdMerchantSuccess.username, 'Manager Username')
+                      }
+                    >
+                      <Copy className='size-3' />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className='flex items-center justify-between'>
+                  <span className='text-muted-foreground font-medium'>Initial Password:</span>
+                  <div className='flex items-center gap-1.5'>
+                    <code className='rounded bg-muted px-2 py-0.5 font-mono font-bold text-foreground text-xs'>
+                      {createdMerchantSuccess.password}
+                    </code>
+                    <Button
+                      size='icon'
+                      variant='ghost'
+                      className='size-6'
+                      onClick={() =>
+                        copyToClipboard(createdMerchantSuccess.password, 'Manager Password')
+                      }
+                    >
+                      <Copy className='size-3' />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className='flex flex-col gap-2 pt-1'>
+                <Button
+                  className='w-full rounded-xl bg-[#3EEA85] text-black hover:bg-[#3EEA85]/90 font-bold'
+                  onClick={() => {
+                    const info = createdMerchantSuccess
+                    setCreatedMerchantSuccess(null)
+                    handleLoginAsManager(info)
+                  }}
+                >
+                  <LogIn className='size-4 mr-2' /> Log in as Store Manager Now
+                </Button>
+                <Button
+                  variant='outline'
+                  className='w-full rounded-xl'
+                  onClick={() => setCreatedMerchantSuccess(null)}
+                >
+                  Close & Continue as Admin
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

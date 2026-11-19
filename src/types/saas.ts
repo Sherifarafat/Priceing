@@ -1,6 +1,6 @@
 export type MerchantStatus = 'Pending' | 'Active' | 'Inactive' | 'Suspended'
 export type QRStatus = 'Active' | 'Revoked'
-export type UserRole = 'SUPER_ADMIN' | 'MERCHANT_MANAGER' | 'MERCHANT_STAFF'
+export type UserRole = 'SUPER_ADMIN' | 'MERCHANT_MANAGER' | 'CASHIER' | 'MERCHANT_STAFF'
 export type EntityStatus = 'Active' | 'Inactive'
 export type FeeType = 'PERCENTAGE' | 'FIXED'
 
@@ -132,6 +132,9 @@ export interface Branch {
 }
 
 export type StaffPermissionKey =
+  | 'dashboard.view'
+  | 'branches.view'
+  | 'branches.manage'
   | 'products.view'
   | 'products.create'
   | 'products.edit'
@@ -140,6 +143,12 @@ export type StaffPermissionKey =
   | 'excel.import'
   | 'excel.bulk_edit'
   | 'excel.bulk_delete'
+  | 'invoices.view'
+  | 'invoices.issue'
+  | 'invoices.design'
+  | 'fees.manage'
+  | 'staff.manage'
+  | 'reports.view'
 
 export interface User {
   id: string
@@ -149,6 +158,7 @@ export interface User {
   name: string
   role: UserRole
   merchantId?: string | null // Nullable for Platform Super Admin
+  branchId?: string | null // Assigned branch (optional)
   status: EntityStatus
   permissions?: Record<StaffPermissionKey, boolean>
   createdAt: string

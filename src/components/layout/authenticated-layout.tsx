@@ -8,6 +8,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Footer } from '@/components/layout/footer'
 import { SkipToMain } from '@/components/skip-to-main'
+import { FloatingAiButton } from '@/components/floating-ai-button'
 import { useSaaSStore } from '@/lib/saas-store'
 
 type AuthenticatedLayoutProps = {
@@ -46,6 +47,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
             </div>
             <Footer />
           </SidebarInset>
+          <FloatingAiButton />
         </SidebarProvider>
       </LayoutProvider>
     </SearchProvider>

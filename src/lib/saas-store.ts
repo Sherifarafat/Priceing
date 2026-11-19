@@ -8,6 +8,7 @@ import {
   Product,
   Category,
   User,
+  UserRole,
   AuditLog,
   StaffPermissionKey,
   MerchantStatus,
@@ -200,7 +201,19 @@ export interface SaaSState {
   createUser: (data: Partial<User> & { password?: string }) => Promise<User>
   updateUser: (id: string, data: Partial<User> & { password?: string }) => Promise<void>
   deleteUser: (id: string) => Promise<void>
-  createStaffUser: (name: string, email: string, permissions: Record<StaffPermissionKey, boolean>) => User
+  createStaffUser: (
+    dataOrName: string | {
+      name: string
+      email: string
+      username?: string
+      password?: string
+      role?: UserRole
+      branchId?: string | null
+      permissions?: Record<StaffPermissionKey, boolean>
+    },
+    email?: string,
+    permissions?: Record<StaffPermissionKey, boolean>
+  ) => User
   updateStaffUser: (id: string, name: string, status: EntityStatus) => void
   updateStaffPermissions: (id: string, permissions: Record<StaffPermissionKey, boolean>) => void
   resetUserPassword: (id: string) => void
@@ -253,8 +266,22 @@ export const useSaaSStore = create<SaaSState>()(
 
       hasPermission: (permissionKey: StaffPermissionKey) => {
         const user = get().currentUser
-        if (user.role === 'SUPER_ADMIN' || user.role === 'MERCHANT_MANAGER') {
+        if (user.role === 'SUPER_ADMIN') {
           return true
+        }
+        if (user.role === 'MERCHANT_MANAGER') {
+          return true
+        }
+        if (user.role === 'CASHIER') {
+          // Cashier by default can access Invoices & Products Catalog
+          if (
+            permissionKey === 'invoices.view' ||
+            permissionKey === 'invoices.issue' ||
+            permissionKey === 'products.view'
+          ) {
+            return user.permissions?.[permissionKey] !== false
+          }
+          return user.permissions?.[permissionKey] ?? false
         }
         if (user.role === 'MERCHANT_STAFF') {
           return user.permissions?.[permissionKey] ?? false
@@ -272,9 +299,13 @@ export const useSaaSStore = create<SaaSState>()(
           createdAt: now,
           updatedAt: now,
         }
+        const managerUsername =
+          data.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') || `merchant_${id.slice(-4)}`
         const manager: User = {
           id: `user-${id}-mgr`,
           email: data.email,
+          username: managerUsername,
+          password: '123456',
           name: `${data.name} Manager`,
           role: 'MERCHANT_MANAGER',
           merchantId: id,
@@ -288,7 +319,7 @@ export const useSaaSStore = create<SaaSState>()(
           actionType: 'MERCHANT_CREATED',
           entityType: 'Merchant',
           entityId: id,
-          newValues: { name: data.name, status: data.status, email: data.email },
+          newValues: { name: data.name, status: data.status, email: data.email, managerUsername },
           createdAt: now,
         }
         set((state) => ({
@@ -296,6 +327,19 @@ export const useSaaSStore = create<SaaSState>()(
           users: [...state.users, manager],
           auditLogs: [log, ...state.auditLogs],
         }))
+
+        // Sync manager user to backend DB
+        api.users
+          .create({
+            name: manager.name,
+            email: manager.email,
+            username: manager.username,
+            password: manager.password,
+            role: manager.role,
+            merchantId: id,
+            status: 'Active',
+          })
+          .catch((err) => console.warn('Failed to sync merchant manager to DB:', err.message))
 
         // Sync with backend SQLite database
         api.merchants
@@ -932,25 +976,80 @@ export const useSaaSStore = create<SaaSState>()(
         }
       },
 
-      createStaffUser: (name, email, permissions) => {
+      createStaffUser: (dataOrName, maybeEmail, maybePermissions) => {
         const user = get().currentUser
-        const merchantId = user.merchantId!
+        const merchantId = user.merchantId || get().merchants[0]?.id || ''
         const id = `user-staff-${Date.now()}`
         const now = new Date().toISOString()
+
+        let name = ''
+        let email = ''
+        let username: string | undefined = undefined
+        let password = 'password123'
+        let role: UserRole = 'CASHIER'
+        let branchId: string | null = null
+        let perms: Record<StaffPermissionKey, boolean> = {
+          'dashboard.view': false,
+          'branches.view': false,
+          'branches.manage': false,
+          'products.view': true,
+          'products.create': false,
+          'products.edit': false,
+          'products.delete': false,
+          'categories.manage': false,
+          'excel.import': false,
+          'excel.bulk_edit': false,
+          'excel.bulk_delete': false,
+          'invoices.view': true,
+          'invoices.issue': true,
+          'invoices.design': false,
+          'fees.manage': false,
+          'staff.manage': false,
+          'reports.view': false,
+        }
+
+        if (typeof dataOrName === 'string') {
+          name = dataOrName
+          email = maybeEmail || ''
+          username = email.split('@')[0].toLowerCase()
+          if (maybePermissions) perms = { ...perms, ...maybePermissions }
+        } else {
+          name = dataOrName.name
+          email = dataOrName.email
+          username = dataOrName.username || dataOrName.email.split('@')[0].toLowerCase()
+          password = dataOrName.password || '123456'
+          role = dataOrName.role || 'CASHIER'
+          branchId = dataOrName.branchId || null
+          if (dataOrName.permissions) perms = { ...perms, ...dataOrName.permissions }
+        }
+
         const newStaff: User = {
           id,
           name,
           email,
-          role: 'MERCHANT_STAFF',
+          username,
+          password,
+          role,
+          branchId,
           merchantId,
           status: 'Active',
-          permissions,
+          permissions: perms,
           createdAt: now,
         }
         set((state) => ({ users: [...state.users, newStaff] }))
 
         api.users
-          .create({ name, email, role: 'MERCHANT_STAFF', merchantId, permissions, password: 'password123' })
+          .create({
+            name,
+            email,
+            username,
+            password,
+            role,
+            merchantId,
+            branchId,
+            permissions: perms,
+            status: 'Active',
+          })
           .then((saved) => {
             if (saved && saved.id) {
               set((state) => ({

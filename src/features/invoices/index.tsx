@@ -212,13 +212,13 @@ export function InvoicesView() {
 
   // Filter invoices
   const filteredInvoices = (invoices || []).filter((inv) => {
-    const matchesMerchant =
-      !isSuperAdmin ||
-      selectedMerchantId === 'all' ||
-      inv.merchantId === selectedMerchantId
+    const matchesMerchant = isSuperAdmin
+      ? selectedMerchantId === 'all' || inv.merchantId === selectedMerchantId
+      : inv.merchantId === merchantId
 
-    const matchesBranch =
-      selectedBranchId === 'all' || inv.branchId === selectedBranchId
+    const matchesBranch = currentUser.branchId
+      ? inv.branchId === currentUser.branchId
+      : selectedBranchId === 'all' || inv.branchId === selectedBranchId
 
     const matchesStatus =
       selectedStatus === 'all' || inv.status === selectedStatus
@@ -412,7 +412,7 @@ export function InvoicesView() {
               </div>
             )}
 
-            {branches.length > 0 && (
+            {availableBranches.length > 0 && !currentUser.branchId && (
               <div>
                 <Select
                   value={selectedBranchId}
@@ -423,7 +423,7 @@ export function InvoicesView() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='all'>All Branches</SelectItem>
-                    {branches.map((b) => (
+                    {availableBranches.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
                         {b.name}
                       </SelectItem>

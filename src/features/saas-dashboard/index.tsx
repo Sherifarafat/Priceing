@@ -1,4 +1,5 @@
-import { Link } from '@tanstack/react-router'
+import * as React from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import {
   Package,
   Store,
@@ -142,16 +143,41 @@ const topProductsList = [
 ]
 
 export function SaaSDashboard() {
+  const navigate = useNavigate()
   const {
     currentUser,
     merchants,
     branches,
     products,
     customerScanCount,
+    hasPermission,
   } = useSaaSStore()
 
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN'
   const currentMerchant = merchants.find((m) => m.id === currentUser.merchantId)
+
+  // Redirect users who don't have dashboard access (e.g. Cashiers) to their primary workspace
+  React.useEffect(() => {
+    if (!isSuperAdmin && !hasPermission('dashboard.view')) {
+      if (
+        hasPermission('invoices.view') ||
+        hasPermission('invoices.issue') ||
+        currentUser.role === 'CASHIER'
+      ) {
+        navigate({ to: '/invoices', replace: true })
+      } else if (hasPermission('products.view')) {
+        navigate({ to: '/products', replace: true })
+      }
+    }
+  }, [currentUser, isSuperAdmin, hasPermission, navigate])
+
+  // Scope metrics to current merchant if not Super Admin
+  const scopedProducts = isSuperAdmin
+    ? products
+    : products.filter((p) => p.merchantId === currentUser.merchantId)
+  const scopedBranches = isSuperAdmin
+    ? branches
+    : branches.filter((b) => b.merchantId === currentUser.merchantId)
 
   // Telda Chart Tooltip
   const CustomTeldaTooltip = ({ active, payload, label }: any) => {
@@ -220,9 +246,11 @@ export function SaaSDashboard() {
             </div>
             <div className='mt-2'>
               <h3 className='text-2xl font-bold text-foreground tracking-tight'>
-                {products.length > 0 ? (products.length * 254 + 1).toLocaleString() : '1,525'}
+                {scopedProducts.length}
               </h3>
-              <p className='text-[11px] text-muted-foreground mt-0.5'>Across unified catalog</p>
+              <p className='text-[11px] text-muted-foreground mt-0.5'>
+                {isSuperAdmin ? 'Across unified catalog' : `${currentMerchant?.name || 'Store'} catalog`}
+              </p>
             </div>
           </Card>
 
@@ -251,7 +279,7 @@ export function SaaSDashboard() {
               </div>
             </div>
             <div className='mt-2'>
-              <h3 className='text-2xl font-bold text-white tracking-tight'>{branches.length}</h3>
+              <h3 className='text-2xl font-bold text-white tracking-tight'>{scopedBranches.length}</h3>
               <p className='text-[11px] text-[#3EEA85] font-semibold mt-0.5'>QR Lookups deployed</p>
             </div>
           </Card>

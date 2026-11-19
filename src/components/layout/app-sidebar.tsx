@@ -1,6 +1,4 @@
 import * as React from 'react'
-import { Link } from '@tanstack/react-router'
-import { Sparkles } from 'lucide-react'
 import { useLayout } from '@/context/layout-provider'
 import {
   Sidebar,
@@ -20,7 +18,7 @@ import { useSaaSStore } from '@/lib/saas-store'
 export function AppSidebar() {
   const { collapsible, variant } = useLayout()
   const { currentUser } = useSaaSStore()
-  const navGroups = getSaaSSidebarNav(currentUser.role)
+  const navGroups = getSaaSSidebarNav(currentUser)
 
   const [isPlanOpen, setIsPlanOpen] = React.useState(false)
   const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false)
@@ -42,26 +40,6 @@ export function AppSidebar() {
               </span>
             </div>
           </div>
-
-          {/* Ask Maya - Quick Action Button with Mint Gradient Border */}
-          <Link
-            to='/ai-chat'
-            className='relative block w-full p-px rounded-xl bg-gradient-to-r from-[#3EEA85] via-[#22C55E] to-[#10B981] cursor-pointer'
-          >
-            <div className='w-full flex items-center justify-between px-3 py-2 rounded-[11px] bg-white dark:bg-[#09090b] text-sidebar-foreground group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:justify-center'>
-              <div className='flex items-center gap-2'>
-                <div className='size-5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] flex items-center justify-center shrink-0'>
-                  <Sparkles className='size-3.5 text-emerald-600 dark:text-[#3EEA85]' />
-                </div>
-                <span className='text-xs font-bold tracking-tight text-neutral-900 dark:text-white group-data-[collapsible=icon]:hidden'>
-                  Ask Maya
-                </span>
-              </div>
-              <span className='text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-[#3EEA85] border border-emerald-500/20 group-data-[collapsible=icon]:hidden'>
-                AI
-              </span>
-            </div>
-          </Link>
         </SidebarHeader>
 
         <SidebarContent className='gap-0 py-0.5 overflow-x-hidden'>

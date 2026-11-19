@@ -17,10 +17,25 @@ import {
   FileText,
   Palette,
 } from 'lucide-react'
-import { UserRole } from '@/types/saas'
-import { type SidebarData, type NavGroup } from '../types'
+import { User, UserRole, StaffPermissionKey } from '@/types/saas'
+import { type SidebarData, type NavGroup, type NavItem } from '../types'
 
-export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
+export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
+  const role: UserRole = typeof userOrRole === 'string' ? userOrRole : userOrRole.role
+  const user: User | null = typeof userOrRole === 'object' ? userOrRole : null
+
+  const hasPerm = (key: StaffPermissionKey): boolean => {
+    if (role === 'SUPER_ADMIN' || role === 'MERCHANT_MANAGER') return true
+    if (role === 'CASHIER') {
+      if (key === 'invoices.view' || key === 'invoices.issue' || key === 'products.view') {
+        return user?.permissions?.[key] !== false
+      }
+      return user?.permissions?.[key] ?? false
+    }
+    return user?.permissions?.[key] ?? false
+  }
+
+  // 1. Company Platform Super Admin - Full Platform Authority
   if (role === 'SUPER_ADMIN') {
     return [
       {
@@ -105,7 +120,7 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
             ],
           },
           {
-            title: 'Roles',
+            title: 'Roles & Users',
             icon: ShieldCheck,
             items: [
               {
@@ -130,102 +145,179 @@ export function getSaaSSidebarNav(role: UserRole): NavGroup[] {
     ]
   }
 
-  // Merchant Manager or Merchant Staff
-  const merchantGroups: NavGroup[] = [
+  // 2. Merchant Store Manager / Owner - Full Store Authority
+  if (role === 'MERCHANT_MANAGER') {
+    return [
+      {
+        title: 'Store Operations',
+        items: [
+          {
+            title: 'Store Dashboard',
+            url: '/',
+            icon: LayoutDashboard,
+          },
+          {
+            title: 'Store Branches',
+            url: '/branches',
+            icon: Store,
+          },
+          {
+            title: 'Product Hub',
+            icon: Boxes,
+            items: [
+              {
+                title: 'Products',
+                url: '/products',
+                icon: Package,
+              },
+              {
+                title: 'Add-ons',
+                url: '/add-ons',
+                icon: PackagePlus,
+              },
+            ],
+          },
+          {
+            title: 'Invoices & Billing',
+            icon: FileText,
+            items: [
+              {
+                title: 'Issued Invoices',
+                url: '/invoices',
+                icon: FileText,
+              },
+              {
+                title: 'Invoice Designer',
+                url: '/invoices/design',
+                icon: Palette,
+              },
+            ],
+          },
+          {
+            title: 'Fees & Taxes',
+            url: '/fees',
+            icon: Receipt,
+          },
+          {
+            title: 'Cashiers & Staff',
+            url: '/staff',
+            icon: Users,
+          },
+          {
+            title: 'Reports & Analytics',
+            url: '/reports',
+            icon: BarChart3,
+          },
+          {
+            title: 'Services',
+            icon: Briefcase,
+            items: [
+              {
+                title: 'Category',
+                url: '/services/categories',
+                icon: Tags,
+              },
+              {
+                title: 'Services',
+                url: '/services',
+                icon: Briefcase,
+              },
+              {
+                title: 'Sub Services',
+                url: '/services/sub-services',
+                icon: GitFork,
+              },
+            ],
+          },
+          {
+            title: 'Excel Operations',
+            url: '/excel',
+            icon: FileSpreadsheet,
+          },
+        ],
+      },
+    ]
+  }
+
+  // 3. Cashier or Merchant Staff - Strictly Filtered by Granular Permissions
+  const staffItems: NavItem[] = []
+
+  if (hasPerm('dashboard.view')) {
+    staffItems.push({
+      title: 'Store Dashboard',
+      url: '/',
+      icon: LayoutDashboard,
+    })
+  }
+
+  if (hasPerm('invoices.view') || hasPerm('invoices.issue') || role === 'CASHIER') {
+    staffItems.push({
+      title: 'Point of Sale & Invoices',
+      url: '/invoices',
+      icon: FileText,
+    })
+  }
+
+  if (hasPerm('products.view') || role === 'CASHIER') {
+    staffItems.push({
+      title: 'Products & Lookup',
+      url: '/products',
+      icon: Package,
+    })
+  }
+
+  if (hasPerm('branches.view')) {
+    staffItems.push({
+      title: 'Branches',
+      url: '/branches',
+      icon: Store,
+    })
+  }
+
+  if (hasPerm('invoices.design')) {
+    staffItems.push({
+      title: 'Invoice Designer',
+      url: '/invoices/design',
+      icon: Palette,
+    })
+  }
+
+  if (hasPerm('fees.manage')) {
+    staffItems.push({
+      title: 'Fees & Taxes',
+      url: '/fees',
+      icon: Receipt,
+    })
+  }
+
+  if (hasPerm('reports.view')) {
+    staffItems.push({
+      title: 'Reports',
+      url: '/reports',
+      icon: BarChart3,
+    })
+  }
+
+  if (hasPerm('excel.import') || hasPerm('excel.bulk_edit')) {
+    staffItems.push({
+      title: 'Excel Operations',
+      url: '/excel',
+      icon: FileSpreadsheet,
+    })
+  }
+
+  return [
     {
-      title: 'Store Operations',
-      items: [
+      title: role === 'CASHIER' ? 'Cashier Terminal' : 'Staff Workspace',
+      items: staffItems.length > 0 ? staffItems : [
         {
-          title: 'Store Dashboard',
-          url: '/',
-          icon: LayoutDashboard,
-        },
-        {
-          title: 'Product Hub',
-          icon: Boxes,
-          items: [
-            {
-              title: 'Products',
-              url: '/products',
-              icon: Package,
-            },
-            {
-              title: 'Add-ons',
-              url: '/add-ons',
-              icon: PackagePlus,
-            },
-          ],
-        },
-        {
-          title: 'Services',
-          icon: Briefcase,
-          items: [
-            {
-              title: 'Category',
-              url: '/services/categories',
-              icon: Tags,
-            },
-            {
-              title: 'Services',
-              url: '/services',
-              icon: Briefcase,
-            },
-            {
-              title: 'Sub Services',
-              url: '/services/sub-services',
-              icon: GitFork,
-            },
-          ],
-        },
-        {
-          title: 'Reports & Analytics',
-          url: '/reports',
-          icon: BarChart3,
-        },
-        {
-          title: 'Fees & Taxes',
-          url: '/fees',
-          icon: Receipt,
-        },
-        {
-          title: 'Invoices',
+          title: 'Point of Sale & Invoices',
+          url: '/invoices',
           icon: FileText,
-          items: [
-            {
-              title: 'Issued Invoices',
-              url: '/invoices',
-              icon: FileText,
-            },
-            {
-              title: 'Invoice Designer',
-              url: '/invoices/design',
-              icon: Palette,
-            },
-          ],
-        },
-        {
-          title: 'Excel Operations',
-          url: '/excel',
-          icon: FileSpreadsheet,
         },
       ],
     },
   ]
-
-  if (role === 'MERCHANT_MANAGER') {
-    merchantGroups.push({
-      title: 'Staff Management',
-      items: [
-        {
-          title: 'Staff Users & Permissions',
-          url: '/staff',
-          icon: Users,
-        },
-      ],
-    })
-  }
-
-  return merchantGroups
 }
 
 export const sidebarData: SidebarData = {

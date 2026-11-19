@@ -55,6 +55,7 @@ import { toast } from 'sonner'
 
 export function BranchesView() {
   const {
+    currentUser,
     merchants,
     branches,
     createBranch,
@@ -62,6 +63,10 @@ export function BranchesView() {
     deleteBranch,
     regenerateBranchQr,
   } = useSaaSStore()
+
+  const isSuperAdmin = currentUser.role === 'SUPER_ADMIN'
+  const merchantId = currentUser.merchantId || merchants[0]?.id || ''
+  const currentMerchant = merchants.find((m) => m.id === merchantId)
 
   // State
   const [selectedMerchantId, setSelectedMerchantId] = React.useState<string>('all')
@@ -76,7 +81,7 @@ export function BranchesView() {
   const [branchName, setBranchName] = React.useState('')
   const [branchAddress, setBranchAddress] = React.useState('')
   const [branchImageUrl, setBranchImageUrl] = React.useState('')
-  const [targetMerchantId, setTargetMerchantId] = React.useState(merchants[0]?.id || '')
+  const [targetMerchantId, setTargetMerchantId] = React.useState(isSuperAdmin ? (merchants[0]?.id || '') : merchantId)
   const [error, setError] = React.useState<string | null>(null)
 
   const openCreate = () => {
@@ -84,7 +89,7 @@ export function BranchesView() {
     setBranchName('')
     setBranchAddress('')
     setBranchImageUrl('')
-    setTargetMerchantId(merchants[0]?.id || '')
+    setTargetMerchantId(isSuperAdmin ? (merchants[0]?.id || '') : merchantId)
     setError(null)
     setIsCreateOpen(true)
   }
@@ -106,11 +111,13 @@ export function BranchesView() {
       return
     }
 
+    const assignedMerchantId = isSuperAdmin ? targetMerchantId : merchantId
+
     if (editingBranch) {
-      updateBranch(editingBranch.id, branchName.trim(), branchAddress.trim(), branchImageUrl.trim(), targetMerchantId)
+      updateBranch(editingBranch.id, branchName.trim(), branchAddress.trim(), branchImageUrl.trim(), assignedMerchantId)
       toast.success(`Branch "${branchName}" updated successfully`)
     } else {
-      createBranch(targetMerchantId, branchName.trim(), branchAddress.trim(), branchImageUrl.trim())
+      createBranch(assignedMerchantId, branchName.trim(), branchAddress.trim(), branchImageUrl.trim())
       toast.success(`Branch "${branchName}" created successfully`)
     }
     setIsCreateOpen(false)
@@ -134,7 +141,9 @@ export function BranchesView() {
   }
 
   const filteredBranches = branches.filter((b) => {
-    const matchesMerchant = selectedMerchantId === 'all' || b.merchantId === selectedMerchantId
+    const matchesMerchant = isSuperAdmin
+      ? selectedMerchantId === 'all' || b.merchantId === selectedMerchantId
+      : b.merchantId === merchantId
     const matchesSearch =
       b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -146,9 +155,11 @@ export function BranchesView() {
     <>
       <Header fixed>
         <div className='flex items-center gap-2'>
-          <h1 className='font-semibold text-sm'>Platform Super Admin</h1>
+          <h1 className='font-semibold text-sm'>
+            {isSuperAdmin ? 'Platform Super Admin' : currentMerchant?.name || 'Store'}
+          </h1>
           <Badge variant='outline' className='text-xs bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border-emerald-500/20'>
-            Branch Network
+            {isSuperAdmin ? 'Branch Network' : 'Store Branches'}
           </Badge>
         </div>
         <div className='ms-auto flex items-center gap-2'>
@@ -199,22 +210,24 @@ export function BranchesView() {
             />
           </div>
 
-          {/* Filter by Merchant */}
-          <div className='flex items-center gap-2 w-full sm:w-auto ms-auto'>
-            <span className='text-xs font-medium text-muted-foreground whitespace-nowrap'>Merchant:</span>
-            <select
-              value={selectedMerchantId}
-              onChange={(e) => setSelectedMerchantId(e.target.value)}
-              className='h-8 rounded-lg border border-border/80 bg-card px-2.5 text-xs text-foreground'
-            >
-              <option value='all'>All Merchants ({branches.length} branches)</option>
-              {merchants.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Filter by Merchant (Super Admin only) */}
+          {isSuperAdmin && (
+            <div className='flex items-center gap-2 w-full sm:w-auto ms-auto'>
+              <span className='text-xs font-medium text-muted-foreground whitespace-nowrap'>Merchant:</span>
+              <select
+                value={selectedMerchantId}
+                onChange={(e) => setSelectedMerchantId(e.target.value)}
+                className='h-8 rounded-lg border border-border/80 bg-card px-2.5 text-xs text-foreground'
+              >
+                <option value='all'>All Merchants ({branches.length} branches)</option>
+                {merchants.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Table View (Replaces old Card Grid) */}
