@@ -155,6 +155,7 @@ export interface User {
   email: string
   username?: string
   password?: string
+  pin?: string // 4-6 digit cashier PIN for fast POS terminal login
   name: string
   role: UserRole
   merchantId?: string | null // Nullable for Platform Super Admin

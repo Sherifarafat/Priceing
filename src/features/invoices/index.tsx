@@ -51,6 +51,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitch } from '@/components/language-switch'
+import { PosShortcutButton } from '@/components/pos-shortcut-button'
 import { useSaaSStore } from '@/lib/saas-store'
 import { Invoice, InvoiceStatus, InvoicePaymentMethod } from '@/types/saas'
 import { toast } from 'sonner'
@@ -310,6 +311,7 @@ export function InvoicesView() {
           </Badge>
         </div>
         <div className='ms-auto flex items-center gap-2'>
+          <PosShortcutButton />
           <LanguageSwitch />
           <ThemeSwitch />
           <ProfileDropdown />

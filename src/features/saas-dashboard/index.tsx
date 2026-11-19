@@ -16,6 +16,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  CartesianGrid,
   PieChart,
   Pie,
   Cell,
@@ -30,17 +31,18 @@ import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitch } from '@/components/language-switch'
 import { MobileScannerModal } from '@/components/mobile-scanner-modal'
+import { PosShortcutButton } from '@/components/pos-shortcut-button'
 import { useSaaSStore } from '@/lib/saas-store'
 
 // Telda Signature Revenue / Spend Analytics Data
 const teldaSpendingData = [
-  { name: 'Sat', out: 1200, in: 4500 },
-  { name: 'Sun', out: 3400, in: 2100 },
-  { name: 'Mon', out: 2100, in: 8000 },
-  { name: 'Tue', out: 4800, in: 3200 },
-  { name: 'Wed', out: 1900, in: 6400 },
-  { name: 'Thu', out: 5600, in: 9200 },
-  { name: 'Fri', out: 3100, in: 4100 },
+  { name: 'Sat', expenses: 1200, income: 4500 },
+  { name: 'Sun', expenses: 3400, income: 2100 },
+  { name: 'Mon', expenses: 2100, income: 8000 },
+  { name: 'Tue', expenses: 4800, income: 3200 },
+  { name: 'Wed', expenses: 1900, income: 6400 },
+  { name: 'Thu', expenses: 5600, income: 9200 },
+  { name: 'Fri', expenses: 3100, income: 4100 },
 ]
 
 // Telda Category Breakdown
@@ -182,6 +184,8 @@ export function SaaSDashboard() {
   // Telda Chart Tooltip
   const CustomTeldaTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const expensesVal = payload.find((p: any) => p.dataKey === 'expenses')?.value ?? 0
+      const incomeVal = payload.find((p: any) => p.dataKey === 'income')?.value ?? 0
       return (
         <div className='rounded-2xl border border-border/80 bg-popover/95 p-3.5 shadow-2xl backdrop-blur-md text-xs space-y-2 min-w-[170px]'>
           <p className='font-bold text-foreground text-sm border-b pb-1.5'>{label}</p>
@@ -189,13 +193,13 @@ export function SaaSDashboard() {
             <span className='flex items-center gap-1.5 text-muted-foreground'>
               <span className='size-2 rounded-full bg-[#3EEA85]' /> Expenses:
             </span>
-            <span className='font-bold text-foreground'>E£ {payload[0]?.value?.toLocaleString()}</span>
+            <span className='font-bold text-foreground'>E£ {Number(expensesVal).toLocaleString()}</span>
           </div>
           <div className='flex items-center justify-between gap-3'>
             <span className='flex items-center gap-1.5 text-muted-foreground'>
               <span className='size-2 rounded-full bg-neutral-900 dark:bg-white' /> Income:
             </span>
-            <span className='font-bold text-foreground'>E£ {payload[1]?.value?.toLocaleString()}</span>
+            <span className='font-bold text-foreground'>E£ {Number(incomeVal).toLocaleString()}</span>
           </div>
         </div>
       )
@@ -233,6 +237,7 @@ export function SaaSDashboard() {
             <span className='absolute top-2 right-2 size-2 rounded-full bg-[#3EEA85]' />
           </Button>
 
+          <PosShortcutButton />
           <MobileScannerModal />
           <LanguageSwitch />
           <ThemeSwitch />
@@ -344,7 +349,8 @@ export function SaaSDashboard() {
 
             <div className='h-[260px] w-full pt-2'>
               <ResponsiveContainer width='100%' height='100%'>
-                <BarChart data={teldaSpendingData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={teldaSpendingData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='rgba(150, 150, 150, 0.12)' />
                   <XAxis
                     dataKey='name'
                     axisLine={false}
@@ -358,8 +364,23 @@ export function SaaSDashboard() {
                     tickFormatter={(val) => `${val / 1000}k`}
                   />
                   <Tooltip content={<CustomTeldaTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)', radius: 10 }} />
-                  <Bar dataKey='out' fill='#3EEA85' radius={[6, 6, 6, 6]} maxBarSize={22} />
-                  <Bar dataKey='in' fill='#09090B' radius={[6, 6, 6, 6]} maxBarSize={22} />
+                  <Bar
+                    dataKey='expenses'
+                    name='Expenses'
+                    fill='#3EEA85'
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={22}
+                    isAnimationActive={false}
+                  />
+                  <Bar
+                    dataKey='income'
+                    name='Income'
+                    fill='#09090B'
+                    className='fill-neutral-900 dark:fill-neutral-200'
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={22}
+                    isAnimationActive={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>

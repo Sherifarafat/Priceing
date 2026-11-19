@@ -207,6 +207,7 @@ export interface SaaSState {
       email: string
       username?: string
       password?: string
+      pin?: string
       role?: UserRole
       branchId?: string | null
       permissions?: Record<StaffPermissionKey, boolean>
@@ -1032,6 +1033,7 @@ export const useSaaSStore = create<SaaSState>()(
         let email = ''
         let username: string | undefined = undefined
         let password = 'password123'
+        let pin = '1234'
         let role: UserRole = 'CASHIER'
         let branchId: string | null = null
         let perms: Record<StaffPermissionKey, boolean> = {
@@ -1064,6 +1066,7 @@ export const useSaaSStore = create<SaaSState>()(
           email = dataOrName.email
           username = dataOrName.username || dataOrName.email.split('@')[0].toLowerCase()
           password = dataOrName.password || '123456'
+          pin = dataOrName.pin || '1234'
           role = dataOrName.role || 'CASHIER'
           branchId = dataOrName.branchId || null
           if (dataOrName.permissions) perms = { ...perms, ...dataOrName.permissions }
@@ -1075,6 +1078,7 @@ export const useSaaSStore = create<SaaSState>()(
           email,
           username,
           password,
+          pin,
           role,
           branchId,
           merchantId,

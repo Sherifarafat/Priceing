@@ -193,6 +193,7 @@ export function StaffManagementView() {
   const [email, setEmail] = React.useState('')
   const [username, setUsername] = React.useState('')
   const [password, setPassword] = React.useState('123456')
+  const [pin, setPin] = React.useState('1234')
   const [role, setRole] = React.useState<UserRole>('CASHIER')
   const [selectedBranchId, setSelectedBranchId] = React.useState<string>('all')
   const [permissions, setPermissions] = React.useState<Record<StaffPermissionKey, boolean>>({
@@ -267,6 +268,7 @@ export function StaffManagementView() {
     setEmail('')
     setUsername('')
     setPassword('123456')
+    setPin('1234')
     setSelectedBranchId(storeBranches[0]?.id || 'all')
     applyRolePreset('CASHIER')
     setError(null)
@@ -304,6 +306,7 @@ export function StaffManagementView() {
       email: email.trim(),
       username: finalUsername,
       password: password.trim() || '123456',
+      pin: pin.trim() || '1234',
       role,
       branchId: finalBranchId,
       permissions,
@@ -466,6 +469,9 @@ export function StaffManagementView() {
                                 Username: <code className='rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-primary'>{member.username}</code>
                               </span>
                             )}
+                            <span className='flex items-center gap-1'>
+                              POS PIN: <code className='rounded bg-[#3EEA85]/15 text-[#3EEA85] px-1.5 py-0.5 font-mono text-[11px] font-bold'>{member.pin || '1234'}</code>
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -629,7 +635,7 @@ export function StaffManagementView() {
                 </div>
               </div>
 
-              <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
+              <div className='grid grid-cols-1 sm:grid-cols-4 gap-3'>
                 <div>
                   <label className='font-semibold block mb-1'>Username (For Login)</label>
                   <Input
@@ -647,6 +653,22 @@ export function StaffManagementView() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className='text-xs h-9 rounded-xl font-mono'
+                  />
+                </div>
+
+                <div>
+                  <label className='font-semibold block mb-1 flex items-center justify-between'>
+                    <span>POS PIN (كود الكاشير)</span>
+                    <span className='text-[10px] text-[#3EEA85] font-mono'>4-6 أرقام</span>
+                  </label>
+                  <Input
+                    type='text'
+                    inputMode='numeric'
+                    maxLength={6}
+                    placeholder='1234'
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                    className='text-xs h-9 rounded-xl font-mono font-bold tracking-widest text-center border-[#3EEA85]/50 focus:border-[#3EEA85]'
                   />
                 </div>
 
@@ -811,6 +833,24 @@ export function StaffManagementView() {
                       className='size-6'
                       onClick={() =>
                         copyToClipboard(createdUserSuccess.password || '123456', 'Password')
+                      }
+                    >
+                      <Copy className='size-3' />
+                    </Button>
+                  </div>
+                </div>
+                <div className='flex items-center justify-between'>
+                  <span className='text-muted-foreground font-medium'>POS PIN:</span>
+                  <div className='flex items-center gap-1.5'>
+                    <code className='rounded bg-[#3EEA85]/20 text-[#3EEA85] px-2 py-0.5 font-mono font-bold'>
+                      {createdUserSuccess.pin || '1234'}
+                    </code>
+                    <Button
+                      size='icon'
+                      variant='ghost'
+                      className='size-6'
+                      onClick={() =>
+                        copyToClipboard(createdUserSuccess.pin || '1234', 'POS PIN')
                       }
                     >
                       <Copy className='size-3' />
