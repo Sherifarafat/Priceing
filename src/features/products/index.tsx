@@ -53,15 +53,30 @@ export function ProductsView() {
   } = useSaaSStore()
 
   // Current merchant context
+  const isSuperAdmin = currentUser.role === 'SUPER_ADMIN'
   const merchantId = currentUser.merchantId || merchants[0]?.id || ''
-  const merchant = merchants.find((m) => m.id === merchantId)
+  const [selectedMerchantFilter, setSelectedMerchantFilter] = React.useState<string>('all')
+  const [targetMerchantId, setTargetMerchantId] = React.useState<string>(merchantId || merchants[0]?.id || '')
+
+  const currentActiveMerchantId = isSuperAdmin
+    ? (targetMerchantId || merchantId)
+    : merchantId
+  const merchant = merchants.find((m) => m.id === currentActiveMerchantId)
   const currency = currencies.find((c) => c.id === merchant?.currencyId) || currencies[0]
 
   // Scoped to this merchant only! (Section 2.1)
-  const merchantProducts = products.filter((p) => p.merchantId === merchantId)
-  const merchantCategories = categories.filter((c) => c.merchantId === merchantId)
+  const merchantProducts = isSuperAdmin
+    ? (selectedMerchantFilter === 'all'
+        ? products
+        : products.filter((p) => p.merchantId === selectedMerchantFilter))
+    : products.filter((p) => p.merchantId === merchantId)
+
+  const merchantCategories = isSuperAdmin
+    ? categories
+    : categories.filter((c) => c.merchantId === merchantId)
+
   const applicableFees = (fees || []).filter(
-    (f) => f.status === 'Active' && (!f.merchantId || f.merchantId === merchantId)
+    (f) => f.status === 'Active' && (!f.merchantId || f.merchantId === currentActiveMerchantId)
   )
 
   // Filters & Search
@@ -100,6 +115,11 @@ export function ProductsView() {
 
   const openCreateDialog = () => {
     resetForm()
+    setTargetMerchantId(
+      isSuperAdmin
+        ? (selectedMerchantFilter !== 'all' ? selectedMerchantFilter : (merchants[0]?.id || ''))
+        : merchantId
+    )
     setIsCreateOpen(true)
   }
 
@@ -163,6 +183,7 @@ export function ProductsView() {
         categoryId: formCategoryId || null,
         feeIds: formFeeIds,
         status: formStatus,
+        merchantId: isSuperAdmin ? targetMerchantId : merchantId,
       })
       if (!res.success) {
         setFormError(res.error || 'Failed to create product.')
@@ -251,6 +272,20 @@ export function ProductsView() {
               />
             </div>
             <div className='flex items-center gap-2 w-full sm:w-auto'>
+              {isSuperAdmin && (
+                <select
+                  value={selectedMerchantFilter}
+                  onChange={(e) => setSelectedMerchantFilter(e.target.value)}
+                  className='rounded-md border bg-background px-2.5 py-1.5 text-xs text-foreground shadow-2xs font-semibold'
+                >
+                  <option value='all'>All Merchants</option>
+                  {merchants.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              )}
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
@@ -441,6 +476,24 @@ export function ProductsView() {
             )}
 
             <div className='space-y-3 my-4 text-xs'>
+              {/* Super Admin: Merchant Selector */}
+              {isSuperAdmin && !editingProduct && merchants.length > 0 && (
+                <div>
+                  <label className='font-semibold block mb-1'>Assign to Merchant *</label>
+                  <select
+                    value={targetMerchantId}
+                    onChange={(e) => setTargetMerchantId(e.target.value)}
+                    className='w-full rounded-md border bg-background px-2.5 py-1.5 text-xs text-foreground shadow-2xs font-medium'
+                  >
+                    {merchants.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* Product Name */}
               <div>
                 <label className='font-semibold block mb-1'>Product Name *</label>

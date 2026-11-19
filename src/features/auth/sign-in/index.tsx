@@ -101,19 +101,34 @@ export function SignIn() {
     const pass = data.password.trim()
 
     // 1. Check Sherif (Company Super Admin)
-    if ((input === 'sherif' || input === 'sherif@company.com') && pass === '123456') {
-      const sherifUser = users.find((u) => u.id === 'user-sherif')
-      if (sherifUser) {
-        switchUser(sherifUser.id)
-      }
+    const isSuperAdminInput =
+      input === 'sherif' ||
+      input === 'sherif123' ||
+      input === 'sherif@company.com' ||
+      input === 'sherifarafat85@gmail.com'
 
+    if (isSuperAdminInput && pass === '123456') {
+      const superAdminUser =
+        users.find((u) => u.role === 'SUPER_ADMIN') || {
+          id: '5313b2a9-d578-4d11-b6bd-e391589cc6be',
+          email: 'sherifarafat85@gmail.com',
+          username: 'sherif123',
+          password: '123456',
+          name: 'Sherif Arafat (Super Admin)',
+          role: 'SUPER_ADMIN' as const,
+          merchantId: null,
+          status: 'Active' as const,
+          createdAt: new Date().toISOString(),
+        }
+
+      switchUser(superAdminUser.id)
       auth.setUser({
-        accountNo: 'user-sherif',
-        email: 'sherif@company.com',
+        accountNo: superAdminUser.id,
+        email: superAdminUser.email,
         role: ['SUPER_ADMIN'],
         exp: Date.now() + 24 * 60 * 60 * 1000,
       })
-      auth.setAccessToken('auth-token-sherif-super-admin')
+      auth.setAccessToken(`auth-token-${superAdminUser.id}`)
 
       setIsLoading(false)
       toast.success('Welcome back, Sherif! Logged in as Company Super Admin.')

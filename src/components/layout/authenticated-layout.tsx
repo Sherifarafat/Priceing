@@ -10,6 +10,7 @@ import { Footer } from '@/components/layout/footer'
 import { SkipToMain } from '@/components/skip-to-main'
 import { FloatingAiButton } from '@/components/floating-ai-button'
 import { useSaaSStore } from '@/lib/saas-store'
+import { useAuthStore } from '@/stores/auth-store'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -19,8 +20,20 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
 
   React.useEffect(() => {
-    // Initial sync with backend database
-    useSaaSStore.getState().fetchFromBackend()
+    // Initial sync with backend database and active user session
+    useSaaSStore.getState().fetchFromBackend().then(() => {
+      const authUser = useAuthStore.getState().auth.user
+      const storeState = useSaaSStore.getState()
+      if (authUser) {
+        if (authUser.role?.includes('SUPER_ADMIN')) {
+          if (storeState.currentUser.role !== 'SUPER_ADMIN') {
+            storeState.switchUser('SUPER_ADMIN')
+          }
+        } else if (authUser.accountNo && storeState.currentUser.id !== authUser.accountNo) {
+          storeState.switchUser(authUser.accountNo)
+        }
+      }
+    })
   }, [])
   return (
     <SearchProvider>

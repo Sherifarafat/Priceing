@@ -210,16 +210,18 @@ export function MerchantsView() {
   }
 
   const handleLoginAsManager = (info: { managerId: string; merchant: Merchant; username: string }) => {
-    const mgrUser = users.find((u) => u.id === info.managerId) || {
-      id: info.managerId,
-      name: `${info.merchant.name} Manager`,
-      email: info.merchant.email,
-      username: info.username,
-      role: 'MERCHANT_MANAGER' as const,
-      merchantId: info.merchant.id,
-      status: 'Active' as const,
-      createdAt: new Date().toISOString(),
-    }
+    const mgrUser =
+      users.find((u) => u.merchantId === info.merchant.id && u.role === 'MERCHANT_MANAGER') ||
+      users.find((u) => u.username === info.username) || {
+        id: info.managerId,
+        name: `${info.merchant.name} Manager`,
+        email: info.merchant.email,
+        username: info.username,
+        role: 'MERCHANT_MANAGER' as const,
+        merchantId: info.merchant.id,
+        status: 'Active' as const,
+        createdAt: new Date().toISOString(),
+      }
     switchUser(mgrUser.id)
     auth.setUser({
       accountNo: mgrUser.id,

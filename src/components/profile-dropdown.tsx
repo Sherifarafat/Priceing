@@ -112,6 +112,7 @@ export function ProfileDropdown() {
         <DropdownMenuItem
           onClick={() => {
             useAuthStore.getState().auth.reset()
+            useSaaSStore.getState().switchUser('SUPER_ADMIN')
             navigate({ to: '/sign-in', replace: true })
           }}
           className='cursor-pointer text-destructive focus:text-destructive'

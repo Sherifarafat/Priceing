@@ -1,4 +1,5 @@
 import { Router, Response } from 'express'
+import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma.js'
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth.middleware.js'
 
@@ -15,6 +16,40 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       },
       orderBy: { createdAt: 'desc' },
     })
+
+    // Self-healing: Ensure every merchant has a dedicated MERCHANT_MANAGER account
+    for (const m of merchants) {
+      try {
+        const hasManager = await prisma.user.findFirst({
+          where: { merchantId: m.id, role: 'MERCHANT_MANAGER' },
+        })
+        if (!hasManager) {
+          const baseUsername = m.name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'merchant'
+          const existingUsername = await prisma.user.findFirst({ where: { username: baseUsername } })
+          const finalUsername = existingUsername ? `${baseUsername}_${m.id.slice(-4)}` : baseUsername
+
+          const cleanEmail = m.email.toLowerCase().trim()
+          const existingEmail = await prisma.user.findFirst({ where: { email: cleanEmail } })
+          const finalEmail = existingEmail ? `manager_${finalUsername}@store.local` : cleanEmail
+
+          const hashedPassword = await bcrypt.hash('123456', 10)
+          await prisma.user.create({
+            data: {
+              name: `${m.name} Manager`,
+              username: finalUsername,
+              email: finalEmail,
+              password: hashedPassword,
+              role: 'MERCHANT_MANAGER',
+              merchantId: m.id,
+              status: 'Active',
+            },
+          })
+          console.log(`[Auto-Heal] Provisioned manager account '${finalUsername}' for merchant '${m.name}'`)
+        }
+      } catch (err: any) {
+        console.warn(`[Auto-Heal] Error creating manager for merchant ${m.id}:`, err.message)
+      }
+    }
 
     const formatted = merchants.map((m) => ({
       ...m,
@@ -65,6 +100,33 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthReque
       },
     })
 
+    // Automatically provision Store Owner / Manager account
+    const cleanEmail = email.trim().toLowerCase()
+    const baseUsername = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '') || 'merchant'
+    const existingUser = await prisma.user.findFirst({ where: { username: baseUsername } })
+    const mgrUsername = existingUser ? `${baseUsername}_${merchant.id.slice(-4)}` : baseUsername
+
+    const existingEmail = await prisma.user.findFirst({ where: { email: cleanEmail } })
+    const mgrEmail = existingEmail ? `manager_${mgrUsername}@store.local` : cleanEmail
+
+    const hashedPassword = await bcrypt.hash('123456', 10)
+    let managerUser: any = null
+    try {
+      managerUser = await prisma.user.create({
+        data: {
+          name: `${merchant.name} Manager`,
+          username: mgrUsername,
+          email: mgrEmail,
+          password: hashedPassword,
+          role: 'MERCHANT_MANAGER',
+          merchantId: merchant.id,
+          status: 'Active',
+        },
+      })
+    } catch (e: any) {
+      console.warn('Could not auto-create manager in DB:', e.message)
+    }
+
     // Audit log
     await prisma.auditLog.create({
       data: {
@@ -77,7 +139,16 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthReque
       },
     })
 
-    res.status(201).json(merchant)
+    res.status(201).json({
+      ...merchant,
+      managerUser: {
+        id: managerUser?.id,
+        username: mgrUsername,
+        password: '123456',
+        email: mgrEmail,
+        name: `${merchant.name} Manager`,
+      },
+    })
   } catch (error: any) {
     res.status(500).json({ error: error.message })
   }

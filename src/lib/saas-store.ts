@@ -182,7 +182,7 @@ export interface SaaSState {
   regenerateBranchQr: (branchId: string) => { oldToken: string; newToken: string }
 
   // Merchant Operations (scoped by merchantId)
-  createProduct: (data: Omit<Product, 'id' | 'merchantId' | 'createdAt' | 'updatedAt'>) => { success: boolean; error?: string; product?: Product }
+  createProduct: (data: Omit<Product, 'id' | 'merchantId' | 'createdAt' | 'updatedAt'> & { merchantId?: string }) => { success: boolean; error?: string; product?: Product }
   updateProduct: (id: string, data: Partial<Omit<Product, 'id' | 'merchantId' | 'createdAt'>>) => { success: boolean; error?: string }
   deleteProduct: (id: string) => void
   createCategory: (name: string, branchId?: string | null) => Category
@@ -257,10 +257,38 @@ export const useSaaSStore = create<SaaSState>()(
       invoices: [],
       invoiceTemplate: null,
 
-      switchUser: (userId: string) => {
-        const found = get().users.find((u) => u.id === userId)
+      switchUser: (userIdOrRole: string) => {
+        const users = get().users
+        const found = users.find(
+          (u) =>
+            u.id === userIdOrRole ||
+            (u.username && u.username.toLowerCase() === userIdOrRole.toLowerCase()) ||
+            u.email.toLowerCase() === userIdOrRole.toLowerCase() ||
+            (userIdOrRole === 'SUPER_ADMIN' && u.role === 'SUPER_ADMIN')
+        )
         if (found) {
           set({ currentUser: found })
+          return
+        }
+
+        if (userIdOrRole === 'SUPER_ADMIN' || userIdOrRole === 'user-sherif') {
+          const superAdminUser = users.find((u) => u.role === 'SUPER_ADMIN') || {
+            id: '5313b2a9-d578-4d11-b6bd-e391589cc6be',
+            email: 'sherifarafat85@gmail.com',
+            username: 'sherif123',
+            password: '123456',
+            name: 'Sherif Arafat (Super Admin)',
+            role: 'SUPER_ADMIN' as const,
+            merchantId: null,
+            status: 'Active' as const,
+            createdAt: '2026-01-01T00:00:00Z',
+          }
+          set((state) => ({
+            currentUser: superAdminUser,
+            users: state.users.some((u) => u.role === 'SUPER_ADMIN')
+              ? state.users
+              : [superAdminUser, ...state.users],
+          }))
         }
       },
 
@@ -300,7 +328,9 @@ export const useSaaSStore = create<SaaSState>()(
           updatedAt: now,
         }
         const managerUsername =
-          data.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') || `merchant_${id.slice(-4)}`
+          data.name.toLowerCase().replace(/[^a-z0-9]/g, '') ||
+          data.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') ||
+          `merchant_${id.slice(-4)}`
         const manager: User = {
           id: `user-${id}-mgr`,
           email: data.email,
@@ -328,20 +358,7 @@ export const useSaaSStore = create<SaaSState>()(
           auditLogs: [log, ...state.auditLogs],
         }))
 
-        // Sync manager user to backend DB
-        api.users
-          .create({
-            name: manager.name,
-            email: manager.email,
-            username: manager.username,
-            password: manager.password,
-            role: manager.role,
-            merchantId: id,
-            status: 'Active',
-          })
-          .catch((err) => console.warn('Failed to sync merchant manager to DB:', err.message))
-
-        // Sync with backend SQLite database
+        // Sync with backend SQLite database (which auto-creates the manager user)
         api.merchants
           .create({
             name: data.name,
@@ -351,11 +368,37 @@ export const useSaaSStore = create<SaaSState>()(
             logo: data.logo,
             status: data.status,
           })
-          .then((saved) => {
+          .then((saved: any) => {
             if (saved && saved.id) {
-              set((state) => ({
-                merchants: state.merchants.map((m) => (m.id === id ? { ...m, id: saved.id } : m)),
-              }))
+              set((state) => {
+                const realMerchantId = saved.id
+                const realManager: User = saved.managerUser
+                  ? {
+                      id: saved.managerUser.id || `user-${realMerchantId}-mgr`,
+                      email: saved.managerUser.email,
+                      username: saved.managerUser.username,
+                      password: '123456',
+                      name: saved.managerUser.name || `${data.name} Manager`,
+                      role: 'MERCHANT_MANAGER',
+                      merchantId: realMerchantId,
+                      status: 'Active',
+                      createdAt: now,
+                    }
+                  : {
+                      ...manager,
+                      merchantId: realMerchantId,
+                    }
+
+                return {
+                  merchants: state.merchants.map((m) =>
+                    m.id === id ? { ...m, ...saved, id: realMerchantId } : m
+                  ),
+                  users: [
+                    ...state.users.filter((u) => u.id !== manager.id && u.merchantId !== id),
+                    realManager,
+                  ],
+                }
+              })
             }
           })
           .catch((err) => console.warn('Failed to sync merchant to DB:', err.message))
@@ -560,7 +603,10 @@ export const useSaaSStore = create<SaaSState>()(
       // Products (Scoped to current Merchant)
       createProduct: (data) => {
         const user = get().currentUser
-        const merchantId = user.merchantId || get().merchants[0]?.id
+        const merchantId =
+          user.role === 'SUPER_ADMIN' && data.merchantId
+            ? data.merchantId
+            : (user.merchantId || data.merchantId || get().merchants[0]?.id)
         if (!merchantId) return { success: false, error: 'User does not belong to any Merchant' }
 
         // Section 6.2: Barcode must be unique within the same merchant
