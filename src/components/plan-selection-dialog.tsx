@@ -29,7 +29,7 @@ export function PlanSelectionDialog({ open, onOpenChange }: PlanSelectionDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='sm:max-w-3xl p-6'>
         <DialogHeader className='text-center sm:text-center space-y-1.5'>
-          <div className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 text-xs font-semibold mx-auto border border-indigo-100 dark:border-indigo-900/40'>
+          <div className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] text-xs font-bold mx-auto border border-emerald-500/20'>
             <Sparkles className='size-3.5' />
             <span>5 Days Left on Your Free Trial</span>
           </div>
@@ -118,19 +118,19 @@ export function PlanSelectionDialog({ open, onOpenChange }: PlanSelectionDialogP
             onClick={() => setSelectedPlan('pro')}
             className={`relative rounded-2xl border-2 p-4.5 flex flex-col justify-between transition-all cursor-pointer shadow-md ${
               selectedPlan === 'pro'
-                ? 'border-[#4F46E5] bg-indigo-50/20 dark:bg-indigo-950/20'
-                : 'border-[#4F46E5]/40 hover:border-[#4F46E5]'
+                ? 'border-[#3EEA85] bg-emerald-500/5'
+                : 'border-[#3EEA85]/40 hover:border-[#3EEA85]'
             }`}
           >
             <div className='absolute -top-3 start-1/2 -translate-x-1/2'>
-              <span className='bg-[#4F46E5] text-white text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow-xs'>
+              <span className='bg-black text-white dark:bg-[#3EEA85] dark:text-black text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow-xs'>
                 Most Popular
               </span>
             </div>
             <div>
               <div className='font-bold text-sm text-foreground flex items-center gap-1.5'>
                 <span>Business Pro</span>
-                <Zap className='size-3.5 text-[#4F46E5] fill-[#4F46E5]' />
+                <Zap className='size-3.5 text-[#3EEA85] fill-[#3EEA85]' />
               </div>
               <p className='text-[11px] text-muted-foreground mt-0.5'>Complete multi-branch retail network</p>
               <div className='mt-3 mb-4'>
@@ -141,26 +141,26 @@ export function PlanSelectionDialog({ open, onOpenChange }: PlanSelectionDialogP
               </div>
               <ul className='space-y-2 text-xs text-foreground/90'>
                 <li className='flex items-center gap-2'>
-                  <Check className='size-3.5 text-[#4F46E5] shrink-0 font-bold' />
+                  <Check className='size-3.5 text-[#3EEA85] shrink-0 font-bold' />
                   <span className='font-medium'>Unlimited Store Branches</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='size-3.5 text-[#4F46E5] shrink-0 font-bold' />
+                  <Check className='size-3.5 text-[#3EEA85] shrink-0 font-bold' />
                   <span>Real-time Barcode Scanner</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='size-3.5 text-[#4F46E5] shrink-0 font-bold' />
+                  <Check className='size-3.5 text-[#3EEA85] shrink-0 font-bold' />
                   <span>Live Footfall Telemetry</span>
                 </li>
                 <li className='flex items-center gap-2'>
-                  <Check className='size-3.5 text-[#4F46E5] shrink-0 font-bold' />
+                  <Check className='size-3.5 text-[#3EEA85] shrink-0 font-bold' />
                   <span>AI Copilot & Smart Audit</span>
                 </li>
               </ul>
             </div>
             <Button
               size='sm'
-              className='w-full mt-5 text-xs bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold shadow-xs'
+              className='w-full mt-5 text-xs bg-black hover:bg-neutral-800 text-white dark:bg-[#3EEA85] dark:text-black dark:hover:bg-[#34D399] font-bold shadow-xs'
               onClick={() => handleChoosePlan('Business Pro')}
             >
               Upgrade to Pro

@@ -304,7 +304,7 @@ export function InvoicesView() {
           </h1>
           <Badge
             variant='outline'
-            className='text-xs bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border-indigo-200/50'
+            className='text-xs bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border-emerald-500/20'
           >
             Issued Invoices
           </Badge>
@@ -344,7 +344,7 @@ export function InvoicesView() {
           <Card className='p-4 border-border/60 shadow-2xs'>
             <div className='flex items-center justify-between'>
               <span className='text-xs text-muted-foreground font-medium'>Total Invoices</span>
-              <FileText className='size-4 text-indigo-600' />
+              <FileText className='size-4 text-emerald-600 dark:text-[#3EEA85]' />
             </div>
             <div className='text-2xl font-bold font-mono mt-2'>{totalCount}</div>
           </Card>
