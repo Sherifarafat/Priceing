@@ -17,28 +17,58 @@ import { useSaaSStore } from '@/lib/saas-store'
 
 export function AppSidebar() {
   const { collapsible, variant } = useLayout()
-  const { currentUser } = useSaaSStore()
+  const { currentUser, merchants } = useSaaSStore()
   const navGroups = getSaaSSidebarNav(currentUser)
 
   const [isPlanOpen, setIsPlanOpen] = React.useState(false)
   const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false)
+
+  // Scoped merchant for merchant manager / staff
+  const currentMerchant = merchants.find((m) => m.id === currentUser.merchantId)
+  const isMerchantUser = currentUser.role !== 'SUPER_ADMIN' && currentMerchant
 
   return (
     <>
       <Sidebar collapsible={collapsible} variant={variant}>
         <SidebarHeader className='px-3.5 py-2.5 pb-2 space-y-2'>
           <div className='flex items-center gap-2.5 px-1 py-0.5'>
-            <div className='size-8 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-black text-sm shadow-xs shrink-0'>
-              t<span className='text-[#3EEA85] -ms-0.5 font-black'>.</span>
-            </div>
-            <div className='flex flex-col leading-none group-data-[collapsible=icon]:hidden'>
-              <span className='font-black text-lg tracking-tight text-foreground lowercase'>
-                telda<span className='text-[#3EEA85]'>.</span>
-              </span>
-              <span className='text-[9px] font-extrabold tracking-wider uppercase text-neutral-400 mt-0.5'>
-                Business
-              </span>
-            </div>
+            {isMerchantUser ? (
+              <>
+                {currentMerchant.logo ? (
+                  <img
+                    src={currentMerchant.logo}
+                    alt={currentMerchant.name}
+                    className='size-8 rounded-xl object-cover border border-border/80 shadow-xs shrink-0'
+                  />
+                ) : (
+                  <div className='size-8 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-bold text-sm shadow-xs shrink-0'>
+                    {currentMerchant.name[0]?.toUpperCase() || 'M'}
+                  </div>
+                )}
+                <div className='flex flex-col leading-none group-data-[collapsible=icon]:hidden min-w-0'>
+                  <span className='font-black text-base tracking-tight text-foreground truncate'>
+                    {currentMerchant.name}
+                  </span>
+                  <span className='text-[9px] font-bold tracking-wider uppercase text-[#3EEA85] mt-0.5'>
+                    Store Portal
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className='size-8 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-black text-sm shadow-xs shrink-0'>
+                  t<span className='text-[#3EEA85] -ms-0.5 font-black'>.</span>
+                </div>
+                <div className='flex flex-col leading-none group-data-[collapsible=icon]:hidden'>
+                  <span className='font-black text-lg tracking-tight text-foreground lowercase'>
+                    telda<span className='text-[#3EEA85]'>.</span>
+                  </span>
+                  <span className='text-[9px] font-extrabold tracking-wider uppercase text-neutral-400 mt-0.5'>
+                    Business
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </SidebarHeader>
 

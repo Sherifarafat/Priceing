@@ -208,7 +208,16 @@ export function SaaSDashboard() {
       {/* ── Top Header (Telda Style) ── */}
       <Header>
         <div className='flex items-center gap-2.5'>
-          <h1 className='text-lg sm:text-xl font-bold tracking-tight text-foreground'>Dashboard</h1>
+          {!isSuperAdmin && currentMerchant?.logo && (
+            <img
+              src={currentMerchant.logo}
+              alt={currentMerchant.name}
+              className='size-7 rounded-lg object-cover border border-border/80 shadow-2xs'
+            />
+          )}
+          <h1 className='text-lg sm:text-xl font-bold tracking-tight text-foreground'>
+            {!isSuperAdmin && currentMerchant ? currentMerchant.name : 'Dashboard'}
+          </h1>
           <Badge variant='outline' className='text-[11px] font-bold rounded-lg px-2.5 py-0.5 border-border/80 bg-card'>
             {isSuperAdmin ? 'Enterprise' : currentMerchant?.name || 'Pro Account'}
           </Badge>
