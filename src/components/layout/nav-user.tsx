@@ -167,7 +167,7 @@ export function NavUser({ user: _user }: NavUserProps) {
                           <div className='text-[10px] text-muted-foreground truncate'>{profile.sub}</div>
                         </div>
                       </div>
-                      {isSelected && <Check className='size-4 text-[#3EEA85] shrink-0' />}
+                      {isSelected && <Check className='size-4 text-[#4F46E5] shrink-0' />}
                     </DropdownMenuItem>
                   )
                 })}

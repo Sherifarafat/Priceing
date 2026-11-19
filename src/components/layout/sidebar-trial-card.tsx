@@ -38,7 +38,7 @@ export function SidebarTrialCard({ onSelectPlan, onDismiss }: SidebarTrialCardPr
       {/* Modern Gradient Progress Bar */}
       <div className='h-1.5 w-full bg-neutral-800/90 rounded-full overflow-hidden my-2.5'>
         <div
-          className='h-full w-[45%] rounded-full bg-gradient-to-r from-emerald-400 via-[#3EEA85] to-[#10B981] transition-all duration-500'
+          className='h-full w-[45%] rounded-full bg-gradient-to-r from-[#FCA5A5] via-[#C084FC] to-[#4F46E5] transition-all duration-500'
         />
       </div>
 
@@ -51,7 +51,7 @@ export function SidebarTrialCard({ onSelectPlan, onDismiss }: SidebarTrialCardPr
       <button
         type='button'
         onClick={onSelectPlan}
-        className='inline-flex items-center gap-1 text-xs font-semibold text-white hover:text-[#3EEA85] transition-colors cursor-pointer group/btn'
+        className='inline-flex items-center gap-1 text-xs font-semibold text-white hover:text-indigo-300 transition-colors cursor-pointer group/btn'
       >
         <span>Select plan</span>
         <ChevronRight className='size-3.5 group-hover/btn:translate-x-0.5 transition-transform' />

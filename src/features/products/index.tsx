@@ -311,7 +311,7 @@ export function ProductsView() {
                               className='size-10 rounded-md object-cover border bg-muted shrink-0'
                             />
                           ) : (
-                            <div className='size-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 shrink-0'>
+                            <div className='size-10 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/50 flex items-center justify-center text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 shrink-0'>
                               <ImageIcon className='size-4' />
                             </div>
                           )}

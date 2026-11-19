@@ -48,7 +48,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
       <DialogContent className='sm:max-w-md p-6'>
         <DialogHeader className='space-y-1.5'>
           <div className='flex items-center gap-2'>
-            <div className='size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center shrink-0'>
+            <div className='size-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center shrink-0'>
               <MessageSquare className='size-4' />
             </div>
             <div>
@@ -97,7 +97,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
                   onClick={() => setCategory(cat)}
                   className={`text-xs px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                     category === cat
-                      ? 'bg-black text-white dark:bg-[#3EEA85] dark:text-black font-semibold shadow-xs'
+                      ? 'bg-[#4F46E5] text-white font-medium shadow-xs'
                       : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
@@ -140,7 +140,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
             <Button
               type='submit'
               size='sm'
-              className='text-xs bg-black text-white hover:bg-neutral-800 dark:bg-[#3EEA85] dark:text-black dark:hover:bg-[#34D399] font-bold'
+              className='text-xs bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold'
               disabled={isSubmitting}
             >
               <Send className='size-3 mr-1.5' />

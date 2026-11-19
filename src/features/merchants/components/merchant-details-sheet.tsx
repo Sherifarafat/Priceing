@@ -129,7 +129,7 @@ export function MerchantDetailsSheet({
                     className='size-14 rounded-2xl object-cover border border-border/80 shadow-xs shrink-0'
                   />
                 ) : (
-                  <div className='size-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] flex items-center justify-center font-bold text-xl shrink-0 shadow-xs border border-emerald-500/20'>
+                  <div className='size-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 flex items-center justify-center font-bold text-xl shrink-0 shadow-xs border border-indigo-100 dark:border-indigo-900/40'>
                     {merchant.name[0]}
                   </div>
                 )}

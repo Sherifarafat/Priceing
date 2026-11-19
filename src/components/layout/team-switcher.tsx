@@ -81,10 +81,10 @@ export function TeamSwitcher() {
       <div className='flex items-center justify-between px-1 py-1'>
         <div className='flex items-center gap-2'>
           <div className='size-8 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-extrabold text-sm shadow-xs'>
-            t<span className='text-[#3EEA85] -ms-0.5 font-black'>.</span>
+            t<span className='text-[#4F46E5] -ms-0.5 font-black'>.</span>
           </div>
           <span className='font-extrabold text-lg tracking-tight text-foreground lowercase'>
-            telda<span className='text-[#3EEA85]'>.</span>
+            telda<span className='text-[#4F46E5]'>.</span>
           </span>
         </div>
       </div>
@@ -149,7 +149,7 @@ export function TeamSwitcher() {
                         </span>
                       </div>
                     </div>
-                    {isSelected && <Check className='size-4 text-[#3EEA85]' />}
+                    {isSelected && <Check className='size-4 text-[#4F46E5]' />}
                   </DropdownMenuItem>
                 )
               })}

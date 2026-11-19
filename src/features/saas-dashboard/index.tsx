@@ -44,7 +44,7 @@ const teldaSpendingData = [
 
 // Telda Category Breakdown
 const teldaCategoryData = [
-  { name: 'Groceries & Food', value: 45000, percentage: '48%', color: '#3EEA85' },
+  { name: 'Groceries & Food', value: 45000, percentage: '48%', color: '#4F46E5' },
   { name: 'Shopping & Retail', value: 25000, percentage: '26%', color: '#18181B' },
   { name: 'Bills & Utilities', value: 15000, percentage: '16%', color: '#71717A' },
   { name: 'Entertainment', value: 9000, percentage: '10%', color: '#A1A1AA' },
@@ -161,7 +161,7 @@ export function SaaSDashboard() {
           <p className='font-bold text-foreground text-sm border-b pb-1.5'>{label}</p>
           <div className='flex items-center justify-between gap-3'>
             <span className='flex items-center gap-1.5 text-muted-foreground'>
-              <span className='size-2 rounded-full bg-[#3EEA85]' /> Expenses:
+              <span className='size-2 rounded-full bg-[#4F46E5]' /> Expenses:
             </span>
             <span className='font-bold text-foreground'>E£ {payload[0]?.value?.toLocaleString()}</span>
           </div>
@@ -195,7 +195,7 @@ export function SaaSDashboard() {
 
           <Button variant='ghost' size='icon' className='relative size-9 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground'>
             <Bell className='size-4' />
-            <span className='absolute top-2 right-2 size-2 rounded-full bg-[#3EEA85]' />
+            <span className='absolute top-2 right-2 size-2 rounded-full bg-[#4F46E5]' />
           </Button>
 
           <MobileScannerModal />
@@ -213,7 +213,7 @@ export function SaaSDashboard() {
           <Card className='p-5 rounded-2xl border-border/70 hover:shadow-md transition-shadow'>
             <div className='flex items-center justify-between'>
               <span className='text-xs font-semibold text-muted-foreground'>Products Registered</span>
-              <div className='size-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center'>
+              <div className='size-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center'>
                 <Package className='size-4' />
               </div>
             </div>
@@ -228,7 +228,7 @@ export function SaaSDashboard() {
           <Card className='p-5 rounded-2xl border-border/70 hover:shadow-md transition-shadow'>
             <div className='flex items-center justify-between'>
               <span className='text-xs font-semibold text-muted-foreground'>Total Transactions</span>
-              <div className='size-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center'>
+              <div className='size-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center'>
                 <Coins className='size-4' />
               </div>
             </div>
@@ -243,7 +243,7 @@ export function SaaSDashboard() {
           <Card className='p-5 rounded-2xl border-border/70 hover:shadow-md transition-shadow'>
             <div className='flex items-center justify-between'>
               <span className='text-xs font-semibold text-muted-foreground'>Live Branches</span>
-              <div className='size-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center'>
+              <div className='size-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center'>
                 <Store className='size-4' />
               </div>
             </div>
@@ -256,13 +256,13 @@ export function SaaSDashboard() {
           <Card className='p-5 rounded-2xl border-border/70 hover:shadow-md transition-shadow'>
             <div className='flex items-center justify-between'>
               <span className='text-xs font-semibold text-muted-foreground'>Customer Scans</span>
-              <div className='size-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center'>
+              <div className='size-8 rounded-xl bg-[#4F46E5]/10 text-[#4F46E5] flex items-center justify-center'>
                 <ScanLine className='size-4' />
               </div>
             </div>
             <div className='mt-2'>
               <h3 className='text-2xl font-bold text-foreground tracking-tight'>{customerScanCount}</h3>
-              <p className='text-[11px] text-emerald-600 dark:text-[#3EEA85] font-bold mt-0.5'>Real-time camera hits</p>
+              <p className='text-[11px] text-[#4F46E5] font-bold mt-0.5'>Real-time camera hits</p>
             </div>
           </Card>
         </div>
@@ -277,7 +277,7 @@ export function SaaSDashboard() {
                 <CardTitle className='text-base font-bold text-foreground'>Weekly Cash Flow</CardTitle>
                 <div className='flex items-center gap-4 text-xs text-muted-foreground mt-1.5'>
                   <span className='flex items-center gap-1.5'>
-                    <span className='size-2 rounded-full bg-[#3EEA85]' /> Expenses
+                    <span className='size-2 rounded-full bg-[#4F46E5]' /> Expenses
                   </span>
                   <span className='flex items-center gap-1.5'>
                     <span className='size-2 rounded-full bg-neutral-900 dark:bg-white' /> Income
@@ -317,7 +317,7 @@ export function SaaSDashboard() {
                     tickFormatter={(val) => `${val / 1000}k`}
                   />
                   <Tooltip content={<CustomTeldaTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)', radius: 10 }} />
-                  <Bar dataKey='out' fill='#3EEA85' radius={[6, 6, 6, 6]} maxBarSize={22} />
+                  <Bar dataKey='out' fill='#4F46E5' radius={[6, 6, 6, 6]} maxBarSize={22} />
                   <Bar dataKey='in' fill='#18181B' radius={[6, 6, 6, 6]} maxBarSize={22} />
                 </BarChart>
               </ResponsiveContainer>
@@ -399,7 +399,7 @@ export function SaaSDashboard() {
                     {tx.avatar ? (
                       <img src={tx.avatar} alt={tx.merchant} className='size-11 rounded-xl object-cover border border-border/70 shrink-0' />
                     ) : (
-                      <div className='size-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 font-bold flex items-center justify-center text-sm shrink-0'>
+                      <div className='size-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 font-bold flex items-center justify-center text-sm shrink-0'>
                         {tx.initial}
                       </div>
                     )}
@@ -448,7 +448,7 @@ export function SaaSDashboard() {
                     return (
                       <tr key={prod.id} className='hover:bg-muted/30 transition-colors'>
                         <td className='py-3 font-medium flex items-center gap-3'>
-                          <div className='size-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center shrink-0'>
+                          <div className='size-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center shrink-0'>
                             <ProdIcon className='size-4' />
                           </div>
                           <div>
@@ -476,7 +476,7 @@ export function SaaSDashboard() {
         {/* ── Telda Footer Banner: Quick QR Test Launch ── */}
         <div className='flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-neutral-900 text-white shadow-xl'>
           <div className='flex items-center gap-3'>
-            <div className='size-10 rounded-xl bg-[#3EEA85] text-black font-bold flex items-center justify-center shrink-0'>
+            <div className='size-10 rounded-xl bg-[#4F46E5] text-white flex items-center justify-center shrink-0'>
               <ScanLine className='size-5' />
             </div>
             <div>
