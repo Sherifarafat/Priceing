@@ -211,7 +211,7 @@ export function ReportsView() {
         <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
           <div>
             <div className='flex items-center gap-2.5'>
-              <div className='size-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 flex items-center justify-center font-bold border border-indigo-100 dark:border-indigo-900/40'>
+              <div className='size-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] flex items-center justify-center font-bold border border-emerald-500/20'>
                 <BarChart3 className='size-5' />
               </div>
               <div>
@@ -259,7 +259,7 @@ export function ReportsView() {
           <Card className='border-border/80 shadow-xs bg-white dark:bg-card p-4.5 rounded-2xl'>
             <div className='flex items-center justify-between text-muted-foreground mb-2'>
               <span className='text-xs font-semibold'>Total Customer Scans</span>
-              <div className='size-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center'>
+              <div className='size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center'>
                 <QrCode className='size-4' />
               </div>
             </div>
@@ -276,7 +276,7 @@ export function ReportsView() {
           <Card className='border-border/80 shadow-xs bg-white dark:bg-card p-4.5 rounded-2xl'>
             <div className='flex items-center justify-between text-muted-foreground mb-2'>
               <span className='text-xs font-semibold'>Merchant Network</span>
-              <div className='size-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center'>
+              <div className='size-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200/80 dark:border-neutral-700/60 flex items-center justify-center'>
                 <Store className='size-4' />
               </div>
             </div>
@@ -292,7 +292,7 @@ export function ReportsView() {
           <Card className='border-border/80 shadow-xs bg-white dark:bg-card p-4.5 rounded-2xl'>
             <div className='flex items-center justify-between text-muted-foreground mb-2'>
               <span className='text-xs font-semibold'>Catalog Products</span>
-              <div className='size-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center'>
+              <div className='size-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200/80 dark:border-neutral-700/60 flex items-center justify-center'>
                 <Package className='size-4' />
               </div>
             </div>
@@ -308,7 +308,7 @@ export function ReportsView() {
           <Card className='border-border/80 shadow-xs bg-white dark:bg-card p-4.5 rounded-2xl'>
             <div className='flex items-center justify-between text-muted-foreground mb-2'>
               <span className='text-xs font-semibold'>Audit Trail Entries</span>
-              <div className='size-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center'>
+              <div className='size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border border-emerald-500/20 flex items-center justify-center'>
                 <ShieldAlert className='size-4' />
               </div>
             </div>
@@ -331,7 +331,7 @@ export function ReportsView() {
                 <h3 className='text-sm font-bold text-foreground'>Weekly Footfall & QR Scanning Velocity</h3>
                 <p className='text-xs text-muted-foreground'>In-store shopper interactions across daily operating hours</p>
               </div>
-              <Badge variant='outline' className='text-xs font-mono bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border-indigo-200/50'>
+              <Badge variant='outline' className='text-xs font-mono bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border-emerald-500/20'>
                 Live Stream
               </Badge>
             </div>
@@ -340,8 +340,8 @@ export function ReportsView() {
                 <AreaChart data={scanTrendsData}>
                   <defs>
                     <linearGradient id='colorScans' x1='0' y1='0' x2='0' y2='1'>
-                      <stop offset='5%' stopColor='#4F46E5' stopOpacity={0.4} />
-                      <stop offset='95%' stopColor='#4F46E5' stopOpacity={0.0} />
+                      <stop offset='5%' stopColor='#3EEA85' stopOpacity={0.4} />
+                      <stop offset='95%' stopColor='#3EEA85' stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='rgba(150, 150, 150, 0.15)' />
@@ -359,7 +359,7 @@ export function ReportsView() {
                   <Area
                     type='monotone'
                     dataKey='scans'
-                    stroke='#4F46E5'
+                    stroke='#3EEA85'
                     strokeWidth={2.5}
                     fillOpacity={1}
                     fill='url(#colorScans)'
@@ -384,8 +384,8 @@ export function ReportsView() {
                   <BarChart data={merchantChartData}>
                     <defs>
                       <linearGradient id='colorBarBranches' x1='0' y1='0' x2='0' y2='1'>
-                        <stop offset='0%' stopColor='#6366F1' stopOpacity={1} />
-                        <stop offset='100%' stopColor='#4F46E5' stopOpacity={0.9} />
+                        <stop offset='0%' stopColor='#3EEA85' stopOpacity={1} />
+                        <stop offset='100%' stopColor='#09090B' stopOpacity={0.9} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='rgba(150, 150, 150, 0.15)' />
@@ -478,7 +478,7 @@ export function ReportsView() {
                       >
                         <TableCell className='ps-5 py-3.5 font-semibold text-xs text-foreground'>
                           <div className='flex items-center gap-2.5'>
-                            <div className='size-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 flex items-center justify-center font-bold shrink-0 border border-indigo-100 dark:border-indigo-900/40'>
+                            <div className='size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] flex items-center justify-center font-bold shrink-0 border border-emerald-500/20'>
                               <FileText className='size-4' />
                             </div>
                             <div>

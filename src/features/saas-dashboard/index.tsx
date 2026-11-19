@@ -315,7 +315,6 @@ export function SaaSDashboard() {
                     tick={{ fill: '#71717A', fontSize: 12, fontWeight: 600 }}
                   />
                   <YAxis
-                    dataKey='name'
                     axisLine={false}
                     tickLine={false}
                     tick={{ fill: '#71717A', fontSize: 11 }}
