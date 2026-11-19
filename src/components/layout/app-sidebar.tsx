@@ -9,9 +9,7 @@ import {
 } from '@/components/ui/sidebar'
 import { getSaaSSidebarNav } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
-import { SidebarTrialCard } from './sidebar-trial-card'
 import { SidebarBottomNav } from './sidebar-bottom-nav'
-import { PlanSelectionDialog } from '@/components/plan-selection-dialog'
 import { FeedbackDialog } from '@/components/feedback-dialog'
 import { useSaaSStore } from '@/lib/saas-store'
 
@@ -20,7 +18,6 @@ export function AppSidebar() {
   const { currentUser, merchants } = useSaaSStore()
   const navGroups = getSaaSSidebarNav(currentUser)
 
-  const [isPlanOpen, setIsPlanOpen] = React.useState(false)
   const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false)
 
   // Scoped merchant for merchant manager / staff
@@ -79,21 +76,12 @@ export function AppSidebar() {
         </SidebarContent>
 
         <SidebarFooter className='p-2.5 pt-1.5 space-y-1.5'>
-          {/* Trial countdown card from screenshot */}
-          <SidebarTrialCard onSelectPlan={() => setIsPlanOpen(true)} />
-
-          {/* Thin subtle divider */}
-          <div className='border-t border-border/40 my-1 group-data-[collapsible=icon]:hidden' />
-
           {/* Bottom items: Feedback, Settings, Help Center */}
           <SidebarBottomNav onOpenFeedback={() => setIsFeedbackOpen(true)} />
         </SidebarFooter>
 
         <SidebarRail />
       </Sidebar>
-
-      {/* Plan Selection Modal */}
-      <PlanSelectionDialog open={isPlanOpen} onOpenChange={setIsPlanOpen} />
 
       {/* Feedback Modal */}
       <FeedbackDialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen} />
