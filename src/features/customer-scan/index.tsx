@@ -25,7 +25,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-  SheetFooter,
 } from '@/components/ui/sheet'
 import {
   Dialog,
@@ -36,10 +35,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useSaaSStore } from '@/lib/saas-store'
-import { Product, ShoppingItem } from '@/types/saas'
+import { Branch, Merchant, Product, ShoppingItem } from '@/types/saas'
 
 interface CustomerScanViewProps {
-  qrToken: string
+  qrToken?: string
 }
 
 // ─── Beep & Haptics ─────────────────────────────────────────────────────────
@@ -78,18 +77,9 @@ const SCAN_FORMATS = [
   Html5QrcodeSupportedFormats.EAN_8,
   Html5QrcodeSupportedFormats.CODE_128,
   Html5QrcodeSupportedFormats.CODE_39,
-  Html5QrcodeSupportedFormats.CODE_93,
-  Html5QrcodeSupportedFormats.CODABAR,
   Html5QrcodeSupportedFormats.UPC_A,
   Html5QrcodeSupportedFormats.UPC_E,
-  Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION,
   Html5QrcodeSupportedFormats.QR_CODE,
-  Html5QrcodeSupportedFormats.DATA_MATRIX,
-  Html5QrcodeSupportedFormats.AZTEC,
-  Html5QrcodeSupportedFormats.PDF_417,
-  Html5QrcodeSupportedFormats.ITF,
-  Html5QrcodeSupportedFormats.RSS_14,
-  Html5QrcodeSupportedFormats.RSS_EXPANDED,
 ]
 
 const CAM_DIV_ID = 'barcode-camera-feed'
@@ -98,8 +88,31 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
   const { branches, merchants, products, currencies, recordCustomerScan, recordShoppingSession } =
     useSaaSStore()
 
-  const branch   = branches.find((b) => b.qrToken === qrToken)
-  const merchant = branch ? merchants.find((m) => m.id === branch.merchantId) : null
+  const defaultBranch: Branch = {
+    id: 'branch-17951314',
+    merchantId: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'Cairo Branch',
+    address: 'Cairo, Egypt',
+    qrToken: 'cairo-token',
+    qrStatus: 'Active',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  }
+  const defaultMerchant: Merchant = {
+    id: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'Karome',
+    status: 'Active',
+    currencyId: 'curr-egp',
+    merchantTypeId: 'type-1',
+    email: 'contact@karome.com',
+    phone: '+20 100 000 0000',
+    address: 'Cairo, Egypt',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  }
+
+  const branch   = (qrToken ? branches.find((b) => b.qrToken === qrToken) : null) || branches[0] || defaultBranch
+  const merchant = (branch ? merchants.find((m) => m.id === branch.merchantId) : null) || merchants[0] || defaultMerchant
   const currency = merchant
     ? currencies.find((c) => c.id === merchant.currencyId) || currencies[0]
     : currencies[0]
@@ -112,7 +125,6 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
   const [cameraError, setCameraError] = React.useState<string | null>(null)
   const [facingMode, setFacingMode] = React.useState<'environment' | 'user'>('environment')
   const [scannedProduct, setScannedProduct] = React.useState<Product | null>(null)
-  const [scannedQuantity, setScannedQuantity] = React.useState(1)
   const [notFoundBarcode, setNotFoundBarcode] = React.useState<string | null>(null)
   const [isCartOpen, setIsCartOpen] = React.useState(false)
   const [priceChangeItem, setPriceChangeItem] = React.useState<{ item: ShoppingItem; newPrice: number } | null>(null)
@@ -130,6 +142,15 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
     mountedRef.current = true
     return () => { mountedRef.current = false }
   }, [])
+
+  // Auto-dismiss scanned product after 6 seconds to resume scanning
+  React.useEffect(() => {
+    if (!scannedProduct) return
+    const timer = setTimeout(() => {
+      setScannedProduct(null)
+    }, 6000)
+    return () => clearTimeout(timer)
+  }, [scannedProduct])
 
   // ── Session ──────────────────────────────────────────────────────────────────
   React.useEffect(() => {
@@ -174,46 +195,54 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
   const onBarcode = React.useCallback(
     (raw: string) => {
       const val = raw.trim()
-      if (!val || !merchant || !branch) return
+      if (!val) return
       const now = Date.now()
       if (val === lastBarcode.current && now - lastTime.current < 2000) return
       lastBarcode.current = val
       lastTime.current = now
       playBeep()
-      recordCustomerScan(merchant.id, branch.id, val)
+
+      if (merchant?.id && branch?.id) {
+        recordCustomerScan(merchant.id, branch.id, val)
+      }
 
       // Normalize barcode (handle leading zeros or UPC-A vs EAN-13 differences)
       const cleanVal = val.replace(/^0+/, '')
-      const isCoffee =
-        val === '961400121028' ||
-        cleanVal === '961400121028' ||
-        val === '0961400121028' ||
-        val.startsWith('961400121028') ||
-        val.includes('961400121028')
+      const targetMerchantId = merchant?.id || branch?.merchantId
 
-      let found = products.find(
-        (p) =>
-          p.merchantId === merchant.id &&
-          (p.barcode.trim() === val || p.barcode.trim().replace(/^0+/, '') === cleanVal) &&
-          p.status === 'Active'
-      )
-      if (!found && isCoffee) {
-        found = {
-          id: 'prod-safeer-coffee',
-          merchantId: merchant.id,
-          name: 'بن سفير وسط ساده',
-          barcode: val,
-          price: 85.0,
-          description: 'قهوة بن سفير توليفة مميزة وسط ساده - مذاق غني ورائحة أصيلة',
-          imageUrl: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=300',
-          categoryId: 'cat-beverages',
-          status: 'Active',
-          createdAt: '2026-03-01T10:00:00Z',
-          updatedAt: '2026-03-01T10:00:00Z',
-        }
+      // Search strictly within products added in the Products catalog
+      let found = products.find((p) => {
+        const matchesMerchant = !targetMerchantId || p.merchantId === targetMerchantId
+        const pBarcode = (p.barcode || '').trim()
+        const pCleanBarcode = pBarcode.replace(/^0+/, '')
+        return (
+          matchesMerchant &&
+          (pBarcode.toLowerCase() === val.toLowerCase() ||
+            pCleanBarcode.toLowerCase() === cleanVal.toLowerCase() ||
+            p.id.toLowerCase() === val.toLowerCase())
+        )
+      })
+
+      // If not found for current branch merchant, search all merchant products in catalog
+      if (!found) {
+        found = products.find((p) => {
+          const pBarcode = (p.barcode || '').trim()
+          const pCleanBarcode = pBarcode.replace(/^0+/, '')
+          return (
+            pBarcode.toLowerCase() === val.toLowerCase() ||
+            pCleanBarcode.toLowerCase() === cleanVal.toLowerCase() ||
+            p.id.toLowerCase() === val.toLowerCase()
+          )
+        })
       }
-      if (found) { setScannedProduct(found); setScannedQuantity(1); setNotFoundBarcode(null) }
-      else        { setNotFoundBarcode(val); setScannedProduct(null) }
+
+      if (found) {
+        setScannedProduct(found)
+        setNotFoundBarcode(null)
+      } else {
+        setNotFoundBarcode(val)
+        setScannedProduct(null)
+      }
     },
     [merchant, branch, products, recordCustomerScan]
   )
@@ -224,6 +253,9 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
       scannerRef.current = new Html5Qrcode(CAM_DIV_ID, {
         formatsToSupport: SCAN_FORMATS,
         verbose: false,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true,
+        },
       })
     }
     return scannerRef.current
@@ -241,7 +273,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
   // ── Start camera ─────────────────────────────────────────────────────────────
   //   Fixes the original dimming bug:
   //   1. Lock prevents concurrent calls (StrictMode double-fire)
-  //   2. If already scanning → just mark active, don't re-start
+  //   2. If already scanning → just surface the active state
   //   3. Catch only resets UI on REAL errors, not "already scanning"
   const startCamera = React.useCallback(
     async (mode: 'environment' | 'user' = facingMode) => {
@@ -262,8 +294,9 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
         await scanner.start(
           { facingMode: mode },
           {
-            fps: 20,
-            qrbox: { width: 300, height: 180 },
+            fps: 25,
+            qrbox: { width: 280, height: 160 },
+            aspectRatio: 1.777778,
           },
           (text) => onBarcode(text),
           () => { /* scan error per frame — normal */ }
@@ -296,6 +329,43 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
     },
     [facingMode, onBarcode]
   )
+
+  // ── Hardware Barcode Scanner Listener (USB / Bluetooth scanner guns) ─────────
+  React.useEffect(() => {
+    let buffer = ''
+    let lastKeyTime = Date.now()
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement
+      if (
+        activeEl &&
+        activeEl.tagName === 'INPUT' &&
+        activeEl.getAttribute('type') === 'text'
+      ) {
+        return
+      }
+
+      const currentTime = Date.now()
+      const charDiff = currentTime - lastKeyTime
+      lastKeyTime = currentTime
+
+      if (e.key === 'Enter') {
+        if (buffer.length >= 3) {
+          onBarcode(buffer.trim())
+          buffer = ''
+        }
+      } else if (e.key.length === 1) {
+        if (charDiff > 90) {
+          buffer = e.key
+        } else {
+          buffer += e.key
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onBarcode])
 
   const toggleCamera = async () => {
     const next: 'environment' | 'user' = facingMode === 'environment' ? 'user' : 'environment'
@@ -375,8 +445,8 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
   const totalCount = shoppingList.reduce((s, i) => s + i.quantity, 0)
   const totalPrice = shoppingList.reduce((s, i) => s + i.confirmedPrice * i.quantity, 0)
 
-  // ── Error screens ─────────────────────────────────────────────────────────────
-  if (!branch || branch.qrStatus === 'Revoked') {
+  // ── Error screens ── Only show revoked/invalid error if a specific qrToken was provided
+  if (qrToken && (!branch || branch.qrStatus === 'Revoked')) {
     return (
       <div className='flex min-h-screen flex-col items-center justify-center p-6 text-center bg-background'>
         <div className='rounded-full bg-red-100 p-4 text-red-600 dark:bg-red-950 dark:text-red-400 mb-4'>
@@ -489,8 +559,8 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
           </div>
           <div className='flex flex-wrap gap-1.5 mb-2'>
             {products
-              .filter((p) => p.merchantId === merchant.id && p.status === 'Active')
-              .slice(0, 6)
+              .filter((p) => !merchant?.id || p.merchantId === merchant.id)
+              .slice(0, 8)
               .map((p) => (
                 <Button key={p.id} size='sm' variant='secondary'
                   className='h-7 text-xs px-2 gap-1 font-mono bg-white/10 hover:bg-white/20 text-white'
@@ -513,21 +583,101 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
         </div>
       )}
 
-      {/* ── Scan Reticle (over live camera only) ── */}
+      {/* ── Scan Guide (Single clean scan box with helper label) ── */}
       {isActive && (
-        <div className='pointer-events-none absolute inset-0 flex flex-col items-center justify-center z-20'>
-          <div className='relative w-72 h-48 sm:w-80 sm:h-52'>
-            <div className='absolute top-0 left-0 size-8 border-t-4 border-l-4 border-primary rounded-tl-lg' />
-            <div className='absolute top-0 right-0 size-8 border-t-4 border-r-4 border-primary rounded-tr-lg' />
-            <div className='absolute bottom-0 left-0 size-8 border-b-4 border-l-4 border-primary rounded-bl-lg' />
-            <div className='absolute bottom-0 right-0 size-8 border-b-4 border-r-4 border-primary rounded-br-lg' />
-            <div className='absolute inset-x-2 top-1/2 -translate-y-1/2 h-0.5 bg-red-500 shadow-[0_0_12px_#ef4444] animate-pulse' />
-          </div>
-          <p className='mt-4 text-xs font-medium text-white/80 bg-black/50 px-3 py-1 rounded-full backdrop-blur-xs'>
+        <div className='pointer-events-none absolute inset-x-0 bottom-24 flex flex-col items-center justify-center z-20'>
+          <p className='text-xs font-bold text-white bg-black/60 px-4 py-1.5 rounded-full backdrop-blur-md shadow-lg border border-white/10'>
             وجّه الكاميرا نحو باركود المنتج
           </p>
         </div>
       )}
+
+      {/* Style html5-qrcode's built-in box to match project green */}
+      <style>{`
+        #barcode-camera-feed #qr-shaded-region div {
+          border-color: #00d632 !important;
+        }
+      `}</style>
+
+      {/* ── 80% Green Bottom Sheet for Scanned Product Result ── */}
+      <Sheet open={!!scannedProduct} onOpenChange={(open) => !open && setScannedProduct(null)}>
+        <SheetContent
+          side='bottom'
+          className='h-[80vh] max-h-[80vh] min-h-[80vh] rounded-t-[36px] bg-[#00d632] border-none text-[#061006] p-6 flex flex-col justify-between shadow-[0_-16px_50px_rgba(0,0,0,0.45)] z-50 overflow-hidden'
+        >
+          {/* Top Header / Handle */}
+          <div className='w-full shrink-0 flex flex-col items-center'>
+            <div className='w-14 h-1.5 rounded-full bg-[#061006]/20 mb-3' />
+            <div className='flex items-center justify-between w-full px-1'>
+              <div className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#061006]/10 text-xs font-black uppercase tracking-wider'>
+                <Check className='size-3.5 text-[#061006]' />
+                <span>تم العثور على المنتج</span>
+              </div>
+              <button
+                type='button'
+                onClick={() => setScannedProduct(null)}
+                className='size-9 rounded-full bg-[#061006]/10 hover:bg-[#061006]/20 flex items-center justify-center text-[#061006] transition-colors cursor-pointer'
+                title='إغلاق'
+              >
+                <X className='size-5' />
+              </button>
+            </div>
+          </div>
+
+          {/* Middle Content: Product Name and Price in large font */}
+          <div className='flex-1 flex flex-col items-center justify-center text-center my-auto px-2'>
+            {scannedProduct && (
+              <>
+                {/* Product Name */}
+                <h2 className='text-3xl sm:text-4xl font-black text-[#061006] leading-tight max-w-md line-clamp-3 mb-2'>
+                  {scannedProduct.name}
+                </h2>
+
+                {/* Product Price */}
+                <div className='my-4 flex items-baseline justify-center gap-2'>
+                  <span className='text-6xl sm:text-7xl font-mono font-black text-[#061006] tracking-tight'>
+                    {scannedProduct.price.toFixed(2)}
+                  </span>
+                  <span className='text-2xl sm:text-3xl font-black text-[#061006]/85'>
+                    {currency.symbol}
+                  </span>
+                </div>
+
+                {scannedProduct.barcode && (
+                  <div className='text-xs font-mono font-bold text-[#061006]/70 bg-[#061006]/10 px-3.5 py-1 rounded-full inline-block mt-1'>
+                    باركود: {scannedProduct.barcode}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Bottom Actions: Add to Cart button */}
+          <div className='w-full shrink-0 space-y-3 pt-2'>
+            <button
+              type='button'
+              onClick={() => {
+                if (scannedProduct) {
+                  addToCart(scannedProduct, 1)
+                  setScannedProduct(null)
+                }
+              }}
+              className='w-full h-15 rounded-[20px] bg-[#061006] hover:bg-black text-white text-lg font-black flex items-center justify-center gap-3 shadow-2xl active:scale-[0.98] transition-all cursor-pointer'
+            >
+              <ShoppingCart className='size-5' />
+              <span>Add to Cart • إضافة إلى السلة</span>
+            </button>
+
+            <button
+              type='button'
+              onClick={() => setScannedProduct(null)}
+              className='w-full py-2 text-center text-xs font-black text-[#061006]/75 hover:text-[#061006] cursor-pointer'
+            >
+              مسح منتج آخر (Scan Another)
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* ── Not-found banner ── */}
       {notFoundBarcode && (
@@ -566,56 +716,6 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
           )}
         </button>
       </div>
-
-      {/* ── Scanned Product Sheet ── */}
-      <Sheet open={!!scannedProduct} onOpenChange={(o) => !o && setScannedProduct(null)}>
-        <SheetContent side='bottom' className='rounded-t-2xl p-5 pb-8 max-w-lg mx-auto border-t'>
-          <SheetHeader className='p-0 text-start'>
-            <div className='flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 font-bold mb-1'>
-              <Check className='size-4' /> تم المسح بنجاح
-            </div>
-            <SheetTitle className='text-lg font-bold leading-snug'>{scannedProduct?.name}</SheetTitle>
-            <SheetDescription className='text-xs font-mono text-muted-foreground'>
-              الباركود: {scannedProduct?.barcode}
-            </SheetDescription>
-          </SheetHeader>
-
-          {scannedProduct && (
-            <div className='mt-4 space-y-4'>
-              <div className='flex items-center gap-4 bg-muted/40 p-3 rounded-xl border'>
-                {scannedProduct.imageUrl
-                  ? <img src={scannedProduct.imageUrl} alt={scannedProduct.name} className='size-20 rounded-lg object-cover border bg-background shrink-0' />
-                  : <div className='size-20 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground shrink-0'>لا توجد صورة</div>
-                }
-                <div className='flex-1'>
-                  <div className='text-2xl font-extrabold text-primary font-mono'>
-                    {currency.symbol} {scannedProduct.price.toFixed(2)}
-                  </div>
-                  {scannedProduct.description && (
-                    <p className='text-xs text-muted-foreground line-clamp-2 mt-1'>{scannedProduct.description}</p>
-                  )}
-                </div>
-              </div>
-              <div className='flex items-center justify-between p-2 rounded-lg bg-muted/20'>
-                <span className='text-xs font-bold'>الكمية:</span>
-                <div className='flex items-center border rounded-lg bg-background shadow-xs'>
-                  <Button size='icon' variant='ghost' className='size-9' onClick={() => setScannedQuantity((q) => Math.max(1, q - 1))}><Minus className='size-4' /></Button>
-                  <span className='w-10 text-center font-bold text-sm font-mono'>{scannedQuantity}</span>
-                  <Button size='icon' variant='ghost' className='size-9' onClick={() => setScannedQuantity((q) => q + 1)}><Plus className='size-4' /></Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <SheetFooter className='p-0 mt-5'>
-            <Button size='lg' className='w-full gap-2 text-sm font-bold shadow-md'
-              onClick={() => scannedProduct && addToCart(scannedProduct, scannedQuantity)}>
-              <ShoppingCart className='size-4' />
-              إضافة إلى الكارت ({currency.symbol} {((scannedProduct?.price || 0) * scannedQuantity).toFixed(2)})
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
 
       {/* ── Cart Sheet ── */}
       <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>

@@ -7,10 +7,8 @@ import { PosCatalog } from './components/pos-catalog'
 import { PosCart } from './components/pos-cart'
 import { PosCheckoutModal } from './components/pos-checkout-modal'
 import type { POSCartItem, PaymentMethod } from './types'
-import type { Branch, User, Product, Invoice } from '@/types/saas'
+import type { Branch, User, Product, Invoice, Merchant, Category } from '@/types/saas'
 import { toast } from 'sonner'
-import { AlertTriangle, ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 // Pleasant POS audio beep synthesizer
 function playBeep(type: 'scan' | 'success' | 'error') {
@@ -58,7 +56,28 @@ export function POSTerminalView() {
     categories,
     users,
     createInvoice,
+    invoiceTemplate,
+    fetchInvoiceTemplate,
   } = useSaaSStore()
+
+  // Fallback merchant descriptor ONLY if no merchant exists in system
+  const defaultMerchant: Merchant = React.useMemo(
+    () => ({
+      id: 'merchant-pos-demo',
+      name: 'متجر التجزئة العام (Finro POS)',
+      email: 'pos@finro.com',
+      phone: '+201000000000',
+      address: 'القاهرة، مصر',
+      merchantTypeId: 'type-1',
+      currencyId: 'curr-egp',
+      typeId: 'type-1',
+      status: 'Active',
+      currency: 'EGP',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    []
+  )
 
   // Resolve target merchant
   const resolvedMerchantId =
@@ -66,47 +85,20 @@ export function POSTerminalView() {
     currentUser.merchantId ||
     (merchants.length > 0 ? merchants[0].id : null)
 
-  const activeMerchant = merchants.find((m) => m.id === resolvedMerchantId) || null
+  const activeMerchant: Merchant =
+    merchants.find((m) => m.id === resolvedMerchantId) ||
+    merchants[0] ||
+    defaultMerchant
 
-  // Branches & Categories for this merchant
-  const storeBranches = React.useMemo(() => {
-    if (!activeMerchant) return []
+  // Branches strictly for this merchant
+  const storeBranches: Branch[] = React.useMemo(() => {
     return branches.filter((b) => b.merchantId === activeMerchant.id)
   }, [branches, activeMerchant])
 
-  const storeCategories = React.useMemo(() => {
-    if (!activeMerchant) return []
+  // Categories strictly for this merchant
+  const storeCategories: Category[] = React.useMemo(() => {
     return categories.filter((c) => c.merchantId === activeMerchant.id)
   }, [categories, activeMerchant])
-
-  const storeProducts = React.useMemo(() => {
-    if (!activeMerchant) return []
-    return products.filter((p) => p.merchantId === activeMerchant.id)
-  }, [products, activeMerchant])
-
-  // Cashiers & Staff for this merchant
-  const merchantStaff: User[] = React.useMemo(() => {
-    if (!activeMerchant) return []
-    const staffList = users.filter((u) => u.merchantId === activeMerchant.id)
-
-    // If no cashiers found for this merchant, provide a default cashier entry
-    if (staffList.length === 0) {
-      return [
-        {
-          id: `default-cashier-${activeMerchant.id}`,
-          name: 'الكاشير الافتراضي (Cashier 1)',
-          email: `cashier@${activeMerchant.name.replace(/\s+/g, '').toLowerCase()}.com`,
-          username: 'cashier1',
-          role: 'CASHIER' as const,
-          merchantId: activeMerchant.id,
-          status: 'Active' as const,
-          pin: '1234',
-          createdAt: new Date().toISOString(),
-        },
-      ]
-    }
-    return staffList
-  }, [users, activeMerchant])
 
   // Active POS Session state
   const [activeBranch, setActiveBranch] = React.useState<Branch | null>(null)
@@ -116,10 +108,62 @@ export function POSTerminalView() {
 
   // Sync active branch on load
   React.useEffect(() => {
-    if (storeBranches.length > 0 && !activeBranch) {
-      setActiveBranch(storeBranches[0])
+    if (storeBranches.length > 0) {
+      if (!activeBranch || !storeBranches.some((b) => b.id === activeBranch.id)) {
+        setActiveBranch(storeBranches[0])
+      }
+    } else {
+      setActiveBranch(null)
     }
   }, [storeBranches, activeBranch])
+
+  // Fetch merchant invoice template on load
+  React.useEffect(() => {
+    if (activeMerchant?.id) {
+      fetchInvoiceTemplate(activeMerchant.id).catch(() => {})
+    }
+  }, [activeMerchant?.id, fetchInvoiceTemplate])
+
+  // Products strictly for this merchant and branch (NO fake default products!)
+  const storeProducts: Product[] = React.useMemo(() => {
+    return products.filter((p) => {
+      const matchMerchant = p.merchantId === activeMerchant.id
+      const pBranchId = (p as unknown as { branchId?: string }).branchId
+      const matchBranch = !activeBranch || !pBranchId || pBranchId === activeBranch.id
+      return matchMerchant && matchBranch
+    })
+  }, [products, activeMerchant, activeBranch])
+
+  // Cashiers & Staff strictly for this merchant
+  const merchantStaff: User[] = React.useMemo(() => {
+    const staffList = users.filter((u) => u.merchantId === activeMerchant.id)
+    if (staffList.length > 0) return staffList
+
+    return [
+      {
+        id: `cashier-1-${activeMerchant.id}`,
+        name: 'الكاشير 1 (محمد أحمد)',
+        email: `cashier1@finropos.com`,
+        username: 'cashier1',
+        role: 'CASHIER' as const,
+        merchantId: activeMerchant.id,
+        status: 'Active' as const,
+        pin: '1234',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: `cashier-2-${activeMerchant.id}`,
+        name: 'الكاشير 2 (سارة محمود)',
+        email: `cashier2@finropos.com`,
+        username: 'cashier2',
+        role: 'CASHIER' as const,
+        merchantId: activeMerchant.id,
+        status: 'Active' as const,
+        pin: '1234',
+        createdAt: new Date().toISOString(),
+      },
+    ]
+  }, [users, activeMerchant])
 
   // Add product to cart
   const handleAddToCart = (product: Product) => {
@@ -192,10 +236,14 @@ export function POSTerminalView() {
     const grandTotal = subtotal + taxTotal
 
     const invItems = cartItems.map((i) => ({
+      productId: i.product.id,
+      productName: i.product.name,
       name: i.product.name,
+      barcode: i.product.barcode || '',
       quantity: i.quantity,
       unitPrice: i.unitPrice,
       total: i.total,
+      totalPrice: i.total,
     }))
 
     try {
@@ -213,55 +261,29 @@ export function POSTerminalView() {
       })
 
       playBeep('success')
+      try {
+        localStorage.setItem('pos_latest_invoice', JSON.stringify(inv))
+        if (activeMerchant?.id && activeBranch?.id) {
+          localStorage.setItem(`pos_latest_invoice_${activeMerchant.id}_${activeBranch.id}`, JSON.stringify(inv))
+        }
+        if (activeBranch?.id) {
+          localStorage.setItem(`pos_latest_invoice_${activeBranch.id}`, JSON.stringify(inv))
+        }
+        const bc = new BroadcastChannel('pos_receipt_sync')
+        bc.postMessage({
+          type: 'UPDATE_INVOICE',
+          merchantId: activeMerchant.id,
+          branchId: activeBranch?.id,
+          invoice: inv,
+        })
+        bc.close()
+      } catch {}
       toast.success(`تم استخراج الفاتورة رقم ${inv.invoiceNumber} بنجاح!`)
       return inv
     } catch (err: any) {
       toast.error(err.message || 'فشل تسجيل الفاتورة')
       return null
     }
-  }
-
-  // If merchant not found
-  if (!activeMerchant) {
-    return (
-      <div className='min-h-screen w-full bg-[#09090B] text-white flex flex-col items-center justify-center p-6'>
-        <div className='max-w-md w-full text-center space-y-4'>
-          <div className='size-16 rounded-3xl bg-neutral-900 border border-white/10 flex items-center justify-center mx-auto'>
-            <AlertTriangle className='size-8 text-[#3EEA85]' />
-          </div>
-          <h2 className='text-xl font-bold'>لم يتم تحديد متجر نشط لنقطة البيع</h2>
-          <p className='text-xs text-neutral-400'>
-            يرجى تسجيل الدخول كتاجر أو فتح نقطة البيع من لوحة تحكم المتجر
-          </p>
-
-          {merchants.length > 0 && (
-            <div className='pt-4 space-y-2 text-left'>
-              <p className='text-xs font-bold text-neutral-300'>المتاجر المسجلة:</p>
-              {merchants.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => {
-                    window.location.search = `?merchantId=${m.id}`
-                  }}
-                  className='w-full p-3 rounded-2xl bg-neutral-900 border border-white/10 hover:border-[#3EEA85] flex items-center justify-between text-xs transition-colors'
-                >
-                  <span className='font-bold'>{m.name}</span>
-                  <ArrowRight className='size-4 text-[#3EEA85]' />
-                </button>
-              ))}
-            </div>
-          )}
-
-          <Button
-            variant='outline'
-            onClick={() => navigate({ to: '/' })}
-            className='mt-4 rounded-xl border-white/15'
-          >
-            العودة للوحة التحكم
-          </Button>
-        </div>
-      </div>
-    )
   }
 
   // If cashier session is locked, show PIN Unlock Screen
@@ -288,7 +310,7 @@ export function POSTerminalView() {
 
   // Active POS Terminal Workspace
   return (
-    <div className='h-screen w-screen overflow-hidden flex flex-col bg-[#09090B] text-white select-none font-sans'>
+    <div className='min-h-screen w-full bg-[#f5f7f5] text-[#101410] select-none font-sans flex flex-col p-3 sm:p-5 gap-4 overflow-x-hidden'>
       {/* ── POS Top Header ── */}
       <PosHeader
         merchant={activeMerchant}
@@ -310,7 +332,7 @@ export function POSTerminalView() {
       />
 
       {/* ── Main POS Workspace: Catalog (Left) + Cart (Right) ── */}
-      <div className='flex-1 flex flex-col lg:flex-row overflow-hidden'>
+      <div className='flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_420px] gap-4 items-start'>
         <PosCatalog
           products={storeProducts}
           categories={storeCategories}
@@ -335,9 +357,26 @@ export function POSTerminalView() {
         branch={activeBranch}
         cashier={activeCashier}
         cartItems={cartItems}
+        template={invoiceTemplate}
         onCompleteSale={handleCompleteSale}
         onNewOrder={() => {
           setCartItems([])
+          try {
+            localStorage.removeItem('pos_latest_invoice')
+            if (activeMerchant?.id && activeBranch?.id) {
+              localStorage.removeItem(`pos_latest_invoice_${activeMerchant.id}_${activeBranch.id}`)
+            }
+            if (activeBranch?.id) {
+              localStorage.removeItem(`pos_latest_invoice_${activeBranch.id}`)
+            }
+            const bc = new BroadcastChannel('pos_receipt_sync')
+            bc.postMessage({
+              type: 'CLEAR_INVOICE',
+              merchantId: activeMerchant?.id,
+              branchId: activeBranch?.id,
+            })
+            bc.close()
+          } catch {}
         }}
       />
     </div>

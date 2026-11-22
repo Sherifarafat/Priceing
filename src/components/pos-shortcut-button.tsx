@@ -7,7 +7,15 @@ export function PosShortcutButton() {
   const merchantId = currentUser.merchantId || merchants[0]?.id || ''
 
   const handleOpenPOS = () => {
-    window.open(`/pos${merchantId ? `?merchantId=${merchantId}` : ''}`, '_blank')
+    const targetUrl = `/pos${merchantId ? `?merchantId=${merchantId}` : ''}`
+    try {
+      const win = window.open(targetUrl, '_blank')
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        window.location.href = targetUrl
+      }
+    } catch {
+      window.location.href = targetUrl
+    }
   }
 
   return (

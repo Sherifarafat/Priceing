@@ -7,6 +7,9 @@ import {
   Printer,
   RotateCcw,
   Zap,
+  ExternalLink,
+  Copy,
+  Check,
 } from 'lucide-react'
 import {
   Dialog,
@@ -16,8 +19,10 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { Merchant, Branch, User, Invoice } from '@/types/saas'
+import { CustomizedInvoiceView } from '@/features/invoices/components/customized-invoice-view'
+import type { Merchant, Branch, User, Invoice, InvoiceTemplate } from '@/types/saas'
 import type { POSCartItem, PaymentMethod } from '../types'
+import { toast } from 'sonner'
 
 interface PosCheckoutModalProps {
   isOpen: boolean
@@ -27,6 +32,7 @@ interface PosCheckoutModalProps {
   cashier: User
   cartItems: POSCartItem[]
   vatRate?: number
+  template?: InvoiceTemplate | null
   onCompleteSale: (paymentMethod: PaymentMethod, amountPaid: number) => Promise<Invoice | null>
   onNewOrder: () => void
 }
@@ -42,6 +48,7 @@ export function PosCheckoutModal({
   cashier,
   cartItems,
   vatRate = 0.14,
+  template,
   onCompleteSale,
   onNewOrder,
 }: PosCheckoutModalProps) {
@@ -50,6 +57,7 @@ export function PosCheckoutModal({
   const [isProcessing, setIsProcessing] = React.useState<boolean>(false)
   const [completedInvoice, setCompletedInvoice] = React.useState<Invoice | null>(null)
   const [instapayStep, setInstapayStep] = React.useState<InstapayStep>('idle')
+  const [copiedLink, setCopiedLink] = React.useState<boolean>(false)
 
   // Calculations
   const subtotal = cartItems.reduce((acc, item) => acc + item.total, 0)
@@ -78,13 +86,13 @@ export function PosCheckoutModal({
   const handleConfirmCheckout = async () => {
     if (!isTenderSufficient || isProcessing) return
 
-    // Instapay: show overlay flow
+    // Instapay: show in-modal flow
     if (paymentMethod === 'INSTAPAY') {
       setInstapayStep('animating')
-      // After 3s animation → show QR
+      // After 2.5s animation → show QR
       setTimeout(() => {
         setInstapayStep('qr')
-        // After 3s QR → success + generate invoice
+        // After 2.5s QR → success + generate invoice
         setTimeout(async () => {
           setInstapayStep('success')
           // Play success beep
@@ -105,13 +113,19 @@ export function PosCheckoutModal({
           setIsProcessing(true)
           try {
             const inv = await onCompleteSale('INSTAPAY', grandTotal)
-            if (inv) setCompletedInvoice(inv)
+            if (inv) {
+              setCompletedInvoice(inv)
+            }
+          } catch (e) {
+            console.error('Invoice creation error:', e)
           } finally {
             setIsProcessing(false)
-            setInstapayStep('idle')
+            setTimeout(() => {
+              setInstapayStep('idle')
+            }, 1200)
           }
-        }, 3000)
-      }, 3000)
+        }, 2500)
+      }, 2500)
       return
     }
 
@@ -130,70 +144,99 @@ export function PosCheckoutModal({
     window.print()
   }
 
-  // ── Instapay Overlay
-  const renderInstapayOverlay = () => {
-    if (instapayStep === 'idle') return null
+  // Dynamic fixed receipt URL scoped to this merchant and branch
+  const fixedReceiptUrl = branch
+    ? `${window.location.origin}/receipt?merchantId=${merchant.id}&branchId=${branch.id}`
+    : `${window.location.origin}/receipt?merchantId=${merchant.id}`
+
+  // ── Instapay Modal Content (Same size as checkout view, project green #00d632)
+  const renderInstapayContent = () => {
     return (
-      <div className='fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#0D2818]'>
+      <div className='flex flex-col items-center justify-center py-4 min-h-[380px] text-center select-none'>
         {instapayStep === 'animating' && (
-          <div className='flex flex-col items-center gap-6'>
+          <div className='flex flex-col items-center gap-5 my-auto animate-fadeIn'>
             <div
-              className='relative flex items-center justify-center rounded-full border-4 border-[#3EEA85]'
+              className='relative flex items-center justify-center rounded-full border-4 border-[#061006] bg-black/5 shadow-inner'
               style={{
-                width: 220,
-                height: 220,
-                animation: 'instapayPulse 3s ease-in-out forwards',
+                width: 170,
+                height: 170,
+                animation: 'instapayPulse 2.5s ease-in-out infinite',
               }}
             >
-              <span className='text-4xl font-black text-white font-mono'>
+              <span className='text-3xl font-black text-[#061006] font-mono'>
                 E£ {grandTotal.toFixed(2)}
               </span>
             </div>
-            <p className='text-[#3EEA85] font-bold text-lg animate-pulse'>
-              في انتظار الدفع عبر Instapay...
-            </p>
+            <div className='space-y-1.5'>
+              <p className='text-[#061006] font-black text-lg animate-pulse'>
+                في انتظار إتمام الدفع عبر Instapay...
+              </p>
+              <p className='text-[#061006]/75 text-xs font-bold'>
+                يتم التحقق من العملية وتأكيد المعاملة آلياً
+              </p>
+            </div>
           </div>
         )}
 
         {instapayStep === 'qr' && (
-          <div className='flex flex-col items-center gap-5'>
-            <p className='text-white font-bold text-xl'>امسح الكود للدفع</p>
-            <div className='bg-white p-4 rounded-2xl shadow-xl'>
+          <div className='flex flex-col items-center gap-3.5 my-auto animate-fadeIn'>
+            <p className='text-[#061006] font-black text-base'>
+              امسح الكود للدفع عبر تطبيق Instapay
+            </p>
+            <div className='bg-white p-3 rounded-2xl shadow-md border-2 border-[#061006]'>
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=instapay:${grandTotal.toFixed(2)}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=instapay:${grandTotal.toFixed(2)}`}
                 alt='Instapay QR'
-                className='size-48'
+                className='size-44'
               />
             </div>
-            <span className='text-3xl font-black text-[#3EEA85] font-mono'>
+            <div className='bg-[#061006] text-white px-5 py-1.5 rounded-full font-mono font-black text-lg shadow-xs'>
               E£ {grandTotal.toFixed(2)}
-            </span>
+            </div>
           </div>
         )}
 
         {instapayStep === 'success' && (
-          <div className='flex flex-col items-center gap-4'>
+          <div className='flex flex-col items-center gap-4 my-auto animate-fadeIn'>
             <div
-              className='size-28 rounded-full bg-[#3EEA85]/20 border-4 border-[#3EEA85] flex items-center justify-center'
+              className='size-24 rounded-full bg-[#061006] text-[#00d632] flex items-center justify-center shadow-lg'
               style={{ animation: 'fadeInScale 0.4s ease-out' }}
             >
-              <CheckCircle2 className='size-16 text-[#3EEA85]' />
+              <CheckCircle2 className='size-14 text-[#00d632]' />
             </div>
-            <p className='text-white font-black text-2xl'>تم الدفع بنجاح!</p>
-            <p className='text-[#3EEA85] font-bold text-lg font-mono'>
-              E£ {grandTotal.toFixed(2)}
+            <div className='space-y-1'>
+              <p className='text-[#061006] font-black text-2xl'>تم استلام الدفع بنجاح!</p>
+              <p className='text-[#061006] font-black text-lg font-mono'>
+                E£ {grandTotal.toFixed(2)}
+              </p>
+            </div>
+            <p className='text-[#061006]/80 text-xs font-bold'>
+              جاري تجهيز الفاتورة والإيصال...
             </p>
           </div>
         )}
 
+        {instapayStep !== 'success' && (
+          <button
+            type='button'
+            onClick={() => {
+              setInstapayStep('idle')
+              setIsProcessing(false)
+            }}
+            className='mt-3 text-xs font-bold text-[#061006]/75 hover:text-[#061006] hover:underline cursor-pointer'
+          >
+            إلغاء والعودة للدفع
+          </button>
+        )}
+
         <style>{`
           @keyframes instapayPulse {
-            0%   { transform: scale(0.5); opacity: 0; }
-            50%  { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1);   opacity: 1; }
+            0%   { transform: scale(0.94); opacity: 0.85; }
+            50%  { transform: scale(1.04); opacity: 1; }
+            100% { transform: scale(0.94); opacity: 0.85; }
           }
           @keyframes fadeInScale {
-            0%   { transform: scale(0.3); opacity: 0; }
+            0%   { transform: scale(0.4); opacity: 0; }
             100% { transform: scale(1);   opacity: 1; }
           }
         `}</style>
@@ -203,16 +246,24 @@ export function PosCheckoutModal({
 
   return (
     <>
-      {renderInstapayOverlay()}
-
       <Dialog open={isOpen} onOpenChange={(open) => !open && !completedInvoice && onClose()}>
-        <DialogContent className='sm:max-w-lg bg-[#0F0F12] border border-white/10 text-white p-6 rounded-3xl'>
-          {!completedInvoice ? (
+        <DialogContent
+          className={`p-6 rounded-[22px] shadow-2xl transition-all duration-300 w-full overflow-hidden ${
+            completedInvoice
+              ? 'sm:max-w-xl bg-white border border-[#e8ece8] text-[#101410]'
+              : instapayStep !== 'idle'
+              ? 'sm:max-w-lg bg-[#00d632] border-none text-[#061006]'
+              : 'sm:max-w-lg bg-white border border-[#e8ece8] text-[#101410]'
+          }`}
+        >
+          {instapayStep !== 'idle' ? (
+            renderInstapayContent()
+          ) : !completedInvoice ? (
             <>
               <DialogHeader className='text-right'>
-                <DialogTitle className='text-lg font-bold flex items-center justify-between'>
+                <DialogTitle className='text-lg font-black flex items-center justify-between text-[#101410]'>
                   <span>إتمام عملية الدفع</span>
-                  <span className='font-mono text-xl text-white font-black'>
+                  <span className='font-mono text-xl text-[#101410] font-black'>
                     E£ {grandTotal.toFixed(2)}
                   </span>
                 </DialogTitle>
@@ -221,17 +272,17 @@ export function PosCheckoutModal({
               <div className='space-y-5 my-4 text-xs'>
                 {/* Payment Methods */}
                 <div>
-                  <label className='text-neutral-400 block mb-2 font-semibold'>
+                  <label className='text-[#7a827b] block mb-2 font-bold uppercase tracking-wider text-[11px]'>
                     طريقة الدفع:
                   </label>
                   <div className='grid grid-cols-4 gap-2.5'>
                     <button
                       type='button'
                       onClick={() => setPaymentMethod('CASH')}
-                      className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 ${
+                      className={`p-3 rounded-[10px] border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
                         paymentMethod === 'CASH'
-                          ? 'bg-white text-black border-white font-bold shadow-md'
-                          : 'bg-neutral-900 border-white/10 text-neutral-300 hover:border-white/20'
+                          ? 'border-2 border-[#00d632] bg-[#f2fff4] text-[#16782a] font-extrabold shadow-xs'
+                          : 'border border-[#e8ece8] bg-white text-[#606a61] hover:border-[#00d632]/50'
                       }`}
                     >
                       <Banknote className='size-5' />
@@ -241,10 +292,10 @@ export function PosCheckoutModal({
                     <button
                       type='button'
                       onClick={() => setPaymentMethod('CARD')}
-                      className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 ${
+                      className={`p-3 rounded-[10px] border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
                         paymentMethod === 'CARD'
-                          ? 'bg-white text-black border-white font-bold shadow-md'
-                          : 'bg-neutral-900 border-white/10 text-neutral-300 hover:border-white/20'
+                          ? 'border-2 border-[#00d632] bg-[#f2fff4] text-[#16782a] font-extrabold shadow-xs'
+                          : 'border border-[#e8ece8] bg-white text-[#606a61] hover:border-[#00d632]/50'
                       }`}
                     >
                       <CreditCard className='size-5' />
@@ -254,10 +305,10 @@ export function PosCheckoutModal({
                     <button
                       type='button'
                       onClick={() => setPaymentMethod('QR')}
-                      className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 ${
+                      className={`p-3 rounded-[10px] border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
                         paymentMethod === 'QR'
-                          ? 'bg-white text-black border-white font-bold shadow-md'
-                          : 'bg-neutral-900 border-white/10 text-neutral-300 hover:border-white/20'
+                          ? 'border-2 border-[#00d632] bg-[#f2fff4] text-[#16782a] font-extrabold shadow-xs'
+                          : 'border border-[#e8ece8] bg-white text-[#606a61] hover:border-[#00d632]/50'
                       }`}
                     >
                       <QrCode className='size-5' />
@@ -267,10 +318,10 @@ export function PosCheckoutModal({
                     <button
                       type='button'
                       onClick={() => setPaymentMethod('INSTAPAY')}
-                      className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 ${
+                      className={`p-3 rounded-[10px] border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
                         paymentMethod === 'INSTAPAY'
-                          ? 'bg-[#3EEA85] text-black border-[#3EEA85] font-bold shadow-md shadow-[#3EEA85]/20'
-                          : 'bg-neutral-900 border-white/10 text-neutral-300 hover:border-white/20'
+                          ? 'border-2 border-[#00d632] bg-[#00d632] text-[#061006] font-black shadow-xs'
+                          : 'border border-[#e8ece8] bg-white text-[#606a61] hover:border-[#00d632]/50'
                       }`}
                     >
                       <Zap className='size-5' />
@@ -281,24 +332,22 @@ export function PosCheckoutModal({
 
                 {/* Cash Tender Calculation */}
                 {paymentMethod === 'CASH' && (
-                  <div className='space-y-3 bg-neutral-900/90 border border-white/10 p-4 rounded-2xl'>
+                  <div className='space-y-3 bg-[#fafbfa] border border-[#e8ece8] p-4 rounded-[14px]'>
                     <div className='flex items-center justify-between'>
-                      <label className='font-semibold text-neutral-300'>
+                      <label className='font-bold text-[#101410]'>
                         المبلغ المستلم من العميل:
                       </label>
-                      <Button
+                      <button
                         type='button'
-                        size='sm'
-                        variant='ghost'
                         onClick={() => setTenderedAmount(grandTotal.toFixed(2))}
-                        className='h-6 text-[11px] text-white hover:bg-white/10 p-1'
+                        className='h-6 text-[11px] text-[#16782a] hover:bg-[#e8f9ec] px-2 rounded-md font-extrabold cursor-pointer transition-colors'
                       >
                         المبلغ بالضبط
-                      </Button>
+                      </button>
                     </div>
 
                     <div className='relative'>
-                      <span className='absolute start-3 top-1/2 -translate-y-1/2 font-mono text-sm text-neutral-400 font-bold'>
+                      <span className='absolute start-3 top-1/2 -translate-y-1/2 font-mono text-sm text-[#7a827b] font-bold'>
                         E£
                       </span>
                       <Input
@@ -306,7 +355,7 @@ export function PosCheckoutModal({
                         step='any'
                         value={tenderedAmount}
                         onChange={(e) => setTenderedAmount(e.target.value)}
-                        className='ps-10 h-12 text-lg font-mono font-black rounded-xl bg-black border-white/10 text-white focus-visible:border-white/40'
+                        className='ps-10 h-12 text-lg font-mono font-black rounded-[10px] bg-white border-[#e8ece8] text-[#101410] focus-visible:border-[#00d632] shadow-2xs'
                       />
                     </div>
 
@@ -317,7 +366,7 @@ export function PosCheckoutModal({
                           key={val}
                           type='button'
                           onClick={() => handleQuickAddCash(val)}
-                          className='flex-1 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:scale-95 text-xs font-mono font-bold text-neutral-200 border border-white/5 transition-all'
+                          className='flex-1 py-1.5 rounded-[8px] bg-white hover:bg-[#f0f3f0] active:scale-95 text-xs font-mono font-bold text-[#101410] border border-[#e8ece8] transition-all cursor-pointer'
                         >
                           +{val}
                         </button>
@@ -325,11 +374,11 @@ export function PosCheckoutModal({
                     </div>
 
                     {/* Change Due Display */}
-                    <div className='pt-2 border-t border-white/10 flex items-center justify-between'>
-                      <span className='text-neutral-400'>المتبقي للعميل (الباقي):</span>
+                    <div className='pt-2 border-t border-[#e8ece8] flex items-center justify-between'>
+                      <span className='text-[#7a827b]'>المتبقي للعميل (الباقي):</span>
                       <span
                         className={`text-lg font-mono font-black ${
-                          changeDue > 0 ? 'text-white' : 'text-neutral-400'
+                          changeDue > 0 ? 'text-[#16782a]' : 'text-[#7a827b]'
                         }`}
                       >
                         E£ {changeDue.toFixed(2)}
@@ -340,12 +389,12 @@ export function PosCheckoutModal({
 
                 {/* Instapay info panel */}
                 {paymentMethod === 'INSTAPAY' && (
-                  <div className='bg-[#3EEA85]/10 border border-[#3EEA85]/30 rounded-2xl p-4 text-center space-y-2'>
-                    <Zap className='size-8 text-[#3EEA85] mx-auto' />
-                    <p className='text-white font-bold'>الدفع عبر Instapay</p>
-                    <p className='text-neutral-400 text-[11px]'>
+                  <div className='bg-[#e8f9ec] border border-[#00d632]/40 rounded-[14px] p-4 text-center space-y-2'>
+                    <Zap className='size-8 text-[#00d632] mx-auto' />
+                    <p className='text-[#101410] font-black text-sm'>الدفع عبر Instapay</p>
+                    <p className='text-[#59635a] text-[11px]'>
                       سيظهر QR Code للعميل لإتمام الدفع البالغ{' '}
-                      <span className='text-[#3EEA85] font-mono font-bold'>
+                      <span className='text-[#16782a] font-mono font-black'>
                         E£ {grandTotal.toFixed(2)}
                       </span>
                     </p>
@@ -353,149 +402,129 @@ export function PosCheckoutModal({
                 )}
 
                 {/* Order Quick Summary */}
-                <div className='p-3 rounded-2xl bg-black border border-white/10 space-y-1 text-xs text-neutral-400'>
+                <div className='p-3.5 rounded-[12px] bg-[#fafbfa] border border-[#e8ece8] space-y-1.5 text-xs text-[#7a827b]'>
                   <div className='flex justify-between'>
                     <span>الفرع:</span>
-                    <span className='text-white font-medium'>{branch?.name || 'الفرع الرئيسي'}</span>
+                    <span className='text-[#101410] font-bold'>{branch?.name || 'الفرع الرئيسي'}</span>
                   </div>
                   <div className='flex justify-between'>
                     <span>الكاشير المسؤول:</span>
-                    <span className='text-white font-medium'>{cashier.name}</span>
+                    <span className='text-[#101410] font-bold'>{cashier.name}</span>
                   </div>
                   <div className='flex justify-between'>
                     <span>عدد الأصناف:</span>
-                    <span className='text-white font-mono'>{cartItems.length} صنف</span>
+                    <span className='text-[#101410] font-mono font-bold'>{cartItems.length} صنف</span>
                   </div>
                 </div>
               </div>
 
               <div className='flex items-center gap-3 mt-4'>
-                <Button
+                <button
                   type='button'
-                  variant='outline'
                   onClick={onClose}
-                  className='flex-1 h-12 rounded-2xl border-white/15 bg-white/5 hover:bg-white/10 text-neutral-300 font-bold'
+                  className='flex-1 h-12 rounded-[11px] border border-[#e8ece8] bg-white hover:bg-[#f0f3f0] text-[#59635a] font-bold cursor-pointer transition-colors'
                 >
                   إلغاء
-                </Button>
-                <Button
+                </button>
+                <button
                   type='button'
                   disabled={!isTenderSufficient || isProcessing}
                   onClick={handleConfirmCheckout}
-                  className='flex-[2] h-12 rounded-2xl bg-white hover:bg-white/90 text-black font-extrabold text-sm shadow-lg disabled:opacity-40'
+                  className='flex-[2] h-12 rounded-[11px] bg-[#00d632] hover:brightness-95 text-[#061006] font-black text-sm shadow-sm disabled:opacity-40 cursor-pointer transition-all'
                 >
-                  {isProcessing ? 'جاري الإصدار...' : 'تأكيد وحفظ الفاتورة'}
-                </Button>
+                  {isProcessing ? 'جاري الإصدار...' : 'تأكيد وحفظ الفاتورة ←'}
+                </button>
               </div>
             </>
           ) : (
-            /* ── Thermal Receipt View (80mm) ── */
-            <div className='space-y-4'>
-              <div className='text-center'>
-                <div className='size-12 rounded-full bg-[#3EEA85]/20 text-[#3EEA85] flex items-center justify-center mx-auto mb-2'>
-                  <CheckCircle2 className='size-7' />
+            /* ── Receipt Feedback View ── */
+            <div className='space-y-3.5 w-full min-w-0 max-w-full overflow-hidden'>
+              <div className='text-center w-full'>
+                <div className='size-12 rounded-full bg-[#e9faed] text-[#18a23a] flex items-center justify-center mx-auto mb-2 text-2xl font-black'>
+                  <CheckCircle2 className='size-6 text-[#00d632]' />
                 </div>
-                <h3 className='text-base font-extrabold text-white'>تم تسجيل العملية بنجاح!</h3>
-                <p className='text-xs text-neutral-400'>
+                <h3 className='text-base font-black text-[#101410]'>تم تسجيل العملية بنجاح!</h3>
+                <p className='text-xs text-[#7a827b] mt-0.5'>
                   فاتورة رقم{' '}
-                  <span className='font-mono font-bold text-white'>
+                  <span className='font-mono font-bold text-[#101410]'>
                     {completedInvoice.invoiceNumber}
                   </span>
                 </p>
               </div>
 
-              {/* Printable Thermal Receipt Container */}
+              {/* ── Fixed Invoice Live Display Link Box (Scoped to Merchant & Branch) ── */}
+              <div className='bg-[#fafbfa] border border-[#e8ece8] rounded-[16px] p-3 space-y-2 text-xs w-full min-w-0'>
+                <div className='flex items-center justify-between gap-2'>
+                  <span className='font-bold text-[#101410] truncate'>رابط شاشة الفاتورة لفرع {branch?.name || 'الرئيسي'}:</span>
+                  <span className='text-[10px] text-[#368449] bg-[#e8f9ec] px-2 py-0.5 rounded-full font-bold shrink-0'>
+                    شاشة ثابتة تتحدث تلقائياً
+                  </span>
+                </div>
+
+                <div className='flex items-center gap-1.5 bg-white border border-[#e8ece8] rounded-xl p-1.5 ps-2.5 w-full min-w-0 overflow-hidden'>
+                  <span className='font-mono text-xs font-bold text-[#101410] truncate min-w-0 flex-1 text-left' dir='ltr'>
+                    {fixedReceiptUrl}
+                  </span>
+
+                  <button
+                    type='button'
+                    onClick={() => {
+                      navigator.clipboard.writeText(fixedReceiptUrl)
+                      setCopiedLink(true)
+                      toast.success('تم نسخ الرابط الثابت لشاشة الفواتير!')
+                      setTimeout(() => setCopiedLink(false), 2000)
+                    }}
+                    className='px-3 py-1.5 rounded-lg bg-[#f0f3f0] hover:bg-[#e4eae4] text-[#101410] font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shrink-0'
+                    title='نسخ الرابط الثابت'
+                  >
+                    {copiedLink ? <Check className='size-3.5 text-[#16782a]' /> : <Copy className='size-3.5' />}
+                    <span>{copiedLink ? 'تم النسخ' : 'نسخ الرابط'}</span>
+                  </button>
+
+                  <a
+                    href={fixedReceiptUrl}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='px-2.5 py-1.5 rounded-lg bg-[#00d632] hover:brightness-95 text-[#061006] font-bold text-xs flex items-center gap-1 cursor-pointer transition-all shrink-0'
+                    title='فتح الرابط في نافذة جديدة'
+                  >
+                    <span>فتح</span>
+                    <ExternalLink className='size-3.5' />
+                  </a>
+                </div>
+
+                <p className='text-[10px] text-[#7a827b] leading-relaxed'>
+                  هذا الرابط خاص بـ {merchant.name} (فرع {branch?.name || 'الرئيسي'})، ثابت دائماً ويتغير تلقائياً مع إصدار كل فاتورة جديدة، ويظل يعرض الفاتورة حتى الضغط على &quot;طلب جديد&quot;.
+                </p>
+              </div>
+
+              {/* ── Customized Invoice Preview from Portal ── */}
               <div
                 id='pos-thermal-receipt'
-                className='bg-white text-black p-5 rounded-2xl font-mono text-xs shadow-xl space-y-3 max-h-[380px] overflow-y-auto'
+                className='max-h-[280px] w-full max-w-full overflow-y-auto overflow-x-hidden rounded-[16px] border border-[#e8ece8] bg-zinc-50 p-2 flex justify-center'
               >
-                <div className='text-center border-b pb-2.5'>
-                  <h4 className='font-black text-sm uppercase'>{merchant.name}</h4>
-                  <p className='text-[10px] text-neutral-600'>{branch?.name || 'الفرع الرئيسي'}</p>
-                  <p className='text-[9px] text-neutral-500'>فاتورة ضريبية مبسطة</p>
-                </div>
-
-                <div className='text-[10px] space-y-0.5 border-b pb-2 text-neutral-700'>
-                  <div className='flex justify-between'>
-                    <span>رقم الفاتورة:</span>
-                    <strong>{completedInvoice.invoiceNumber}</strong>
-                  </div>
-                  <div className='flex justify-between'>
-                    <span>التاريخ:</span>
-                    <span>{new Date(completedInvoice.issuedAt).toLocaleDateString('ar-EG')}</span>
-                  </div>
-                  <div className='flex justify-between'>
-                    <span>الكاشير:</span>
-                    <span>{cashier.name}</span>
-                  </div>
-                  <div className='flex justify-between'>
-                    <span>طريقة الدفع:</span>
-                    <strong>{completedInvoice.paymentMethod}</strong>
-                  </div>
-                </div>
-
-                {/* Items Table */}
-                <div className='space-y-1.5 border-b pb-2 text-[11px]'>
-                  <div className='flex justify-between font-bold text-neutral-900 border-b pb-1'>
-                    <span>الصنف</span>
-                    <span>الكمية × السعر</span>
-                    <span>الإجمالي</span>
-                  </div>
-                  {(completedInvoice.items || []).map((item, idx) => (
-                    <div key={idx} className='flex justify-between text-neutral-800'>
-                      <span className='truncate max-w-[120px] font-sans'>{item.productName}</span>
-                      <span className='font-mono text-[10px]'>
-                        {item.quantity} × {item.unitPrice}
-                      </span>
-                      <span className='font-mono font-bold'>{item.totalPrice.toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Totals */}
-                <div className='space-y-1 text-xs border-b pb-2'>
-                  <div className='flex justify-between text-neutral-600'>
-                    <span>المجموع الفرعي:</span>
-                    <span className='font-mono'>{completedInvoice.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className='flex justify-between text-neutral-600'>
-                    <span>ضريبة القيمة المضافة:</span>
-                    <span className='font-mono'>{completedInvoice.taxTotal.toFixed(2)}</span>
-                  </div>
-                  <div className='flex justify-between font-black text-sm text-neutral-900 pt-1 border-t'>
-                    <span>الإجمالي النهائي:</span>
-                    <span className='font-mono'>E£ {completedInvoice.grandTotal.toFixed(2)}</span>
-                  </div>
-                  {paymentMethod === 'CASH' && (
-                    <>
-                      <div className='flex justify-between text-neutral-600 text-[10px] pt-1'>
-                        <span>المدفوع:</span>
-                        <span className='font-mono'>E£ {numericTendered.toFixed(2)}</span>
-                      </div>
-                      <div className='flex justify-between text-neutral-900 font-bold text-[10px]'>
-                        <span>الباقي:</span>
-                        <span className='font-mono'>E£ {changeDue.toFixed(2)}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className='text-center pt-1 text-[9px] text-neutral-500'>
-                  <p>شكراً لزيارتكم - نتمنى لكم يوماً سعيداً</p>
-                  <p className='font-mono text-[8px] mt-0.5'>Powered by Saller Finro POS</p>
+                <div className='w-full max-w-full overflow-x-auto flex justify-center'>
+                  <CustomizedInvoiceView
+                    invoice={completedInvoice}
+                    template={template}
+                    merchant={merchant}
+                    branch={branch}
+                    cashierName={cashier.name}
+                    className='shadow-none border-none w-full max-w-full'
+                  />
                 </div>
               </div>
 
               {/* Actions */}
-              <div className='flex items-center gap-2 pt-2'>
+              <div className='flex items-center gap-2 pt-1 w-full'>
                 <Button
                   type='button'
                   variant='outline'
                   onClick={handlePrint}
-                  className='flex-1 h-12 rounded-2xl border-white/15 bg-white/5 hover:bg-white/10 text-white font-bold gap-2'
+                  className='flex-1 h-11 rounded-xl border-[#e8ece8] bg-white hover:bg-slate-100 text-slate-800 font-bold gap-2 shadow-xs cursor-pointer min-w-0'
                 >
                   <Printer className='size-4' />
-                  <span>طباعة الإيصال</span>
+                  <span className='truncate'>طباعة الإيصال</span>
                 </Button>
 
                 <Button
@@ -504,10 +533,10 @@ export function PosCheckoutModal({
                     onNewOrder()
                     onClose()
                   }}
-                  className='flex-1 h-12 rounded-2xl bg-white hover:bg-white/90 text-black font-extrabold text-sm shadow-lg gap-2'
+                  className='flex-1 h-11 rounded-xl bg-[#00d632] hover:brightness-95 text-[#061006] font-black text-sm shadow-sm gap-2 border-none cursor-pointer min-w-0'
                 >
                   <RotateCcw className='size-4' />
-                  <span>طلب جديد</span>
+                  <span className='truncate'>طلب جديد</span>
                 </Button>
               </div>
             </div>

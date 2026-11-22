@@ -566,134 +566,147 @@ export function StaffManagementView() {
               </div>
             )}
 
-            <div className='space-y-4 my-4 text-xs'>
-              {/* Role Selection Tabs */}
+            <div className='space-y-5 my-4 text-xs'>
+              {/* 1. Account Role */}
               <div>
-                <label className='font-bold block mb-1.5 text-foreground'>Account Type & Role *</label>
-                <div className='grid grid-cols-2 gap-3'>
+                <label className='font-bold block mb-2 text-foreground text-xs uppercase tracking-wider'>
+                  1. Account Role *
+                </label>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                   <button
                     type='button'
                     onClick={() => applyRolePreset('CASHIER')}
-                    className={`p-3 rounded-2xl border text-left transition-all ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                       role === 'CASHIER'
-                        ? 'border-[#3EEA85] bg-[#3EEA85]/10 shadow-sm ring-1 ring-[#3EEA85]'
+                        ? 'border-[#00d632] bg-[#e8f9ec] dark:bg-[#00d632]/10 ring-2 ring-[#00d632]'
                         : 'border-border/80 bg-card hover:border-border'
                     }`}
                   >
                     <div className='flex items-center justify-between font-bold text-sm text-foreground'>
-                      <span>Cashier (كاشير)</span>
-                      {role === 'CASHIER' && <Check className='size-4 text-[#3EEA85]' />}
+                      <span>Cashier</span>
+                      {role === 'CASHIER' && <Check className='size-4 text-[#19832e]' />}
                     </div>
-                    <p className='text-[11px] text-muted-foreground mt-1'>
-                      Dedicated to POS checkout, issuing receipts, barcode lookups, and customer sales.
+                    <p className='text-[11px] text-muted-foreground mt-1 leading-relaxed'>
+                      Dedicated to POS terminal, barcode scanning, checkout, and issuing receipts.
                     </p>
                   </button>
 
                   <button
                     type='button'
                     onClick={() => applyRolePreset('MERCHANT_STAFF')}
-                    className={`p-3 rounded-2xl border text-left transition-all ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                       role === 'MERCHANT_STAFF'
-                        ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary'
+                        ? 'border-primary bg-primary/10 ring-2 ring-primary'
                         : 'border-border/80 bg-card hover:border-border'
                     }`}
                   >
                     <div className='flex items-center justify-between font-bold text-sm text-foreground'>
-                      <span>Store Staff / Assistant (موظف إداري)</span>
+                      <span>Store Staff / Assistant</span>
                       {role === 'MERCHANT_STAFF' && <Check className='size-4 text-primary' />}
                     </div>
-                    <p className='text-[11px] text-muted-foreground mt-1'>
-                      Manages products, catalog, categories, inventory, and can view operational reports.
+                    <p className='text-[11px] text-muted-foreground mt-1 leading-relaxed'>
+                      Manages products catalog, inventory, categories, and operational reports.
                     </p>
                   </button>
                 </div>
               </div>
 
-              {/* Personal & Auth Details */}
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-                <div>
-                  <label className='font-semibold block mb-1'>Full Name *</label>
-                  <Input
-                    required
-                    placeholder='e.g. Ahmed Mostafa'
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className='text-xs h-9 rounded-xl'
-                  />
-                </div>
+              {/* 2. Personal Information */}
+              <div>
+                <label className='font-bold block mb-2 text-foreground text-xs uppercase tracking-wider'>
+                  2. Personal Information *
+                </label>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                  <div>
+                    <label className='font-semibold block mb-1 text-muted-foreground'>Full Name</label>
+                    <Input
+                      required
+                      placeholder='e.g. John Doe'
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className='text-xs h-9 rounded-xl'
+                    />
+                  </div>
 
-                <div>
-                  <label className='font-semibold block mb-1'>Email Address *</label>
-                  <Input
-                    required
-                    type='email'
-                    placeholder='e.g. ahmed@store.com'
-                    value={email}
-                    onChange={(e) => handleEmailChange(e.target.value)}
-                    className='text-xs h-9 rounded-xl'
-                  />
-                </div>
-              </div>
-
-              <div className='grid grid-cols-1 sm:grid-cols-4 gap-3'>
-                <div>
-                  <label className='font-semibold block mb-1'>Username (For Login)</label>
-                  <Input
-                    placeholder='e.g. ahmed12'
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className='text-xs h-9 rounded-xl font-mono'
-                  />
-                </div>
-
-                <div>
-                  <label className='font-semibold block mb-1'>Initial Password</label>
-                  <Input
-                    type='text'
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className='text-xs h-9 rounded-xl font-mono'
-                  />
-                </div>
-
-                <div>
-                  <label className='font-semibold block mb-1 flex items-center justify-between'>
-                    <span>POS PIN (كود الكاشير)</span>
-                    <span className='text-[10px] text-[#3EEA85] font-mono'>4-6 أرقام</span>
-                  </label>
-                  <Input
-                    type='text'
-                    inputMode='numeric'
-                    maxLength={6}
-                    placeholder='1234'
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                    className='text-xs h-9 rounded-xl font-mono font-bold tracking-widest text-center border-[#3EEA85]/50 focus:border-[#3EEA85]'
-                  />
-                </div>
-
-                <div>
-                  <label className='font-semibold block mb-1'>Assigned Branch</label>
-                  <select
-                    value={selectedBranchId}
-                    onChange={(e) => setSelectedBranchId(e.target.value)}
-                    className='w-full rounded-xl border border-border/80 bg-background px-3 h-9 text-xs text-foreground font-medium'
-                  >
-                    <option value='all'>All Branches</option>
-                    {storeBranches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <label className='font-semibold block mb-1 text-muted-foreground'>Email Address</label>
+                    <Input
+                      required
+                      type='email'
+                      placeholder='e.g. john@store.com'
+                      value={email}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      className='text-xs h-9 rounded-xl'
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Permissions Accordion / Categorized List */}
+              {/* 3. Credentials & Store Assignment */}
+              <div>
+                <label className='font-bold block mb-2 text-foreground text-xs uppercase tracking-wider'>
+                  3. Credentials & Store Assignment
+                </label>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                  <div>
+                    <label className='font-semibold block mb-1 text-muted-foreground'>Login Username</label>
+                    <Input
+                      placeholder='e.g. jdoe'
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className='text-xs h-9 rounded-xl font-mono'
+                    />
+                  </div>
+
+                  <div>
+                    <label className='font-semibold block mb-1 text-muted-foreground'>Initial Password</label>
+                    <Input
+                      type='text'
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className='text-xs h-9 rounded-xl font-mono'
+                    />
+                  </div>
+
+                  <div>
+                    <div className='flex items-center justify-between mb-1'>
+                      <label className='font-semibold text-muted-foreground'>POS Quick PIN</label>
+                      <span className='text-[10px] text-[#19832e] font-mono font-bold'>4-6 Digits</span>
+                    </div>
+                    <Input
+                      type='text'
+                      inputMode='numeric'
+                      maxLength={6}
+                      placeholder='1234'
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                      className='text-xs h-9 rounded-xl font-mono font-bold tracking-widest text-center border-[#00d632]/50 focus:border-[#00d632]'
+                    />
+                  </div>
+
+                  <div>
+                    <label className='font-semibold block mb-1 text-muted-foreground'>Assigned Branch</label>
+                    <select
+                      value={selectedBranchId}
+                      onChange={(e) => setSelectedBranchId(e.target.value)}
+                      className='w-full rounded-xl border border-border/80 bg-background px-3 h-9 text-xs text-foreground font-medium'
+                    >
+                      <option value='all'>All Branches</option>
+                      {storeBranches.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Granular Permissions */}
               <div className='pt-2'>
                 <div className='flex items-center justify-between mb-2'>
-                  <label className='font-bold text-foreground text-xs'>
-                    Granular Access Permissions:
+                  <label className='font-bold text-foreground text-xs uppercase tracking-wider'>
+                    4. Granular Access Permissions
                   </label>
                   <div className='flex items-center gap-2'>
                     <button

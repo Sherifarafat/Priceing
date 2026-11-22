@@ -11,15 +11,19 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { getQRCodeSvg } from '@/lib/qr-generator'
-import { useSaaSStore } from '@/lib/saas-store'
 
 export function MobileScannerModal() {
-  const { branches } = useSaaSStore()
   const [copied, setCopied] = React.useState(false)
 
-  // Default to first active branch (Metro Dokki)
-  const activeBranch = branches[0]
-  const mobileUrl = `https://10.16.38.87:5173/branch/${activeBranch?.qrToken || 'qr-metro-dokki-8f2a1b9c'}`
+  // Compute network accessible URL for mobile phones on the same WiFi network
+  const host = typeof window !== 'undefined'
+    ? (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+        ? window.location.hostname
+        : '192.168.1.5')
+    : '192.168.1.5'
+  const port = typeof window !== 'undefined' ? window.location.port : '5173'
+  const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:'
+  const mobileUrl = `${protocol}//${host}${port ? `:${port}` : ''}/scan`
 
   const qrSvg = getQRCodeSvg(mobileUrl, 200)
 
@@ -71,7 +75,7 @@ export function MobileScannerModal() {
 
         <div className='flex flex-col gap-2'>
           <Button asChild size='sm' className='w-full text-xs gap-1.5'>
-            <Link to='/branch/$token' params={{ token: activeBranch?.qrToken || 'qr-metro-dokki-8f2a1b9c' }} target='_blank'>
+            <Link to='/scan' target='_blank'>
               <ExternalLink className='size-3.5' />
               فتح الاسكانر في المتصفح الحالي
             </Link>

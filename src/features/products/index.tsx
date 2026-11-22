@@ -10,7 +10,10 @@ import {
   CheckCircle2,
   XCircle,
   FileSpreadsheet,
+  Camera,
 } from 'lucide-react'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+import { toast } from 'sonner'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +40,23 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { useSaaSStore } from '@/lib/saas-store'
 import { Product, EntityStatus } from '@/types/saas'
+
+function playBeep() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.setValueAtTime(880, ctx.currentTime)
+    gain.gain.setValueAtTime(0.2, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.15)
+  } catch {}
+}
 
 export function ProductsView() {
   const {
@@ -201,11 +221,175 @@ export function ProductsView() {
     }
   }
 
+  // Barcode Scanner state
+  const [isScannerOpen, setIsScannerOpen] = React.useState(false)
+  const [cameraScannedProduct, setCameraScannedProduct] = React.useState<Product | null>(null)
+  const scannerRef = React.useRef<Html5Qrcode | null>(null)
+
+  const handleBarcodeScanned = React.useCallback(
+    (scannedVal: string) => {
+      const val = scannedVal.trim()
+      if (!val) return
+      playBeep()
+
+      const cleanVal = val.replace(/^0+/, '')
+      const matched = merchantProducts.find((p) => {
+        const pb = (p.barcode || '').trim().toLowerCase()
+        const pbClean = pb.replace(/^0+/, '')
+        return (
+          pb === val.toLowerCase() ||
+          pbClean === cleanVal.toLowerCase() ||
+          p.id.toLowerCase() === val.toLowerCase()
+        )
+      })
+
+      setSearchTerm(val)
+
+      if (matched) {
+        setCameraScannedProduct(matched)
+        toast.success(`تم العثور على: ${matched.name} (${currency.symbol} ${matched.price})`)
+        setTimeout(() => {
+          handleCloseScanner()
+        }, 2200)
+      } else {
+        toast.info(`تم مسح الباركود: ${val} (غير مسجل في الكتالوج)`)
+        handleCloseScanner()
+      }
+    },
+    [merchantProducts, currency.symbol]
+  )
+
+  const handleCloseScanner = () => {
+    if (scannerRef.current?.isScanning) {
+      scannerRef.current
+        .stop()
+        .catch(() => {})
+        .finally(() => {
+          scannerRef.current = null
+        })
+    }
+    setIsScannerOpen(false)
+    setCameraScannedProduct(null)
+  }
+
+  // Camera scanner lifecycle
+  React.useEffect(() => {
+    if (!isScannerOpen) return
+
+    let isMounted = true
+    const timer = setTimeout(() => {
+      if (!isMounted) return
+      try {
+        const scanner = new Html5Qrcode('products-camera-feed', {
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.QR_CODE,
+          ],
+          verbose: false,
+        })
+        scannerRef.current = scanner
+
+        scanner
+          .start(
+            { facingMode: 'environment' },
+            { fps: 20, qrbox: { width: 250, height: 160 } },
+            (decodedText) => {
+              handleBarcodeScanned(decodedText)
+            },
+            () => {}
+          )
+          .catch((err) => {
+            console.warn('Camera scanner start error:', err)
+          })
+      } catch (err) {
+        console.warn('Scanner init error:', err)
+      }
+    }, 250)
+
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+      if (scannerRef.current?.isScanning) {
+        scannerRef.current
+          .stop()
+          .catch(() => {})
+          .finally(() => {
+            scannerRef.current = null
+          })
+      }
+    }
+  }, [isScannerOpen, handleBarcodeScanned])
+
+  // Hardware barcode scanner listener
+  React.useEffect(() => {
+    let buffer = ''
+    let lastKeyTime = Date.now()
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement
+      if (
+        activeEl &&
+        activeEl.tagName === 'INPUT' &&
+        activeEl.getAttribute('type') === 'text' &&
+        !activeEl.classList.contains('barcode-search-input')
+      ) {
+        return
+      }
+
+      const currentTime = Date.now()
+      const charDiff = currentTime - lastKeyTime
+      lastKeyTime = currentTime
+
+      if (e.key === 'Enter') {
+        if (buffer.length >= 3) {
+          const scanned = buffer.trim()
+          setSearchTerm(scanned)
+          playBeep()
+          const clean = scanned.replace(/^0+/, '').toLowerCase()
+          const matched = merchantProducts.find((p) => {
+            const pb = (p.barcode || '').trim().toLowerCase()
+            const pbClean = pb.replace(/^0+/, '')
+            return (
+              pb === scanned.toLowerCase() ||
+              pbClean === clean ||
+              p.id.toLowerCase() === scanned.toLowerCase()
+            )
+          })
+          if (matched) {
+            toast.success(`تم العثور على المنتج: ${matched.name} (${currency.symbol} ${matched.price})`)
+          } else {
+            toast.info(`تم مسح الباركود: ${scanned} (غير مسجل في الكتالوج)`)
+          }
+        }
+        buffer = ''
+      } else if (e.key.length === 1) {
+        if (charDiff < 60 || buffer.length > 0) {
+          buffer += e.key
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [merchantProducts, currency.symbol])
+
   // Filtering
   const filteredProducts = merchantProducts.filter((p) => {
+    const q = searchTerm.trim().toLowerCase()
+    const cleanQ = q.replace(/^0+/, '')
+    const pBarcode = (p.barcode || '').trim().toLowerCase()
+    const pCleanBarcode = pBarcode.replace(/^0+/, '')
     const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.barcode.toLowerCase().includes(searchTerm.toLowerCase())
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      pBarcode.includes(q) ||
+      pCleanBarcode.includes(cleanQ) ||
+      p.id.toLowerCase().includes(q)
     const matchesCat =
       selectedCategory === 'all' ||
       (selectedCategory === 'uncategorized' && !p.categoryId) ||
@@ -262,14 +446,37 @@ export function ProductsView() {
         {/* Filters & Search Toolbar */}
         <Card className='p-3 bg-card'>
           <div className='flex flex-col sm:flex-row gap-3 items-center justify-between'>
-            <div className='relative w-full sm:w-80'>
-              <Search className='absolute left-2.5 top-2.5 size-4 text-muted-foreground' />
-              <Input
-                placeholder='Search by product name or barcode...'
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className='pl-9 text-xs'
-              />
+            <div className='flex items-center gap-2 w-full sm:w-auto'>
+              <div className='relative w-full sm:w-80'>
+                <Search className='absolute left-2.5 top-2.5 size-4 text-muted-foreground' />
+                <Input
+                  placeholder='Search by product name or barcode...'
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className='pl-9 pr-8 text-xs barcode-search-input'
+                />
+                {searchTerm && (
+                  <button
+                    type='button'
+                    onClick={() => setSearchTerm('')}
+                    className='absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer'
+                    title='مسح البحث'
+                  >
+                    <XCircle className='size-4' />
+                  </button>
+                )}
+              </div>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => setIsScannerOpen(true)}
+                className='h-9 gap-1.5 text-xs shrink-0 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold cursor-pointer'
+                title='مسح باركود بالكاميرا'
+              >
+                <Camera className='size-3.5' />
+                <span>مسح باركود</span>
+              </Button>
             </div>
             <div className='flex items-center gap-2 w-full sm:w-auto'>
               {isSuperAdmin && (
@@ -685,6 +892,64 @@ export function ProductsView() {
             </Button>
             <Button variant='destructive' size='sm' onClick={handleDeleteConfirm}>
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Camera Barcode Scanner Dialog ── */}
+      <Dialog open={isScannerOpen} onOpenChange={(open) => !open && handleCloseScanner()}>
+        <DialogContent className='sm:max-w-md p-5 rounded-2xl'>
+          <DialogHeader className='text-center'>
+            <DialogTitle className='flex items-center justify-center gap-2 text-base font-black'>
+              <Camera className='size-5 text-emerald-600' />
+              <span>مسح باركود المنتج بالكاميرا</span>
+            </DialogTitle>
+            <DialogDescription className='text-xs'>
+              وجّه الكاميرا نحو باركود المنتج للبحث عنه فوراً وعرض نتيجته في جدول المنتجات
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='relative my-2 rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center'>
+            <div id='products-camera-feed' className='w-full h-full' />
+            {/* Scan Reticle or Solid Green Result Box */}
+            <div className='absolute inset-0 flex items-center justify-center p-3 pointer-events-none'>
+              {cameraScannedProduct ? (
+                <div className='relative w-[85%] rounded-2xl bg-[#00d632] shadow-2xl p-4 flex flex-col items-center justify-center text-center text-[#061006] animate-in zoom-in-95 pointer-events-auto border-2 border-white/40'>
+                  <span className='text-[10px] font-black uppercase tracking-wider bg-black/10 px-2 py-0.5 rounded-full mb-1'>
+                    تم العثور على المنتج ✓
+                  </span>
+                  <h4 className='text-xl sm:text-2xl font-black leading-tight line-clamp-1 mb-1'>
+                    {cameraScannedProduct.name}
+                  </h4>
+                  <div className='flex items-baseline gap-1 my-1'>
+                    <span className='text-3xl sm:text-4xl font-black font-mono tracking-tight'>
+                      {cameraScannedProduct.price.toFixed(2)}
+                    </span>
+                    <span className='text-sm font-black'>{currency.symbol}</span>
+                  </div>
+                  <Button
+                    size='sm'
+                    onClick={handleCloseScanner}
+                    className='mt-2 h-8 px-4 bg-[#061006] hover:bg-black text-white text-xs font-bold rounded-lg cursor-pointer'
+                  >
+                    عرض في الجدول
+                  </Button>
+                </div>
+              ) : (
+                <div className='relative w-48 h-32 border-2 border-emerald-500/80 rounded-lg'>
+                  <div className='absolute inset-x-2 top-1/2 -translate-y-1/2 h-0.5 bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse' />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className='flex justify-between items-center sm:justify-between'>
+            <p className='text-[11px] text-muted-foreground'>
+              يمكنك أيضاً استخدام قارئ الباركود اليدوي مباشرة
+            </p>
+            <Button variant='outline' size='sm' onClick={handleCloseScanner}>
+              إلغاء
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,13 +3,9 @@ import {
   Lock,
   Maximize2,
   Minimize2,
-  Clock,
-  Store,
   MapPin,
   LogOut,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import type { Merchant, Branch, User } from '@/types/saas'
 
 interface PosHeaderProps {
@@ -31,25 +27,7 @@ export function PosHeader({
   onLockTerminal,
   onExitPOS,
 }: PosHeaderProps) {
-  const [time, setTime] = React.useState<string>('')
   const [isFullscreen, setIsFullscreen] = React.useState<boolean>(false)
-
-  // Live Clock
-  React.useEffect(() => {
-    const updateTime = () => {
-      const now = new Date()
-      setTime(
-        now.toLocaleTimeString('ar-EG', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })
-      )
-    }
-    updateTime()
-    const timer = setInterval(updateTime, 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   // Fullscreen listener
   const toggleFullscreen = () => {
@@ -61,109 +39,103 @@ export function PosHeader({
   }
 
   return (
-    <header className='h-16 px-4 bg-[#09090B] border-b border-white/10 flex items-center justify-between gap-4 text-white shrink-0 select-none'>
+    <header className='bg-white border border-[#e8ece8] rounded-[18px] p-4 flex items-center justify-between gap-4 shadow-[0_4px_18px_rgba(16,32,16,0.024)] select-none'>
       {/* ── Left: Store Brand & Branch ── */}
-      <div className='flex items-center gap-3'>
+      <div className='flex items-center gap-3.5'>
         {merchant.logo ? (
           <img
             src={merchant.logo}
             alt={merchant.name}
-            className='size-9 rounded-xl object-cover border border-white/10 shadow-sm'
+            className='size-11 rounded-[14px] object-cover border border-[#e8ece8] shadow-xs'
           />
         ) : (
-          <div className='size-9 rounded-xl bg-white/10 flex items-center justify-center font-bold text-base text-[#3EEA85] border border-white/10'>
-            <Store className='size-5' />
+          <div className='size-11 rounded-[14px] bg-[#00d632] text-[#061006] flex items-center justify-center font-black text-2xl shadow-xs'>
+            {merchant.name ? merchant.name.charAt(0).toUpperCase() : 'G'}
           </div>
         )}
 
         <div>
           <div className='flex items-center gap-2'>
-            <span className='font-bold text-sm tracking-tight'>{merchant.name}</span>
-            <Badge className='bg-[#3EEA85]/20 text-[#3EEA85] border-none text-[10px] font-mono font-bold px-1.5 py-0'>
+            <span className='font-black text-xl tracking-tight text-[#101410]'>
+              {merchant.name || '.GREEN'}
+            </span>
+            <span className='text-[10px] text-[#368449] bg-[#e8f9ec] px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wider'>
               POS
-            </Badge>
+            </span>
           </div>
+          <div className='text-[11px] text-[#7a827b] uppercase font-bold tracking-wider'>
+            Sell More. Print Less.
+          </div>
+        </div>
 
+        {/* Branch dropdown */}
+        <div className='hidden sm:flex items-center ms-3 ps-3 border-s border-[#e8ece8]'>
           {branches.length > 1 ? (
-            <div className='flex items-center gap-1 text-xs text-neutral-400'>
-              <MapPin className='size-3 text-[#3EEA85]' />
+            <div className='flex items-center gap-1.5 text-xs text-[#59635a] bg-[#f2f5f2] border border-[#e8ece8] px-2.5 py-1.5 rounded-xl font-bold'>
+              <MapPin className='size-3.5 text-[#00d632]' />
               <select
                 value={branch?.id || ''}
                 onChange={(e) => {
                   const b = branches.find((item) => item.id === e.target.value)
                   if (b) onSelectBranch(b)
                 }}
-                className='bg-transparent text-xs text-neutral-300 font-medium cursor-pointer border-none focus:outline-none'
+                className='bg-transparent text-xs text-[#101410] font-bold cursor-pointer border-none focus:outline-none'
               >
                 {branches.map((b) => (
-                  <option key={b.id} value={b.id} className='bg-neutral-900 text-white'>
+                  <option key={b.id} value={b.id} className='bg-white text-[#101410]'>
                     {b.name}
                   </option>
                 ))}
               </select>
             </div>
           ) : (
-            <p className='text-xs text-neutral-400 flex items-center gap-1'>
-              <MapPin className='size-3 text-[#3EEA85]' />
+            <p className='text-xs text-[#7a827b] flex items-center gap-1 font-semibold'>
+              <MapPin className='size-3.5 text-[#00d632]' />
               <span>{branch?.name || 'الفرع الرئيسي'}</span>
             </p>
           )}
         </div>
       </div>
 
-      {/* ── Center: Live Time & Status Indicator ── */}
-      <div className='hidden md:flex items-center gap-2 bg-neutral-900/90 border border-white/10 px-3 py-1 rounded-xl text-xs'>
-        <Clock className='size-3.5 text-[#3EEA85]' />
-        <span className='font-mono font-bold text-white'>{time}</span>
-        <span className='size-1.5 rounded-full bg-[#3EEA85] animate-ping' />
-      </div>
-
-      {/* ── Right: Cashier Info & Actions ── */}
-      <div className='flex items-center gap-2 sm:gap-3'>
-        {/* Cashier Badge */}
-        <div className='flex items-center gap-2 bg-neutral-900/90 border border-white/10 px-3 py-1.5 rounded-xl'>
-          <div className='size-6 rounded-full bg-[#3EEA85] text-black font-black text-xs flex items-center justify-center'>
-            {cashier.name.charAt(0).toUpperCase()}
-          </div>
-          <div className='text-right'>
-            <div className='text-xs font-bold leading-none'>{cashier.name}</div>
-            <span className='text-[10px] text-neutral-400 leading-none'>كاشير نشط</span>
-          </div>
+      {/* ── Right: User Avatar & Actions (From right: Avatar -> Lock -> Fullscreen -> Logout Arrow) ── */}
+      <div className='flex items-center gap-2 sm:gap-2.5 flex-row-reverse'>
+        {/* Cashier Circular Avatar (Rightmost) */}
+        <div
+          className='size-9 sm:size-10 rounded-full bg-[#00d632] text-[#061006] font-black text-sm flex items-center justify-center shadow-xs select-none'
+          title={`كاشير: ${cashier.name}`}
+        >
+          {cashier.name ? cashier.name.charAt(0).toUpperCase() : 'C'}
         </div>
 
-        {/* Lock Terminal Button */}
-        <Button
-          size='sm'
-          variant='outline'
+        {/* Lock Terminal Button (White lock in black circle) */}
+        <button
+          type='button'
           onClick={onLockTerminal}
-          className='h-9 px-3 rounded-xl border-white/15 bg-white/5 hover:bg-[#3EEA85]/15 hover:border-[#3EEA85]/40 hover:text-[#3EEA85] text-xs font-bold gap-1.5 transition-all text-white'
+          className='size-9 sm:size-10 rounded-full bg-[#101410] hover:bg-black text-white flex items-center justify-center transition-all shadow-xs cursor-pointer active:scale-95'
           title='قفل الشاشة بالرقم السري'
         >
-          <Lock className='size-3.5' />
-          <span className='hidden sm:inline'>قفل الشاشة</span>
-        </Button>
+          <Lock className='size-4 text-white' />
+        </button>
 
         {/* Fullscreen Button */}
-        <Button
-          size='icon'
-          variant='ghost'
+        <button
+          type='button'
           onClick={toggleFullscreen}
-          className='size-9 rounded-xl hover:bg-white/10 text-neutral-300 hover:text-white'
+          className='size-9 sm:size-10 rounded-full bg-[#f2f5f2] hover:bg-[#e4e9e4] text-[#101410] flex items-center justify-center transition-all shadow-xs cursor-pointer active:scale-95'
           title={isFullscreen ? 'إلغاء ملء الشاشة' : 'ملء الشاشة'}
         >
           {isFullscreen ? <Minimize2 className='size-4' /> : <Maximize2 className='size-4' />}
-        </Button>
+        </button>
 
-        {/* Exit POS */}
-        <Button
-          size='icon'
-          variant='ghost'
+        {/* Exit POS / Logout Arrow */}
+        <button
+          type='button'
           onClick={onExitPOS}
-          className='size-9 rounded-xl hover:bg-rose-500/10 text-neutral-400 hover:text-rose-400'
+          className='size-9 sm:size-10 rounded-full bg-[#f2f5f2] hover:bg-rose-50 text-[#7a827b] hover:text-rose-600 flex items-center justify-center transition-all shadow-xs cursor-pointer active:scale-95'
           title='الخروج من نقطة البيع'
         >
           <LogOut className='size-4' />
-        </Button>
+        </button>
       </div>
     </header>
   )

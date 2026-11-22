@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as ClerkRouteRouteImport } from './routes/clerk/route'
 import { Route as PosRouteImport } from './routes/pos'
+import { Route as ScanRouteImport } from './routes/scan'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
 import { Route as authOtpRouteImport } from './routes/(auth)/otp'
 import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
@@ -27,6 +28,8 @@ import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authen
 import { Route as BranchTokenRouteImport } from './routes/branch/$token'
 import { Route as ClerkauthRouteRouteImport } from './routes/clerk/(auth)/route'
 import { Route as ClerkAuthenticatedRouteRouteImport } from './routes/clerk/_authenticated/route'
+import { Route as ReceiptIndexRouteImport } from './routes/receipt/index'
+import { Route as ReceiptIdRouteImport } from './routes/receipt/$id'
 import { Route as AuthenticatedAddOnsIndexRouteImport } from './routes/_authenticated/add-ons/index'
 import { Route as AuthenticatedAiChatIndexRouteImport } from './routes/_authenticated/ai-chat/index'
 import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
@@ -73,6 +76,11 @@ const ClerkRouteRoute = ClerkRouteRouteImport.update({
 const PosRoute = PosRouteImport.update({
   id: '/pos',
   path: '/pos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
@@ -148,6 +156,16 @@ const ClerkauthRouteRoute = ClerkauthRouteRouteImport.update({
 const ClerkAuthenticatedRouteRoute = ClerkAuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => ClerkRouteRoute,
+} as any)
+const ReceiptIndexRoute = ReceiptIndexRouteImport.update({
+  id: '/receipt/',
+  path: '/receipt/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReceiptIdRoute = ReceiptIdRouteImport.update({
+  id: '/receipt/$id',
+  path: '/receipt/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAddOnsIndexRoute =
   AuthenticatedAddOnsIndexRouteImport.update({
@@ -342,6 +360,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/clerk': typeof ClerkauthRouteRouteWithChildren
   '/pos': typeof PosRoute
+  '/scan': typeof ScanRoute
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
@@ -354,6 +373,8 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/branch/$token': typeof BranchTokenRoute
+  '/receipt/$id': typeof ReceiptIdRoute
+  '/receipt/': typeof ReceiptIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/invoices/design': typeof AuthenticatedInvoicesDesignRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -391,6 +412,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/clerk': typeof ClerkauthRouteRouteWithChildren
   '/pos': typeof PosRoute
+  '/scan': typeof ScanRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
   '/sign-in': typeof authSignInRoute
@@ -402,7 +424,9 @@ export interface FileRoutesByTo {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/branch/$token': typeof BranchTokenRoute
+  '/receipt/$id': typeof ReceiptIdRoute
   '/': typeof AuthenticatedIndexRoute
+  '/receipt': typeof ReceiptIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/invoices/design': typeof AuthenticatedInvoicesDesignRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -442,6 +466,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/clerk': typeof ClerkRouteRouteWithChildren
   '/pos': typeof PosRoute
+  '/scan': typeof ScanRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/clerk/(auth)': typeof ClerkauthRouteRouteWithChildren
   '/clerk/_authenticated': typeof ClerkAuthenticatedRouteRouteWithChildren
@@ -456,7 +481,9 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
   '/branch/$token': typeof BranchTokenRoute
+  '/receipt/$id': typeof ReceiptIdRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/receipt/': typeof ReceiptIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/invoices/design': typeof AuthenticatedInvoicesDesignRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -497,6 +524,7 @@ export interface FileRouteTypes {
     | '/'
     | '/clerk'
     | '/pos'
+    | '/scan'
     | '/settings'
     | '/forgot-password'
     | '/otp'
@@ -509,6 +537,8 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/branch/$token'
+    | '/receipt/$id'
+    | '/receipt/'
     | '/errors/$error'
     | '/invoices/design'
     | '/settings/account'
@@ -546,6 +576,7 @@ export interface FileRouteTypes {
   to:
     | '/clerk'
     | '/pos'
+    | '/scan'
     | '/forgot-password'
     | '/otp'
     | '/sign-in'
@@ -557,7 +588,9 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/branch/$token'
+    | '/receipt/$id'
     | '/'
+    | '/receipt'
     | '/errors/$error'
     | '/invoices/design'
     | '/settings/account'
@@ -596,6 +629,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/clerk'
     | '/pos'
+    | '/scan'
     | '/_authenticated/settings'
     | '/clerk/(auth)'
     | '/clerk/_authenticated'
@@ -610,7 +644,9 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
     | '/branch/$token'
+    | '/receipt/$id'
     | '/_authenticated/'
+    | '/receipt/'
     | '/_authenticated/errors/$error'
     | '/_authenticated/invoices/design'
     | '/_authenticated/settings/account'
@@ -650,6 +686,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ClerkRouteRoute: typeof ClerkRouteRouteWithChildren
   PosRoute: typeof PosRoute
+  ScanRoute: typeof ScanRoute
   authForgotPasswordRoute: typeof authForgotPasswordRoute
   authOtpRoute: typeof authOtpRoute
   authSignInRoute: typeof authSignInRoute
@@ -661,6 +698,8 @@ export interface RootRouteChildren {
   errors500Route: typeof errors500Route
   errors503Route: typeof errors503Route
   BranchTokenRoute: typeof BranchTokenRoute
+  ReceiptIdRoute: typeof ReceiptIdRoute
+  ReceiptIndexRoute: typeof ReceiptIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -684,6 +723,13 @@ declare module '@tanstack/react-router' {
       path: '/pos'
       fullPath: '/pos'
       preLoaderRoute: typeof PosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)/forgot-password': {
@@ -790,6 +836,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/clerk'
       preLoaderRoute: typeof ClerkAuthenticatedRouteRouteImport
       parentRoute: typeof ClerkRouteRoute
+    }
+    '/receipt/': {
+      id: '/receipt/'
+      path: '/receipt'
+      fullPath: '/receipt/'
+      preLoaderRoute: typeof ReceiptIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/receipt/$id': {
+      id: '/receipt/$id'
+      path: '/receipt/$id'
+      fullPath: '/receipt/$id'
+      preLoaderRoute: typeof ReceiptIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/add-ons/': {
       id: '/_authenticated/add-ons/'
@@ -1160,6 +1220,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ClerkRouteRoute: ClerkRouteRouteWithChildren,
   PosRoute: PosRoute,
+  ScanRoute: ScanRoute,
   authForgotPasswordRoute: authForgotPasswordRoute,
   authOtpRoute: authOtpRoute,
   authSignInRoute: authSignInRoute,
@@ -1171,6 +1232,8 @@ const rootRouteChildren: RootRouteChildren = {
   errors500Route: errors500Route,
   errors503Route: errors503Route,
   BranchTokenRoute: BranchTokenRoute,
+  ReceiptIdRoute: ReceiptIdRoute,
+  ReceiptIndexRoute: ReceiptIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

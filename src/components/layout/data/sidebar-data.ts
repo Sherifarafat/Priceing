@@ -16,6 +16,7 @@ import {
   Receipt,
   FileText,
   Palette,
+  Monitor,
 } from 'lucide-react'
 import { User, UserRole, StaffPermissionKey } from '@/types/saas'
 import { type SidebarData, type NavGroup, type NavItem } from '../types'
@@ -45,6 +46,11 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
             title: 'Platform Dashboard',
             url: '/',
             icon: LayoutDashboard,
+          },
+          {
+            title: 'نقطة البيع (POS)',
+            url: '/pos',
+            icon: Monitor,
           },
           {
             title: 'Merchants',
@@ -157,6 +163,11 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
             icon: LayoutDashboard,
           },
           {
+            title: 'نقطة البيع (POS)',
+            url: '/pos',
+            icon: Monitor,
+          },
+          {
             title: 'Store Branches',
             url: '/branches',
             icon: Store,
@@ -252,7 +263,12 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
 
   if (hasPerm('invoices.view') || hasPerm('invoices.issue') || role === 'CASHIER') {
     staffItems.push({
-      title: 'Point of Sale & Invoices',
+      title: 'نقطة البيع (POS)',
+      url: '/pos',
+      icon: Monitor,
+    })
+    staffItems.push({
+      title: 'الفواتير والمبيعات',
       url: '/invoices',
       icon: FileText,
     })

@@ -40,13 +40,112 @@ const initialCurrencies: Currency[] = [
   { id: 'curr-eur', code: 'EUR', name: 'Euro', symbol: '€', status: 'Active' },
 ]
 
-const initialMerchants: Merchant[] = []
+const initialMerchants: Merchant[] = [
+  {
+    id: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'Karome',
+    status: 'Active',
+    currencyId: 'curr-egp',
+    merchantTypeId: 'type-1',
+    email: 'contact@karome.com',
+    phone: '+20 100 000 0000',
+    address: 'Cairo, Egypt',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+]
 
-const initialBranches: Branch[] = []
+const initialBranches: Branch[] = [
+  {
+    id: 'branch-17951314',
+    merchantId: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'Cairo Branch',
+    address: 'Cairo, Egypt',
+    qrToken: 'cairo-token',
+    qrStatus: 'Active',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+]
 
-const initialCategories: Category[] = []
+const initialCategories: Category[] = [
+  {
+    id: 'cat-general',
+    merchantId: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'عام (General)',
+    branchId: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+]
 
-const initialProducts: Product[] = []
+const initialProducts: Product[] = [
+  {
+    id: 'prod-headphone',
+    merchantId: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'Head phone',
+    barcode: '123456789',
+    price: 3500.0,
+    stocks: 45,
+    description: 'High Quality Wireless Noise Cancelling Headphone',
+    status: 'Active',
+    categoryId: 'cat-general',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'prod-coffee',
+    merchantId: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'بن / قهوة (Coffee)',
+    barcode: '961400121028',
+    price: 65.0,
+    stocks: 120,
+    description: 'Fresh Premium Roasted Coffee',
+    status: 'Active',
+    categoryId: 'cat-general',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'prod-button',
+    merchantId: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'زرار',
+    barcode: '3456',
+    price: 50.0,
+    stocks: 300,
+    description: 'Premium Accessory Button',
+    status: 'Active',
+    categoryId: 'cat-general',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'prod-earbuds',
+    merchantId: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'Wireless Bluetooth Earbuds Pro',
+    barcode: '622100012345',
+    price: 850.0,
+    stocks: 60,
+    description: 'Bluetooth 5.3 Earbuds with MagSafe Charging Case',
+    status: 'Active',
+    categoryId: 'cat-general',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'prod-cable',
+    merchantId: 'a76d5225-c63d-4e8f-a74b-65baa4742ba1',
+    name: 'Fast Charging USB-C Cable 2M',
+    barcode: '622100034567',
+    price: 95.0,
+    stocks: 150,
+    description: 'Braided Type-C 100W Fast Charge Cable',
+    status: 'Active',
+    categoryId: 'cat-general',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+]
 
 const initialUsers: User[] = [
   {
@@ -1506,11 +1605,22 @@ export const useSaaSStore = create<SaaSState>()(
           const tpl = await api.invoices.getTemplate({ merchantId })
           if (tpl) {
             set({ invoiceTemplate: tpl })
+            try {
+              localStorage.setItem('merchant_invoice_template', JSON.stringify(tpl))
+            } catch {}
             return tpl
           }
         } catch (err: any) {
           console.warn('Failed to fetch invoice template:', err.message)
         }
+        try {
+          const cached = localStorage.getItem('merchant_invoice_template')
+          if (cached) {
+            const parsed = JSON.parse(cached)
+            set({ invoiceTemplate: parsed })
+            return parsed
+          }
+        } catch {}
         return null
       },
 
@@ -1518,10 +1628,34 @@ export const useSaaSStore = create<SaaSState>()(
         try {
           const updated = await api.invoices.updateTemplate(data)
           set({ invoiceTemplate: updated })
+          try {
+            localStorage.setItem('merchant_invoice_template', JSON.stringify(updated))
+          } catch {}
           return updated
         } catch (err: any) {
-          console.warn('Failed to update invoice template:', err.message)
-          throw err
+          console.warn('Failed to update invoice template on server, persisting locally:', err.message)
+          const fallback: InvoiceTemplate = {
+            id: get().invoiceTemplate?.id || 'tpl-custom',
+            merchantId: data.merchantId || get().currentUser.merchantId || '',
+            templateName: data.templateName || 'Custom Invoice',
+            layoutStyle: data.layoutStyle || 'MODERN',
+            primaryColor: data.primaryColor || '#4F46E5',
+            accentColor: data.accentColor || '#10B981',
+            showLogo: data.showLogo !== undefined ? data.showLogo : true,
+            paperSize: data.paperSize || 'A4',
+            showQrCode: data.showQrCode !== undefined ? data.showQrCode : true,
+            showTaxDetails: data.showTaxDetails !== undefined ? data.showTaxDetails : true,
+            showBranchInfo: data.showBranchInfo !== undefined ? data.showBranchInfo : true,
+            showCashierName: data.showCashierName !== undefined ? data.showCashierName : true,
+            createdAt: get().invoiceTemplate?.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            ...data,
+          } as InvoiceTemplate
+          set({ invoiceTemplate: fallback })
+          try {
+            localStorage.setItem('merchant_invoice_template', JSON.stringify(fallback))
+          } catch {}
+          return fallback
         }
       },
 
