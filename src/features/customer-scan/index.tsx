@@ -10,10 +10,9 @@ import {
   Store,
   X,
   XCircle,
-  SwitchCamera,
-  Sparkles,
-  Barcode as BarcodeIcon,
-  Check,
+  Search,
+  Maximize2,
+  Minimize2,
   Loader2,
 } from 'lucide-react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
@@ -39,6 +38,7 @@ import { Branch, Merchant, Product, ShoppingItem } from '@/types/saas'
 
 interface CustomerScanViewProps {
   qrToken?: string
+  merchantId?: string
 }
 
 // ─── Beep & Haptics ─────────────────────────────────────────────────────────
@@ -84,9 +84,45 @@ const SCAN_FORMATS = [
 
 const CAM_DIV_ID = 'barcode-camera-feed'
 
-export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
-  const { branches, merchants, products, currencies, recordCustomerScan, recordShoppingSession } =
+export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps) {
+  const { branches, merchants, products, recordCustomerScan, recordShoppingSession } =
     useSaaSStore()
+
+  // Detect device language for Add to Cart button label
+  const isArabicDevice = React.useMemo(() => {
+    if (typeof navigator === 'undefined') return false
+    const lang = (navigator.language || navigator.languages?.[0] || '').toLowerCase()
+    return lang.startsWith('ar')
+  }, [])
+
+  const currencyLabel = 'LE'
+
+  // Live catalog fetched directly from public backend API (essential for mobile devices with empty localStorage)
+  const [liveMerchants, setLiveMerchants] = React.useState<Merchant[]>([])
+  const [liveBranches, setLiveBranches] = React.useState<Branch[]>([])
+  const [liveProducts, setLiveProducts] = React.useState<Product[]>([])
+
+  React.useEffect(() => {
+    let cancelled = false
+    fetch('/api/scan/catalog')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return
+        if (Array.isArray(data.merchants) && data.merchants.length > 0) setLiveMerchants(data.merchants)
+        if (Array.isArray(data.branches) && data.branches.length > 0) setLiveBranches(data.branches)
+        if (Array.isArray(data.products) && data.products.length > 0) setLiveProducts(data.products)
+      })
+      .catch(() => {
+        // Offline / fallback to store
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const activeBranches = liveBranches.length > 0 ? liveBranches : branches
+  const activeMerchants = liveMerchants.length > 0 ? liveMerchants : merchants
+  const activeProducts = liveProducts.length > 0 ? liveProducts : products
 
   const defaultBranch: Branch = {
     id: 'branch-17951314',
@@ -111,11 +147,29 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
     updatedAt: '2026-01-01T00:00:00Z',
   }
 
-  const branch   = (qrToken ? branches.find((b) => b.qrToken === qrToken) : null) || branches[0] || defaultBranch
-  const merchant = (branch ? merchants.find((m) => m.id === branch.merchantId) : null) || merchants[0] || defaultMerchant
-  const currency = merchant
-    ? currencies.find((c) => c.id === merchant.currencyId) || currencies[0]
-    : currencies[0]
+  const explicitMerchant = merchantId
+    ? activeMerchants.find((m) => m.id === merchantId) || null
+    : null
+
+  const branch =
+    (qrToken ? activeBranches.find((b) => b.qrToken === qrToken) : null) ||
+    (merchantId ? activeBranches.find((b) => b.merchantId === merchantId) : null) ||
+    (merchantId
+      ? {
+          ...defaultBranch,
+          id: `store-${merchantId}`,
+          merchantId,
+          name: explicitMerchant?.name || 'Main Store',
+        }
+      : activeBranches[0] || defaultBranch)
+
+  const merchant =
+    explicitMerchant ||
+    (branch ? activeMerchants.find((m) => m.id === branch.merchantId) : null) ||
+    activeMerchants[0] ||
+    defaultMerchant
+
+  const isMerchantScoped = Boolean(qrToken || merchantId)
 
   const storageKey = `guest_shopping_session_${branch?.id || 'unknown'}`
 
@@ -123,34 +177,69 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
   const [shoppingList, setShoppingList] = React.useState<ShoppingItem[]>([])
   const [camPhase, setCamPhase] = React.useState<'idle' | 'starting' | 'active' | 'error'>('idle')
   const [cameraError, setCameraError] = React.useState<string | null>(null)
-  const [facingMode, setFacingMode] = React.useState<'environment' | 'user'>('environment')
   const [scannedProduct, setScannedProduct] = React.useState<Product | null>(null)
   const [notFoundBarcode, setNotFoundBarcode] = React.useState<string | null>(null)
   const [isCartOpen, setIsCartOpen] = React.useState(false)
   const [priceChangeItem, setPriceChangeItem] = React.useState<{ item: ShoppingItem; newPrice: number } | null>(null)
-  const [showQuickBarcodes, setShowQuickBarcodes] = React.useState(false)
-  const [manualInput, setManualInput] = React.useState('')
+  const [showSearch, setShowSearch] = React.useState(false)
+  const [searchQuery, setSearchQuery] = React.useState('')
+  const [isFullscreen, setIsFullscreen] = React.useState(false)
 
   // ── Scanner ref ─────────────────────────────────────────────────────────────
-  const scannerRef   = React.useRef<Html5Qrcode | null>(null)
-  const startLockRef = React.useRef(false)          // prevent concurrent starts
-  const mountedRef   = React.useRef(true)           // track mount state
-  const lastBarcode  = React.useRef('')
-  const lastTime     = React.useRef(0)
+  const rootRef           = React.useRef<HTMLDivElement | null>(null)
+  const scannerRef        = React.useRef<Html5Qrcode | null>(null)
+  const startLockRef      = React.useRef(false)          // prevent concurrent starts
+  const mountedRef        = React.useRef(true)           // track mount state
+  const lastBarcode       = React.useRef('')
+  const lastTime          = React.useRef(0)
+  const scannedProductRef = React.useRef<Product | null>(null)
+  const touchStartYRef    = React.useRef<number | null>(null)
+
+  React.useEffect(() => {
+    scannedProductRef.current = scannedProduct
+  }, [scannedProduct])
 
   React.useEffect(() => {
     mountedRef.current = true
     return () => { mountedRef.current = false }
   }, [])
 
-  // Auto-dismiss scanned product after 6 seconds to resume scanning
+  // Track browser fullscreen state
   React.useEffect(() => {
-    if (!scannedProduct) return
-    const timer = setTimeout(() => {
-      setScannedProduct(null)
-    }, 6000)
-    return () => clearTimeout(timer)
-  }, [scannedProduct])
+    const onFsChange = () => {
+      const doc = document as any
+      setIsFullscreen(Boolean(document.fullscreenElement || doc.webkitFullscreenElement))
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    document.addEventListener('webkitfullscreenchange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      document.removeEventListener('webkitfullscreenchange', onFsChange)
+    }
+  }, [])
+
+  const toggleFullscreen = async () => {
+    const doc = document as any
+    const el = (rootRef.current || document.documentElement) as any
+    try {
+      if (!document.fullscreenElement && !doc.webkitFullscreenElement) {
+        if (el.requestFullscreen) {
+          await el.requestFullscreen()
+        } else if (el.webkitRequestFullscreen) {
+          await el.webkitRequestFullscreen()
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen()
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen()
+        }
+      }
+    } catch {
+      // Fallback: scroll to hide mobile address bar if fullscreen API is restricted (e.g. iOS Safari)
+      window.scrollTo(0, 1)
+    }
+  }
 
   // ── Session ──────────────────────────────────────────────────────────────────
   React.useEffect(() => {
@@ -181,7 +270,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
   // ── Price-change watcher ─────────────────────────────────────────────────────
   React.useEffect(() => {
     if (!merchant || !shoppingList.length) return
-    const mp = products.filter((p) => p.merchantId === merchant.id)
+    const mp = activeProducts.filter((p) => p.merchantId === merchant.id)
     for (const item of shoppingList) {
       const live = mp.find((p) => p.id === item.productId)
       if (live && live.price !== item.confirmedPrice && !item.priceChanged) {
@@ -189,15 +278,17 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
         break
       }
     }
-  }, [products, shoppingList, merchant?.id])
+  }, [activeProducts, shoppingList, merchant?.id])
 
   // ── Barcode handler ──────────────────────────────────────────────────────────
   const onBarcode = React.useCallback(
-    (raw: string) => {
+    async (raw: string, fromManual = false) => {
+      // Do not overwrite an open result sheet from background camera scans
+      if (!fromManual && scannedProductRef.current) return
       const val = raw.trim()
       if (!val) return
       const now = Date.now()
-      if (val === lastBarcode.current && now - lastTime.current < 2000) return
+      if (!fromManual && val === lastBarcode.current && now - lastTime.current < 2000) return
       lastBarcode.current = val
       lastTime.current = now
       playBeep()
@@ -210,8 +301,8 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
       const cleanVal = val.replace(/^0+/, '')
       const targetMerchantId = merchant?.id || branch?.merchantId
 
-      // Search strictly within products added in the Products catalog
-      let found = products.find((p) => {
+      // Search strictly within live products catalog
+      let found = activeProducts.find((p) => {
         const matchesMerchant = !targetMerchantId || p.merchantId === targetMerchantId
         const pBarcode = (p.barcode || '').trim()
         const pCleanBarcode = pBarcode.replace(/^0+/, '')
@@ -223,9 +314,9 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
         )
       })
 
-      // If not found for current branch merchant, search all merchant products in catalog
-      if (!found) {
-        found = products.find((p) => {
+      // If not scoped to a specific merchant/branch, fall back to searching all merchant products
+      if (!found && !isMerchantScoped) {
+        found = activeProducts.find((p) => {
           const pBarcode = (p.barcode || '').trim()
           const pCleanBarcode = pBarcode.replace(/^0+/, '')
           return (
@@ -236,6 +327,32 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
         })
       }
 
+      // Live backend fallback lookup (catches newly added products without refreshing phone)
+      if (!found) {
+        try {
+          const res = await fetch('/api/scan/lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              qrToken: qrToken || undefined,
+              merchantId: merchantId || (qrToken ? merchant?.id : undefined),
+              barcode: val,
+            }),
+          })
+          if (res.ok) {
+            const liveProd: Product = await res.json()
+            if (liveProd && liveProd.id) {
+              found = liveProd
+              setLiveProducts((prev) =>
+                prev.some((p) => p.id === liveProd.id) ? prev : [liveProd, ...prev]
+              )
+            }
+          }
+        } catch {
+          // ignore network error
+        }
+      }
+
       if (found) {
         setScannedProduct(found)
         setNotFoundBarcode(null)
@@ -244,8 +361,14 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
         setScannedProduct(null)
       }
     },
-    [merchant, branch, products, recordCustomerScan]
+    [merchant, branch, qrToken, merchantId, isMerchantScoped, activeProducts, recordCustomerScan]
   )
+
+  // Always keep latest onBarcode in a ref so camera callback never captures stale products
+  const onBarcodeRef = React.useRef(onBarcode)
+  React.useEffect(() => {
+    onBarcodeRef.current = onBarcode
+  }, [onBarcode])
 
   // ── Create / get scanner instance ────────────────────────────────────────────
   const getScanner = (): Html5Qrcode => {
@@ -276,7 +399,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
   //   2. If already scanning → just surface the active state
   //   3. Catch only resets UI on REAL errors, not "already scanning"
   const startCamera = React.useCallback(
-    async (mode: 'environment' | 'user' = facingMode) => {
+    async (mode: 'environment' | 'user' = 'environment') => {
       if (startLockRef.current) return
       startLockRef.current = true
 
@@ -298,7 +421,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
             qrbox: { width: 280, height: 160 },
             aspectRatio: 1.777778,
           },
-          (text) => onBarcode(text),
+          (text) => onBarcodeRef.current(text),
           () => { /* scan error per frame — normal */ }
         )
         if (mountedRef.current) setCamPhase('active')
@@ -327,7 +450,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
         startLockRef.current = false
       }
     },
-    [facingMode, onBarcode]
+    []
   )
 
   // ── Hardware Barcode Scanner Listener (USB / Bluetooth scanner guns) ─────────
@@ -366,14 +489,6 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onBarcode])
-
-  const toggleCamera = async () => {
-    const next: 'environment' | 'user' = facingMode === 'environment' ? 'user' : 'environment'
-    setFacingMode(next)
-    await stopScanner()
-    if (mountedRef.current) setCamPhase('idle')
-    setTimeout(() => startCamera(next), 150)
-  }
 
   // ── Auto-start (StrictMode safe) ─────────────────────────────────────────────
   React.useEffect(() => {
@@ -475,9 +590,26 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
   const isActive   = camPhase === 'active'
   const isStarting = camPhase === 'starting'
 
+  const scopedSearchCatalog = isMerchantScoped
+    ? activeProducts.filter((p) => !merchant?.id || p.merchantId === merchant.id)
+    : activeProducts
+
+  const filteredSearchProducts = searchQuery.trim()
+    ? scopedSearchCatalog.filter((p) => {
+        const q = searchQuery.trim().toLowerCase()
+        return (
+          p.name.toLowerCase().includes(q) ||
+          (p.barcode || '').toLowerCase().includes(q)
+        )
+      })
+    : []
+
   // ── Main render ───────────────────────────────────────────────────────────────
   return (
-    <div className='fixed inset-0 w-full h-full bg-black overflow-hidden select-none touch-none'>
+    <div
+      ref={rootRef}
+      className='fixed inset-0 w-screen h-[100dvh] bg-black overflow-hidden select-none touch-none'
+    >
 
       {/* ── Camera container: Html5Qrcode renders <video> inside here ── */}
       <div
@@ -516,70 +648,116 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
         </div>
       )}
 
-      {/* ── Top Header ── */}
-      <header className='absolute top-0 inset-x-0 z-30 flex items-center justify-between p-3.5 bg-black/40 backdrop-blur-md border-b border-white/10 text-white'>
-        <div className='flex items-center gap-2.5'>
-          <div className='flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold shadow-md'>
-            <Store className='size-5' />
-          </div>
-          <div>
-            <h1 className='font-bold text-sm leading-tight text-white drop-shadow-xs'>{merchant.name}</h1>
-            <p className='text-[11px] text-white/70 drop-shadow-xs'>{branch.name}</p>
-          </div>
-        </div>
-
-        <div className='flex items-center gap-2'>
-          {isActive && (
-            <Button size='icon' variant='ghost' className='size-8 text-white hover:bg-white/20'
-              onClick={toggleCamera} title='تبديل الكاميرا'>
-              <SwitchCamera className='size-4' />
-            </Button>
+      {/* ── Floating Top Controls (No Header Bar: Merchant Avatar Left, Search & Fullscreen Right) ── */}
+      <div
+        dir='ltr'
+        className='pointer-events-none absolute top-4 inset-x-4 z-30 flex items-center justify-between'
+      >
+        {/* Left: Merchant Avatar Only */}
+        <div
+          className='pointer-events-auto size-11 rounded-full overflow-hidden bg-black/50 backdrop-blur-md border border-white/25 shadow-lg flex items-center justify-center shrink-0'
+          title={merchant.name}
+        >
+          {merchant.logo ? (
+            <img
+              src={merchant.logo}
+              alt={merchant.name}
+              className='size-full object-cover'
+            />
+          ) : (
+            <div className='size-full flex items-center justify-center text-white font-black text-base'>
+              {merchant.name?.[0]?.toUpperCase() || <Store className='size-5' />}
+            </div>
           )}
-          <Button size='sm' variant='secondary'
-            className='h-8 text-xs gap-1 bg-white/15 text-white hover:bg-white/25 border-0'
-            onClick={() => setShowQuickBarcodes(!showQuickBarcodes)}>
-            <Sparkles className='size-3 text-amber-400' />
-            <span>أكواد تجريبية</span>
-          </Button>
-          <Badge variant='outline' className='text-xs font-mono text-white border-white/30'>
-            {currency.symbol}
-          </Badge>
         </div>
-      </header>
 
-      {/* ── Quick Barcodes Tray ── */}
-      {showQuickBarcodes && (
-        <div className='absolute top-16 inset-x-0 z-30 p-3 bg-slate-900/90 backdrop-blur-md border-b border-white/10 text-white animate-in slide-in-from-top-2'>
-          <div className='flex items-center justify-between mb-2 text-xs'>
-            <span className='font-semibold text-slate-300'>أكواد سريعة للاختبار فوراً:</span>
-            <Button size='icon' variant='ghost' className='size-5 text-white/70'
-              onClick={() => setShowQuickBarcodes(false)}>
-              <X className='size-3' />
+        {/* Right: Fullscreen & Search Icons */}
+        <div className='pointer-events-auto flex items-center gap-2'>
+          <button
+            type='button'
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            title={isFullscreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة'}
+            className='size-11 rounded-full bg-black/50 hover:bg-black/70 active:scale-95 backdrop-blur-md border border-white/20 text-white shadow-lg flex items-center justify-center transition-all cursor-pointer'
+          >
+            {isFullscreen ? <Minimize2 className='size-5' /> : <Maximize2 className='size-5' />}
+          </button>
+
+          <button
+            type='button'
+            onClick={() => setShowSearch((prev) => !prev)}
+            aria-label='Search'
+            title='بحث بالباركود أو اسم المنتج'
+            className='size-11 rounded-full bg-black/50 hover:bg-black/70 active:scale-95 backdrop-blur-md border border-white/20 text-white shadow-lg flex items-center justify-center transition-all cursor-pointer'
+          >
+            {showSearch ? <X className='size-5' /> : <Search className='size-5' />}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Floating Search Panel ── */}
+      {showSearch && (
+        <div className='absolute top-18 inset-x-4 z-30 p-3 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/15 text-white shadow-2xl animate-in fade-in slide-in-from-top-2'>
+          <div className='flex items-center gap-2'>
+            <div className='relative flex-1'>
+              <Search className='size-4 text-white/50 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none' />
+              <input
+                type='text'
+                autoFocus
+                placeholder={isArabicDevice ? 'ابحث بالباركود أو اسم المنتج...' : 'Search by barcode or product name...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    onBarcode(searchQuery, true)
+                    setSearchQuery('')
+                    setShowSearch(false)
+                  }
+                }}
+                className='w-full h-10 rounded-xl border border-white/20 bg-white/10 ps-9 pe-3 text-xs text-white placeholder:text-white/50 outline-none focus:border-white/40'
+              />
+            </div>
+            <Button
+              size='sm'
+              className='h-10 px-4 rounded-xl text-xs font-bold'
+              onClick={() => {
+                if (searchQuery.trim()) {
+                  onBarcode(searchQuery, true)
+                  setSearchQuery('')
+                  setShowSearch(false)
+                }
+              }}
+            >
+              {isArabicDevice ? 'بحث' : 'Search'}
             </Button>
           </div>
-          <div className='flex flex-wrap gap-1.5 mb-2'>
-            {products
-              .filter((p) => !merchant?.id || p.merchantId === merchant.id)
-              .slice(0, 8)
-              .map((p) => (
-                <Button key={p.id} size='sm' variant='secondary'
-                  className='h-7 text-xs px-2 gap-1 font-mono bg-white/10 hover:bg-white/20 text-white'
-                  onClick={() => { onBarcode(p.barcode); setShowQuickBarcodes(false) }}>
-                  <BarcodeIcon className='size-3 text-primary' />
-                  {p.name.split(' ')[0]} ({p.barcode.slice(-4)})
-                </Button>
+
+          {filteredSearchProducts.length > 0 && (
+            <div className='mt-2.5 max-h-52 overflow-y-auto divide-y divide-white/10'>
+              {filteredSearchProducts.slice(0, 6).map((p) => (
+                <button
+                  key={p.id}
+                  type='button'
+                  onClick={() => {
+                    playBeep()
+                    setScannedProduct(p)
+                    setNotFoundBarcode(null)
+                    setSearchQuery('')
+                    setShowSearch(false)
+                  }}
+                  className='w-full py-2 px-2 flex items-center justify-between text-start hover:bg-white/10 rounded-lg transition-colors cursor-pointer'
+                >
+                  <div className='min-w-0'>
+                    <p className='text-xs font-bold text-white truncate'>{p.name}</p>
+                    <p className='text-[10px] font-mono text-white/60'>{p.barcode}</p>
+                  </div>
+                  <span className='text-xs font-mono font-bold text-[#00d632] shrink-0 ms-3'>
+                    {p.price.toFixed(2)} {currencyLabel}
+                  </span>
+                </button>
               ))}
-          </div>
-          <div className='flex gap-1.5'>
-            <input type='text' placeholder='أو اكتب رقم الباركود هنا...'
-              value={manualInput} onChange={(e) => setManualInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { onBarcode(manualInput); setManualInput(''); setShowQuickBarcodes(false) } }}
-              className='flex-1 rounded-md border border-white/20 bg-black/50 px-2.5 py-1 text-xs text-white' />
-            <Button size='sm' className='h-7 text-xs'
-              onClick={() => { onBarcode(manualInput); setManualInput(''); setShowQuickBarcodes(false) }}>
-              بحث
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -599,33 +777,31 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
         }
       `}</style>
 
-      {/* ── 80% Green Bottom Sheet for Scanned Product Result ── */}
+      {/* ── 80% Green Bottom Sheet for Scanned Product Result (Stays open until user dismisses) ── */}
       <Sheet open={!!scannedProduct} onOpenChange={(open) => !open && setScannedProduct(null)}>
         <SheetContent
           side='bottom'
-          className='h-[80vh] max-h-[80vh] min-h-[80vh] rounded-t-[36px] bg-[#00d632] border-none text-[#061006] p-6 flex flex-col justify-between shadow-[0_-16px_50px_rgba(0,0,0,0.45)] z-50 overflow-hidden'
+          hideCloseButton
+          onTouchStart={(e) => {
+            touchStartYRef.current = e.touches[0]?.clientY ?? null
+          }}
+          onTouchEnd={(e) => {
+            const startY = touchStartYRef.current
+            const endY = e.changedTouches[0]?.clientY ?? null
+            touchStartYRef.current = null
+            if (startY !== null && endY !== null && endY - startY > 70) {
+              setScannedProduct(null)
+            }
+          }}
+          className='h-[80vh] max-h-[80vh] min-h-[80vh] rounded-t-[36px] bg-[#00d632] border-none text-[#061006] p-6 pb-7 flex flex-col justify-between shadow-[0_-16px_50px_rgba(0,0,0,0.45)] z-50 overflow-hidden'
         >
-          {/* Top Header / Handle */}
-          <div className='w-full shrink-0 flex flex-col items-center'>
-            <div className='w-14 h-1.5 rounded-full bg-[#061006]/20 mb-3' />
-            <div className='flex items-center justify-between w-full px-1'>
-              <div className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#061006]/10 text-xs font-black uppercase tracking-wider'>
-                <Check className='size-3.5 text-[#061006]' />
-                <span>تم العثور على المنتج</span>
-              </div>
-              <button
-                type='button'
-                onClick={() => setScannedProduct(null)}
-                className='size-9 rounded-full bg-[#061006]/10 hover:bg-[#061006]/20 flex items-center justify-center text-[#061006] transition-colors cursor-pointer'
-                title='إغلاق'
-              >
-                <X className='size-5' />
-              </button>
-            </div>
+          {/* Top Drag Handle Only (no "تم العثور على المنتج", no close X button) */}
+          <div className='w-full shrink-0 flex justify-center pt-1'>
+            <div className='w-14 h-1.5 rounded-full bg-[#061006]/25' />
           </div>
 
           {/* Middle Content: Product Name and Price in large font */}
-          <div className='flex-1 flex flex-col items-center justify-center text-center my-auto px-2'>
+          <div className='flex-1 flex flex-col items-center justify-center text-center px-2'>
             {scannedProduct && (
               <>
                 {/* Product Name */}
@@ -633,27 +809,27 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
                   {scannedProduct.name}
                 </h2>
 
-                {/* Product Price */}
-                <div className='my-4 flex items-baseline justify-center gap-2'>
+                {/* Product Price with LE */}
+                <div className='my-4 flex items-baseline justify-center gap-2' dir='ltr'>
                   <span className='text-6xl sm:text-7xl font-mono font-black text-[#061006] tracking-tight'>
                     {scannedProduct.price.toFixed(2)}
                   </span>
                   <span className='text-2xl sm:text-3xl font-black text-[#061006]/85'>
-                    {currency.symbol}
+                    {currencyLabel}
                   </span>
                 </div>
 
                 {scannedProduct.barcode && (
                   <div className='text-xs font-mono font-bold text-[#061006]/70 bg-[#061006]/10 px-3.5 py-1 rounded-full inline-block mt-1'>
-                    باركود: {scannedProduct.barcode}
+                    {scannedProduct.barcode}
                   </div>
                 )}
               </>
             )}
           </div>
 
-          {/* Bottom Actions: Add to Cart button */}
-          <div className='w-full shrink-0 space-y-3 pt-2'>
+          {/* Bottom Action: Add to Cart anchored at the bottom */}
+          <div className='w-full shrink-0 mt-auto pt-2'>
             <button
               type='button'
               onClick={() => {
@@ -665,15 +841,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
               className='w-full h-15 rounded-[20px] bg-[#061006] hover:bg-black text-white text-lg font-black flex items-center justify-center gap-3 shadow-2xl active:scale-[0.98] transition-all cursor-pointer'
             >
               <ShoppingCart className='size-5' />
-              <span>Add to Cart • إضافة إلى السلة</span>
-            </button>
-
-            <button
-              type='button'
-              onClick={() => setScannedProduct(null)}
-              className='w-full py-2 text-center text-xs font-black text-[#061006]/75 hover:text-[#061006] cursor-pointer'
-            >
-              مسح منتج آخر (Scan Another)
+              <span>{isArabicDevice ? 'أضف للسلة' : 'Add to Cart'}</span>
             </button>
           </div>
         </SheetContent>
@@ -711,7 +879,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
           )}
           {totalCount > 0 && (
             <span className='absolute -bottom-6 font-bold text-[11px] text-white bg-black/60 px-2 py-0.5 rounded-full backdrop-blur-xs whitespace-nowrap shadow-xs'>
-              {currency.symbol} {totalPrice.toFixed(2)}
+              {currencyLabel} {totalPrice.toFixed(2)}
             </span>
           )}
         </button>
@@ -747,7 +915,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
                   <div className='flex-1 min-w-0'>
                     <h5 className='font-bold text-xs leading-snug truncate'>{item.name}</h5>
                     <div className='text-[11px] text-muted-foreground font-mono mt-0.5'>
-                      {currency.symbol} {item.confirmedPrice.toFixed(2)} للقطعة
+                      {currencyLabel} {item.confirmedPrice.toFixed(2)} للقطعة
                     </div>
                     {item.priceStatus === 'UNCONFIRMED' && (
                       <Badge variant='destructive' className='text-[9px] px-1 py-0 mt-1'>تغير السعر معلق</Badge>
@@ -760,7 +928,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
                       <Button size='icon' variant='ghost' className='size-7' onClick={() => changeQty(item.productId, 1)}><Plus className='size-3' /></Button>
                     </div>
                     <div className='text-end min-w-16'>
-                      <span className='text-xs font-bold font-mono'>{currency.symbol} {(item.confirmedPrice * item.quantity).toFixed(2)}</span>
+                      <span className='text-xs font-bold font-mono'>{currencyLabel} {(item.confirmedPrice * item.quantity).toFixed(2)}</span>
                     </div>
                     <Button size='icon' variant='ghost' className='size-7 text-muted-foreground hover:text-destructive' onClick={() => removeItem(item.productId)}>
                       <Trash2 className='size-3.5' />
@@ -777,7 +945,7 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
                 <div>
                   <span className='text-xs text-muted-foreground font-semibold uppercase'>المجموع التقديري:</span>
                   <div className='text-2xl font-extrabold text-primary font-mono'>
-                    {currency.symbol} {totalPrice.toFixed(2)}
+                    {currencyLabel} {totalPrice.toFixed(2)}
                   </div>
                 </div>
                 <Button size='sm' onClick={() => window.print()} className='gap-1.5 text-xs'>مشاركة / طباعة</Button>
@@ -801,11 +969,11 @@ export function CustomerScanView({ qrToken }: CustomerScanViewProps) {
           <div className='my-3 rounded-lg border bg-muted/50 p-3 space-y-2 text-xs'>
             <div className='flex justify-between'>
               <span className='text-muted-foreground'>السعر السابق:</span>
-              <span className='font-mono line-through text-muted-foreground'>{currency.symbol} {priceChangeItem?.item.confirmedPrice.toFixed(2)}</span>
+              <span className='font-mono line-through text-muted-foreground'>{currencyLabel} {priceChangeItem?.item.confirmedPrice.toFixed(2)}</span>
             </div>
             <div className='flex justify-between font-bold text-sm'>
               <span>السعر الجديد:</span>
-              <span className='font-mono text-primary'>{currency.symbol} {priceChangeItem?.newPrice.toFixed(2)}</span>
+              <span className='font-mono text-primary'>{currencyLabel} {priceChangeItem?.newPrice.toFixed(2)}</span>
             </div>
           </div>
           <DialogFooter className='flex-col sm:flex-row gap-2'>

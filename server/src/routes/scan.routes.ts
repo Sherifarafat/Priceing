@@ -1,7 +1,60 @@
 import { Router, Request, Response } from 'express'
+import os from 'os'
 import { prisma } from '../lib/prisma.js'
 
 const router = Router()
+
+function getLocalLanIp(): string | null {
+  const nets = os.networkInterfaces()
+  const candidates: Array<{ name: string; address: string }> = []
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) {
+        candidates.push({ name, address: net.address })
+      }
+    }
+  }
+  const wifi = candidates.find((c) => /wi-fi|wifi|wlan/i.test(c.name))
+  if (wifi) return wifi.address
+  const lan = candidates.find(
+    (c) =>
+      c.address.startsWith('192.168.') ||
+      c.address.startsWith('10.') ||
+      c.address.startsWith('172.')
+  )
+  return lan?.address || candidates[0]?.address || null
+}
+
+// GET /api/scan/network-info
+// Returns the host machine's LAN IPv4 address so QR codes generated on localhost work on phones
+router.get('/network-info', (_req: Request, res: Response) => {
+  res.json({ lanIp: getLocalLanIp() })
+})
+
+// GET /api/scan/catalog
+// Public endpoint for mobile customer scanner to load live merchants, branches & products
+router.get('/catalog', async (_req: Request, res: Response) => {
+  try {
+    const [merchants, branches, products] = await Promise.all([
+      prisma.merchant.findMany({
+        where: { status: 'Active' },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.branch.findMany({
+        where: { qrStatus: 'Active' },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.product.findMany({
+        where: { status: 'Active' },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ])
+
+    res.json({ merchants, branches, products })
+  } catch (error: any) {
+    res.status(500).json({ error: error.message })
+  }
+})
 
 // GET /api/scan/branch/:qrToken
 // Validates branch QR token and returns store context
@@ -40,62 +93,87 @@ router.get('/branch/:qrToken', async (req: Request, res: Response) => {
 })
 
 // POST /api/scan/lookup
-// Real-time Barcode scanning lookup inside a specific branch
+// Real-time Barcode scanning lookup (supports branch qrToken, merchantId, or general scanner lookup)
 router.post('/lookup', async (req: Request, res: Response) => {
   try {
-    const { qrToken, barcode } = req.body
+    const { qrToken, merchantId, barcode } = req.body
 
-    if (!qrToken || !barcode) {
-      return res.status(400).json({ error: 'qrToken and barcode are required' })
+    if (!barcode) {
+      return res.status(400).json({ error: 'barcode is required' })
     }
 
-    const branch = await prisma.branch.findUnique({
-      where: { qrToken },
-      select: { id: true, merchantId: true, qrStatus: true },
-    })
+    const rawCode = String(barcode).trim()
+    const cleanCode = rawCode.replace(/^0+/, '')
 
-    if (!branch || branch.qrStatus !== 'Active') {
-      return res.status(403).json({ error: 'Branch scanner is inactive' })
+    let branch: { id: string; merchantId: string; qrStatus: string } | null = null
+    if (qrToken) {
+      branch = await prisma.branch.findUnique({
+        where: { qrToken },
+        select: { id: true, merchantId: true, qrStatus: true },
+      })
     }
 
-    const product = await prisma.product.findFirst({
-      where: {
-        merchantId: branch.merchantId,
-        barcode: String(barcode).trim(),
-      },
+    const targetMerchantId: string | null = branch?.merchantId || merchantId || null
+
+    const activeProducts = await prisma.product.findMany({
+      where: { status: 'Active' },
       include: {
         category: { select: { id: true, name: true } },
       },
     })
 
-    if (!product) {
-      return res.status(404).json({ error: `Product with barcode ${barcode} not found in this store.` })
+    const matchesBarcode = (pBarcode: string) => {
+      const trimmed = (pBarcode || '').trim()
+      const clean = trimmed.replace(/^0+/, '')
+      return (
+        trimmed.toLowerCase() === rawCode.toLowerCase() ||
+        clean.toLowerCase() === cleanCode.toLowerCase()
+      )
     }
 
-    // Record scan telemetry asynchronously for analytics & footfall tracking
-    prisma.customerScan
-      .create({
-        data: {
-          branchId: branch.id,
-          barcode: product.barcode,
-          productName: product.name,
-          price: product.price,
-          userAgent: req.headers['user-agent'] || null,
-          ipAddress: req.ip || null,
-        },
-      })
-      .catch(() => {})
+    // Prefer product in target merchant; if a specific merchant/branch was requested, scope to it
+    let product = targetMerchantId
+      ? activeProducts.find((p) => p.merchantId === targetMerchantId && matchesBarcode(p.barcode))
+      : undefined
+
+    if (!product && !targetMerchantId) {
+      product = activeProducts.find((p) => matchesBarcode(p.barcode))
+    }
+
+    if (!product) {
+      return res.status(404).json({ error: `Product with barcode ${rawCode} not found.` })
+    }
+
+    // Record scan telemetry asynchronously if branch is available
+    if (branch) {
+      prisma.customerScan
+        .create({
+          data: {
+            branchId: branch.id,
+            barcode: product.barcode,
+            productName: product.name,
+            price: product.price,
+            userAgent: req.headers['user-agent'] || null,
+            ipAddress: req.ip || null,
+          },
+        })
+        .catch(() => {})
+    }
 
     res.json({
       id: product.id,
+      merchantId: product.merchantId,
       name: product.name,
       barcode: product.barcode,
       price: product.price,
       stocks: product.stocks,
       description: product.description,
       imageUrl: product.imageUrl,
+      categoryId: product.categoryId,
       category: product.category?.name || 'General',
       status: product.status,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
     })
   } catch (error: any) {
     res.status(500).json({ error: error.message })

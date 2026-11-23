@@ -467,11 +467,22 @@ export const useSaaSStore = create<SaaSState>()(
             address: data.address,
             logo: data.logo,
             status: data.status,
+            features: data.features,
           })
           .then((saved: any) => {
             if (saved && saved.id) {
               set((state) => {
                 const realMerchantId = saved.id
+                const parsedFeatures =
+                  typeof saved.features === 'string'
+                    ? (() => {
+                        try {
+                          return JSON.parse(saved.features)
+                        } catch {
+                          return data.features
+                        }
+                      })()
+                    : saved.features ?? data.features
                 const realManager: User = saved.managerUser
                   ? {
                       id: saved.managerUser.id || `user-${realMerchantId}-mgr`,
@@ -491,7 +502,7 @@ export const useSaaSStore = create<SaaSState>()(
 
                 return {
                   merchants: state.merchants.map((m) =>
-                    m.id === id ? { ...m, ...saved, id: realMerchantId } : m
+                    m.id === id ? { ...m, ...saved, id: realMerchantId, features: parsedFeatures } : m
                   ),
                   users: [
                     ...state.users.filter((u) => u.id !== manager.id && u.merchantId !== id),
@@ -526,7 +537,22 @@ export const useSaaSStore = create<SaaSState>()(
         }))
 
         // Sync with backend SQLite database
-        api.merchants.update(id, data).catch((err) => console.warn('Failed to update merchant in DB:', err.message))
+        api.merchants
+          .update(id, data)
+          .catch(async (err) => {
+            // If Super Admin had a stale non-admin token in localStorage, clear it and retry once
+            if (get().currentUser.role === 'SUPER_ADMIN') {
+              try {
+                localStorage.removeItem('saas_auth_token')
+                await api.merchants.update(id, data)
+                return
+              } catch (retryErr: any) {
+                console.warn('Failed to update merchant in DB after retry:', retryErr.message)
+                return
+              }
+            }
+            console.warn('Failed to update merchant in DB:', err.message)
+          })
       },
 
       setMerchantStatus: (id, status) => {
@@ -1764,8 +1790,19 @@ export const useSaaSStore = create<SaaSState>()(
             api.invoices.getTemplate().catch(() => null),
           ])
 
+          const normalizedMerchants = (merchants || []).map((m: any) => {
+            if (typeof m.features === 'string') {
+              try {
+                return { ...m, features: JSON.parse(m.features) }
+              } catch {
+                return { ...m, features: undefined }
+              }
+            }
+            return m
+          })
+
           set((state) => ({
-            merchants: merchants.length > 0 ? merchants : state.merchants,
+            merchants: normalizedMerchants.length > 0 ? normalizedMerchants : state.merchants,
             branches: branches.length > 0 ? branches : state.branches,
             categories: categories.length > 0 ? categories : state.categories,
             products: products.length > 0 ? products : state.products,

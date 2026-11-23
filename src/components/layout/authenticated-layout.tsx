@@ -11,6 +11,19 @@ import { SkipToMain } from '@/components/skip-to-main'
 import { FloatingAiButton } from '@/components/floating-ai-button'
 import { useSaaSStore } from '@/lib/saas-store'
 import { useAuthStore } from '@/stores/auth-store'
+import { api } from '@/lib/api-client'
+
+function getJwtPayload(token: string | null): { id?: string; role?: string } | null {
+  if (!token) return null
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(base64))
+  } catch {
+    return null
+  }
+}
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -20,19 +33,49 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
 
   React.useEffect(() => {
-    // Initial sync with backend database and active user session
-    useSaaSStore.getState().fetchFromBackend().then(() => {
+    // Self-heal stale localStorage JWT if it belongs to a different user/role than active session
+    const syncAuthToken = async () => {
       const authUser = useAuthStore.getState().auth.user
-      const storeState = useSaaSStore.getState()
       if (authUser) {
-        if (authUser.role?.includes('SUPER_ADMIN')) {
-          if (storeState.currentUser.role !== 'SUPER_ADMIN') {
-            storeState.switchUser('SUPER_ADMIN')
+        const storedToken = localStorage.getItem('saas_auth_token')
+        const payload = getJwtPayload(storedToken)
+        const expectedRole = authUser.role?.[0]
+        const tokenMismatch =
+          !payload ||
+          (expectedRole && payload.role !== expectedRole) ||
+          (authUser.accountNo && payload.id && payload.id !== authUser.accountNo)
+
+        if (tokenMismatch) {
+          localStorage.removeItem('saas_auth_token')
+          if (authUser.accountNo) {
+            try {
+              const res = await api.auth.switchDemoUser(authUser.accountNo)
+              if (res?.token) {
+                localStorage.setItem('saas_auth_token', res.token)
+              }
+            } catch {
+              // For Super Admin, backend dev fallback attaches Super Admin when no stale token is sent
+            }
           }
-        } else if (authUser.accountNo && storeState.currentUser.id !== authUser.accountNo) {
-          storeState.switchUser(authUser.accountNo)
         }
       }
+    }
+
+    syncAuthToken().then(() => {
+      // Initial sync with backend database and active user session
+      useSaaSStore.getState().fetchFromBackend().then(() => {
+        const authUser = useAuthStore.getState().auth.user
+        const storeState = useSaaSStore.getState()
+        if (authUser) {
+          if (authUser.role?.includes('SUPER_ADMIN')) {
+            if (storeState.currentUser.role !== 'SUPER_ADMIN') {
+              storeState.switchUser('SUPER_ADMIN')
+            }
+          } else if (authUser.accountNo && storeState.currentUser.id !== authUser.accountNo) {
+            storeState.switchUser(authUser.accountNo)
+          }
+        }
+      })
     })
   }, [])
   return (

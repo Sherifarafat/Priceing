@@ -18,12 +18,20 @@ import {
   Palette,
   Monitor,
 } from 'lucide-react'
-import { User, UserRole, StaffPermissionKey } from '@/types/saas'
+import { User, UserRole, StaffPermissionKey, MerchantFeatureKey, MerchantFeatures } from '@/types/saas'
 import { type SidebarData, type NavGroup, type NavItem } from '../types'
 
-export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
+export function getSaaSSidebarNav(
+  userOrRole: User | UserRole,
+  merchantFeatures?: Partial<MerchantFeatures>
+): NavGroup[] {
   const role: UserRole = typeof userOrRole === 'string' ? userOrRole : userOrRole.role
   const user: User | null = typeof userOrRole === 'object' ? userOrRole : null
+
+  const isFeatureEnabled = (key: MerchantFeatureKey): boolean => {
+    if (role === 'SUPER_ADMIN') return true
+    return merchantFeatures?.[key] !== false
+  }
 
   const hasPerm = (key: StaffPermissionKey): boolean => {
     if (role === 'SUPER_ADMIN' || role === 'MERCHANT_MANAGER') return true
@@ -151,109 +159,131 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
     ]
   }
 
-  // 2. Merchant Store Manager / Owner - Full Store Authority
+  // 2. Merchant Store Manager / Owner - Full Store Authority (filtered by Merchant Feature Toggles)
   if (role === 'MERCHANT_MANAGER') {
-    return [
-      {
-        title: 'Store Operations',
+    const managerItems: NavItem[] = []
+
+    if (isFeatureEnabled('dashboard')) {
+      managerItems.push({
+        title: 'Store Dashboard',
+        url: '/',
+        icon: LayoutDashboard,
+      })
+    }
+    if (isFeatureEnabled('pos')) {
+      managerItems.push({
+        title: 'نقطة البيع (POS)',
+        url: '/pos',
+        icon: Monitor,
+      })
+    }
+    if (isFeatureEnabled('branches')) {
+      managerItems.push({
+        title: 'Store Branches',
+        url: '/branches',
+        icon: Store,
+      })
+    }
+    if (isFeatureEnabled('products')) {
+      managerItems.push({
+        title: 'Product Hub',
+        icon: Boxes,
         items: [
           {
-            title: 'Store Dashboard',
-            url: '/',
-            icon: LayoutDashboard,
+            title: 'Products',
+            url: '/products',
+            icon: Package,
           },
           {
-            title: 'نقطة البيع (POS)',
-            url: '/pos',
-            icon: Monitor,
+            title: 'Add-ons',
+            url: '/add-ons',
+            icon: PackagePlus,
           },
+        ],
+      })
+    }
+    if (isFeatureEnabled('invoices')) {
+      managerItems.push({
+        title: 'Invoices & Billing',
+        icon: FileText,
+        items: [
           {
-            title: 'Store Branches',
-            url: '/branches',
-            icon: Store,
-          },
-          {
-            title: 'Product Hub',
-            icon: Boxes,
-            items: [
-              {
-                title: 'Products',
-                url: '/products',
-                icon: Package,
-              },
-              {
-                title: 'Add-ons',
-                url: '/add-ons',
-                icon: PackagePlus,
-              },
-            ],
-          },
-          {
-            title: 'Invoices & Billing',
+            title: 'Issued Invoices',
+            url: '/invoices',
             icon: FileText,
-            items: [
-              {
-                title: 'Issued Invoices',
-                url: '/invoices',
-                icon: FileText,
-              },
-              {
-                title: 'Invoice Designer',
-                url: '/invoices/design',
-                icon: Palette,
-              },
-            ],
           },
           {
-            title: 'Fees & Taxes',
-            url: '/fees',
-            icon: Receipt,
+            title: 'Invoice Designer',
+            url: '/invoices/design',
+            icon: Palette,
           },
+        ],
+      })
+    }
+    if (isFeatureEnabled('fees')) {
+      managerItems.push({
+        title: 'Fees & Taxes',
+        url: '/fees',
+        icon: Receipt,
+      })
+    }
+    if (isFeatureEnabled('staff')) {
+      managerItems.push({
+        title: 'Cashiers & Staff',
+        url: '/staff',
+        icon: Users,
+      })
+    }
+    if (isFeatureEnabled('reports')) {
+      managerItems.push({
+        title: 'Reports & Analytics',
+        url: '/reports',
+        icon: BarChart3,
+      })
+    }
+    if (isFeatureEnabled('services')) {
+      managerItems.push({
+        title: 'Services',
+        icon: Briefcase,
+        items: [
           {
-            title: 'Cashiers & Staff',
-            url: '/staff',
-            icon: Users,
-          },
-          {
-            title: 'Reports & Analytics',
-            url: '/reports',
-            icon: BarChart3,
+            title: 'Category',
+            url: '/services/categories',
+            icon: Tags,
           },
           {
             title: 'Services',
+            url: '/services',
             icon: Briefcase,
-            items: [
-              {
-                title: 'Category',
-                url: '/services/categories',
-                icon: Tags,
-              },
-              {
-                title: 'Services',
-                url: '/services',
-                icon: Briefcase,
-              },
-              {
-                title: 'Sub Services',
-                url: '/services/sub-services',
-                icon: GitFork,
-              },
-            ],
           },
           {
-            title: 'Excel Operations',
-            url: '/excel',
-            icon: FileSpreadsheet,
+            title: 'Sub Services',
+            url: '/services/sub-services',
+            icon: GitFork,
           },
         ],
+      })
+    }
+    if (isFeatureEnabled('excel')) {
+      managerItems.push({
+        title: 'Excel Operations',
+        url: '/excel',
+        icon: FileSpreadsheet,
+      })
+    }
+
+    return [
+      {
+        title: 'Store Operations',
+        items: managerItems,
       },
     ]
   }
 
-  // 3. Cashier or Merchant Staff - Strictly Filtered by Granular Permissions
+  // 3. Cashier or Merchant Staff - Strictly Filtered by Granular Permissions & Merchant Features
   const staffItems: NavItem[] = []
 
-  if (hasPerm('dashboard.view')) {
+  if (isFeatureEnabled('dashboard') && hasPerm('dashboard.view')) {
     staffItems.push({
       title: 'Store Dashboard',
       url: '/',
@@ -262,19 +292,23 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
   }
 
   if (hasPerm('invoices.view') || hasPerm('invoices.issue') || role === 'CASHIER') {
-    staffItems.push({
-      title: 'نقطة البيع (POS)',
-      url: '/pos',
-      icon: Monitor,
-    })
-    staffItems.push({
-      title: 'الفواتير والمبيعات',
-      url: '/invoices',
-      icon: FileText,
-    })
+    if (isFeatureEnabled('pos')) {
+      staffItems.push({
+        title: 'نقطة البيع (POS)',
+        url: '/pos',
+        icon: Monitor,
+      })
+    }
+    if (isFeatureEnabled('invoices')) {
+      staffItems.push({
+        title: 'الفواتير والمبيعات',
+        url: '/invoices',
+        icon: FileText,
+      })
+    }
   }
 
-  if (hasPerm('products.view') || role === 'CASHIER') {
+  if (isFeatureEnabled('products') && (hasPerm('products.view') || role === 'CASHIER')) {
     staffItems.push({
       title: 'Products & Lookup',
       url: '/products',
@@ -282,7 +316,7 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
     })
   }
 
-  if (hasPerm('branches.view')) {
+  if (isFeatureEnabled('branches') && hasPerm('branches.view')) {
     staffItems.push({
       title: 'Branches',
       url: '/branches',
@@ -290,7 +324,7 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
     })
   }
 
-  if (hasPerm('invoices.design')) {
+  if (isFeatureEnabled('invoices') && hasPerm('invoices.design')) {
     staffItems.push({
       title: 'Invoice Designer',
       url: '/invoices/design',
@@ -298,7 +332,7 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
     })
   }
 
-  if (hasPerm('fees.manage')) {
+  if (isFeatureEnabled('fees') && hasPerm('fees.manage')) {
     staffItems.push({
       title: 'Fees & Taxes',
       url: '/fees',
@@ -306,7 +340,7 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
     })
   }
 
-  if (hasPerm('reports.view')) {
+  if (isFeatureEnabled('reports') && hasPerm('reports.view')) {
     staffItems.push({
       title: 'Reports',
       url: '/reports',
@@ -314,7 +348,7 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
     })
   }
 
-  if (hasPerm('excel.import') || hasPerm('excel.bulk_edit')) {
+  if (isFeatureEnabled('excel') && (hasPerm('excel.import') || hasPerm('excel.bulk_edit'))) {
     staffItems.push({
       title: 'Excel Operations',
       url: '/excel',
@@ -325,13 +359,7 @@ export function getSaaSSidebarNav(userOrRole: User | UserRole): NavGroup[] {
   return [
     {
       title: role === 'CASHIER' ? 'Cashier Terminal' : 'Staff Workspace',
-      items: staffItems.length > 0 ? staffItems : [
-        {
-          title: 'Point of Sale & Invoices',
-          url: '/invoices',
-          icon: FileText,
-        },
-      ],
+      items: staffItems,
     },
   ]
 }

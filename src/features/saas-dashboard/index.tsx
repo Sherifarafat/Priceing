@@ -27,10 +27,10 @@ import { Badge } from '@/components/ui/badge'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitch } from '@/components/language-switch'
 import { MobileScannerModal } from '@/components/mobile-scanner-modal'
+import { MerchantQrButton } from '@/components/merchant-qr-modal'
 import { PosShortcutButton } from '@/components/pos-shortcut-button'
 import { useSaaSStore } from '@/lib/saas-store'
 
@@ -158,6 +158,10 @@ export function SaaSDashboard() {
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN'
   const currentMerchant = merchants.find((m) => m.id === currentUser.merchantId)
 
+  const showActivityFeed = isSuperAdmin || currentMerchant?.features?.activityFeed !== false
+  const showFastSellers = isSuperAdmin || currentMerchant?.features?.fastSellers !== false
+  const showScannerEndpoint = isSuperAdmin || currentMerchant?.features?.scannerEndpoint !== false
+
   // Redirect users who don't have dashboard access (e.g. Cashiers) to their primary workspace
   React.useEffect(() => {
     if (!isSuperAdmin && !hasPermission('dashboard.view')) {
@@ -228,9 +232,9 @@ export function SaaSDashboard() {
         </div>
 
         <div className='ms-auto flex items-center gap-2 sm:gap-3'>
-          <div className='hidden sm:block'>
-            <Search placeholder='Search transactions, merchants...' className='rounded-xl bg-card border-border/80 shadow-2xs h-9 w-60' />
-          </div>
+          {!isSuperAdmin && currentMerchant && (
+            <MerchantQrButton merchant={currentMerchant} variant='icon' />
+          )}
 
           <Button variant='ghost' size='icon' className='relative size-9 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground'>
             <Bell className='size-4' />
@@ -440,121 +444,137 @@ export function SaaSDashboard() {
         </div>
 
         {/* ── Bottom Section: Telda Feed & Store Inventory ── */}
-        <div className='grid grid-cols-1 lg:grid-cols-12 gap-5'>
+        {(showActivityFeed || showFastSellers) && (
+          <div className='grid grid-cols-1 lg:grid-cols-12 gap-5'>
 
-          {/* Telda Transactions Feed (5 Columns) */}
-          <Card className='lg:col-span-5 p-6 rounded-2xl border-border/70 flex flex-col justify-between'>
-            <div className='flex items-center justify-between mb-4'>
-              <CardTitle className='text-base font-bold text-foreground'>Activity Feed</CardTitle>
-              <Button variant='ghost' size='sm' className='h-7 text-xs text-muted-foreground rounded-lg hover:text-foreground'>
-                See All
-              </Button>
-            </div>
-
-            <div className='space-y-3'>
-              {teldaTransactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className='flex items-center justify-between p-2 rounded-xl hover:bg-muted/40 transition-colors'
-                >
-                  <div className='flex items-center gap-3 min-w-0'>
-                    {tx.avatar ? (
-                      <img src={tx.avatar} alt={tx.merchant} className='size-11 rounded-xl object-cover border border-border/70 shrink-0' />
-                    ) : (
-                      <div className='size-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 font-bold flex items-center justify-center text-sm shrink-0'>
-                        {tx.initial}
-                      </div>
-                    )}
-                    <div className='min-w-0'>
-                      <h4 className='text-xs font-bold text-foreground truncate'>{tx.merchant}</h4>
-                      <p className='text-[11px] text-muted-foreground truncate'>{tx.category}</p>
-                    </div>
-                  </div>
-
-                  <div className='text-end shrink-0'>
-                    <p className={`text-xs font-bold font-mono ${tx.type === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
-                      {tx.amount} {tx.currency}
-                    </p>
-                    <p className='text-[10px] text-muted-foreground'>{tx.time}</p>
-                  </div>
+            {/* Telda Transactions Feed */}
+            {showActivityFeed && (
+              <Card
+                className={`${
+                  showFastSellers ? 'lg:col-span-5' : 'lg:col-span-12'
+                } p-6 rounded-2xl border-border/70 flex flex-col justify-between`}
+              >
+                <div className='flex items-center justify-between mb-4'>
+                  <CardTitle className='text-base font-bold text-foreground'>Activity Feed</CardTitle>
+                  <Button variant='ghost' size='sm' className='h-7 text-xs text-muted-foreground rounded-lg hover:text-foreground'>
+                    See All
+                  </Button>
                 </div>
-              ))}
-            </div>
-          </Card>
 
-          {/* Store Inventory / Top Catalog Items (7 Columns) */}
-          <Card className='lg:col-span-7 p-6 rounded-2xl border-border/70 flex flex-col justify-between'>
-            <div className='flex items-center justify-between mb-4'>
-              <CardTitle className='text-base font-bold text-foreground'>Catalog & Fast Sellers</CardTitle>
-              <Button asChild size='sm' variant='outline' className='h-8 text-xs rounded-lg gap-1'>
-                <Link to='/products'>
-                  <Package className='size-3.5' /> Manage Products
-                </Link>
-              </Button>
-            </div>
+                <div className='space-y-3'>
+                  {teldaTransactions.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className='flex items-center justify-between p-2 rounded-xl hover:bg-muted/40 transition-colors'
+                    >
+                      <div className='flex items-center gap-3 min-w-0'>
+                        {tx.avatar ? (
+                          <img src={tx.avatar} alt={tx.merchant} className='size-11 rounded-xl object-cover border border-border/70 shrink-0' />
+                        ) : (
+                          <div className='size-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 font-bold flex items-center justify-center text-sm shrink-0'>
+                            {tx.initial}
+                          </div>
+                        )}
+                        <div className='min-w-0'>
+                          <h4 className='text-xs font-bold text-foreground truncate'>{tx.merchant}</h4>
+                          <p className='text-[11px] text-muted-foreground truncate'>{tx.category}</p>
+                        </div>
+                      </div>
 
-            <div className='overflow-x-auto'>
-              <table className='w-full text-xs text-left'>
-                <thead>
-                  <tr className='border-b border-border/60 text-muted-foreground font-semibold'>
-                    <th className='pb-3 font-medium'>Product Item</th>
-                    <th className='pb-3 font-medium text-center'>Stock</th>
-                    <th className='pb-3 font-medium text-center'>Price</th>
-                    <th className='pb-3 font-medium text-center'>Sales</th>
-                    <th className='pb-3 font-medium text-end'>Status</th>
-                  </tr>
-                </thead>
-                <tbody className='divide-y divide-border/40'>
-                  {topProductsList.map((prod) => {
-                    const ProdIcon = prod.icon
-                    return (
-                      <tr key={prod.id} className='hover:bg-muted/30 transition-colors'>
-                        <td className='py-3 font-medium flex items-center gap-3'>
-                          <div className='size-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center shrink-0'>
-                            <ProdIcon className='size-4' />
-                          </div>
-                          <div>
-                            <span className='font-bold text-foreground block'>{prod.name}</span>
-                            <span className='text-[10px] text-muted-foreground'>{prod.category}</span>
-                          </div>
-                        </td>
-                        <td className='py-3 text-center text-muted-foreground font-mono font-medium'>{prod.stocks}</td>
-                        <td className='py-3 text-center text-foreground font-bold font-mono'>{prod.price}</td>
-                        <td className='py-3 text-center text-muted-foreground font-mono'>{prod.sales}</td>
-                        <td className='py-3 text-end'>
-                          <Badge variant='outline' className='text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/50'>
-                            {prod.status}
-                          </Badge>
-                        </td>
+                      <div className='text-end shrink-0'>
+                        <p className={`text-xs font-bold font-mono ${tx.type === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
+                          {tx.amount} {tx.currency}
+                        </p>
+                        <p className='text-[10px] text-muted-foreground'>{tx.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Store Inventory / Top Catalog Items */}
+            {showFastSellers && (
+              <Card
+                className={`${
+                  showActivityFeed ? 'lg:col-span-7' : 'lg:col-span-12'
+                } p-6 rounded-2xl border-border/70 flex flex-col justify-between`}
+              >
+                <div className='flex items-center justify-between mb-4'>
+                  <CardTitle className='text-base font-bold text-foreground'>Catalog & Fast Sellers</CardTitle>
+                  <Button asChild size='sm' variant='outline' className='h-8 text-xs rounded-lg gap-1'>
+                    <Link to='/products'>
+                      <Package className='size-3.5' /> Manage Products
+                    </Link>
+                  </Button>
+                </div>
+
+                <div className='overflow-x-auto'>
+                  <table className='w-full text-xs text-left'>
+                    <thead>
+                      <tr className='border-b border-border/60 text-muted-foreground font-semibold'>
+                        <th className='pb-3 font-medium'>Product Item</th>
+                        <th className='pb-3 font-medium text-center'>Stock</th>
+                        <th className='pb-3 font-medium text-center'>Price</th>
+                        <th className='pb-3 font-medium text-center'>Sales</th>
+                        <th className='pb-3 font-medium text-end'>Status</th>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
+                    </thead>
+                    <tbody className='divide-y divide-border/40'>
+                      {topProductsList.map((prod) => {
+                        const ProdIcon = prod.icon
+                        return (
+                          <tr key={prod.id} className='hover:bg-muted/30 transition-colors'>
+                            <td className='py-3 font-medium flex items-center gap-3'>
+                              <div className='size-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-900/40 flex items-center justify-center shrink-0'>
+                                <ProdIcon className='size-4' />
+                              </div>
+                              <div>
+                                <span className='font-bold text-foreground block'>{prod.name}</span>
+                                <span className='text-[10px] text-muted-foreground'>{prod.category}</span>
+                              </div>
+                            </td>
+                            <td className='py-3 text-center text-muted-foreground font-mono font-medium'>{prod.stocks}</td>
+                            <td className='py-3 text-center text-foreground font-bold font-mono'>{prod.price}</td>
+                            <td className='py-3 text-center text-muted-foreground font-mono'>{prod.sales}</td>
+                            <td className='py-3 text-end'>
+                              <Badge variant='outline' className='text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/50'>
+                                {prod.status}
+                              </Badge>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* ── Telda Footer Banner: Quick QR Test Launch ── */}
-        <div className='flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-neutral-900 text-white shadow-xl'>
-          <div className='flex items-center gap-3'>
-            <div className='size-10 rounded-xl bg-[#3EEA85] text-black font-bold flex items-center justify-center shrink-0'>
-              <ScanLine className='size-5' />
+        {showScannerEndpoint && (
+          <div className='flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-neutral-900 text-white shadow-xl'>
+            <div className='flex items-center gap-3'>
+              <div className='size-10 rounded-xl bg-[#3EEA85] text-black font-bold flex items-center justify-center shrink-0'>
+                <ScanLine className='size-5' />
+              </div>
+              <div>
+                <p className='text-xs font-bold'>Customer Mobile Scanner Live Endpoint</p>
+                <p className='text-[11px] text-neutral-400'>
+                  Tested and verified on mobile with POS Beep and Haptic Feedback.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className='text-xs font-bold'>Customer Mobile Scanner Live Endpoint</p>
-              <p className='text-[11px] text-neutral-400'>
-                Tested and verified on mobile with POS Beep and Haptic Feedback.
-              </p>
-            </div>
-          </div>
 
-          <Button asChild size='sm' className='h-8 text-xs font-bold rounded-lg bg-white text-black hover:bg-neutral-200 shrink-0 gap-1.5'>
-            <Link to='/branch/$token' params={{ token: branches[0]?.qrToken || 'qr-metro-dokki-8f2a1b9c' }} target='_blank'>
-              <ExternalLink className='size-3.5' /> Launch Scanner
-            </Link>
-          </Button>
-        </div>
+            <Button asChild size='sm' className='h-8 text-xs font-bold rounded-lg bg-white text-black hover:bg-neutral-200 shrink-0 gap-1.5'>
+              <Link to='/branch/$token' params={{ token: branches[0]?.qrToken || 'qr-metro-dokki-8f2a1b9c' }} target='_blank'>
+                <ExternalLink className='size-3.5' /> Launch Scanner
+              </Link>
+            </Button>
+          </div>
+        )}
 
       </Main>
     </>

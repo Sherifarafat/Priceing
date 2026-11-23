@@ -105,6 +105,43 @@ export interface Currency {
   status: EntityStatus
 }
 
+export type MerchantFeatureKey =
+  | 'dashboard'
+  | 'pos'
+  | 'branches'
+  | 'products'
+  | 'invoices'
+  | 'fees'
+  | 'staff'
+  | 'reports'
+  | 'services'
+  | 'excel'
+  | 'ai'
+  | 'scannerButton'
+  | 'activityFeed'
+  | 'fastSellers'
+  | 'scannerEndpoint'
+
+export type MerchantFeatures = Record<MerchantFeatureKey, boolean>
+
+export const DEFAULT_MERCHANT_FEATURES: MerchantFeatures = {
+  dashboard: true,
+  pos: true,
+  branches: true,
+  products: true,
+  invoices: true,
+  fees: true,
+  staff: true,
+  reports: true,
+  services: true,
+  excel: true,
+  ai: true,
+  scannerButton: true,
+  activityFeed: true,
+  fastSellers: true,
+  scannerEndpoint: true,
+}
+
 export interface Merchant {
   id: string
   name: string
@@ -115,6 +152,7 @@ export interface Merchant {
   merchantTypeId: string
   currencyId: string
   status: MerchantStatus
+  features?: Partial<MerchantFeatures>
   createdAt: string
   updatedAt: string
 }

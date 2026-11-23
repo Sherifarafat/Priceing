@@ -11,9 +11,19 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { getQRCodeSvg } from '@/lib/qr-generator'
+import { useSaaSStore } from '@/lib/saas-store'
 
 export function MobileScannerModal() {
   const [copied, setCopied] = React.useState(false)
+  const { currentUser, merchants } = useSaaSStore()
+
+  // Respect merchant-level scanner button toggle
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    const currentMerchant = merchants.find((m) => m.id === currentUser.merchantId)
+    if (currentMerchant?.features?.scannerButton === false) {
+      return null
+    }
+  }
 
   // Compute network accessible URL for mobile phones on the same WiFi network
   const host = typeof window !== 'undefined'

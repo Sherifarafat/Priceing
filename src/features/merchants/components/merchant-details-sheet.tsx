@@ -33,6 +33,7 @@ import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useSaaSStore } from '@/lib/saas-store'
 import { Merchant, MerchantStatus } from '@/types/saas'
+import { MerchantQrButton } from '@/components/merchant-qr-modal'
 
 interface MerchantDetailsSheetProps {
   merchant: Merchant | null
@@ -146,17 +147,20 @@ export function MerchantDetailsSheet({
                 </div>
               </div>
 
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => {
-                  onEdit(merchant)
-                }}
-                className='h-8 px-3 rounded-lg text-xs gap-1.5 shrink-0'
-              >
-                <Edit2 className='size-3.5 text-primary' />
-                Edit
-              </Button>
+              <div className='flex items-center gap-2 shrink-0'>
+                <MerchantQrButton merchant={merchant} variant='outline' />
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    onEdit(merchant)
+                  }}
+                  className='h-8 px-3 rounded-lg text-xs gap-1.5 shrink-0'
+                >
+                  <Edit2 className='size-3.5 text-primary' />
+                  Edit
+                </Button>
+              </div>
             </div>
 
             {/* Quick Metrics */}

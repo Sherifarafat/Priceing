@@ -15,11 +15,19 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Username and password are required' })
     }
 
-    const user = await prisma.user.findFirst({
+    const normalizedInput = username.trim().toLowerCase()
+    let user = await prisma.user.findFirst({
       where: {
-        OR: [{ username: username.trim() }, { email: username.trim().toLowerCase() }],
+        OR: [{ username: username.trim() }, { email: normalizedInput }],
       },
     })
+
+    // Support Super Admin shortcut alias ('sherif' / 'sherif@company.com')
+    if (!user && (normalizedInput === 'sherif' || normalizedInput === 'sherif@company.com')) {
+      user = await prisma.user.findFirst({
+        where: { role: 'SUPER_ADMIN', status: 'Active' },
+      })
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid username or password' })

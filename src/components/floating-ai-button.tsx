@@ -1,12 +1,22 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { Sparkles } from 'lucide-react'
+import { useSaaSStore } from '@/lib/saas-store'
 
 export function FloatingAiButton() {
   const location = useLocation()
+  const { currentUser, merchants } = useSaaSStore()
 
   // Hide the floating button when already on the AI chat page
   if (location.pathname.startsWith('/ai-chat')) {
     return null
+  }
+
+  // Respect merchant-level AI toggle when signed in as merchant / staff
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    const currentMerchant = merchants.find((m) => m.id === currentUser.merchantId)
+    if (currentMerchant?.features?.ai === false) {
+      return null
+    }
   }
 
   return (

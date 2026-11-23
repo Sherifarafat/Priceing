@@ -57,12 +57,18 @@ export const useAuthStore = create<AuthState>()((set) => {
       resetAccessToken: () =>
         set((state) => {
           removeCookie(ACCESS_TOKEN)
+          try {
+            localStorage.removeItem('saas_auth_token')
+          } catch {}
           return { ...state, auth: { ...state.auth, accessToken: '' } }
         }),
       reset: () =>
         set((state) => {
           removeCookie(ACCESS_TOKEN)
           removeCookie(USER_KEY)
+          try {
+            localStorage.removeItem('saas_auth_token')
+          } catch {}
           return {
             ...state,
             auth: { ...state.auth, user: null, accessToken: '' },

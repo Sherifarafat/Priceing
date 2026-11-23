@@ -121,6 +121,14 @@ export function SignIn() {
           createdAt: new Date().toISOString(),
         }
 
+      localStorage.removeItem('saas_auth_token')
+      try {
+        const res = await api.auth.switchDemoUser(superAdminUser.id)
+        if (res?.token) {
+          localStorage.setItem('saas_auth_token', res.token)
+        }
+      } catch {}
+
       switchUser(superAdminUser.id)
       auth.setUser({
         accountNo: superAdminUser.id,
@@ -146,6 +154,14 @@ export function SignIn() {
     if (matchedUser) {
       const validPass = matchedUser.password ? matchedUser.password === pass : pass === '123456'
       if (validPass) {
+        localStorage.removeItem('saas_auth_token')
+        try {
+          const res = await api.auth.switchDemoUser(matchedUser.id)
+          if (res?.token) {
+            localStorage.setItem('saas_auth_token', res.token)
+          }
+        } catch {}
+
         switchUser(matchedUser.id)
         auth.setUser({
           accountNo: matchedUser.id,

@@ -5,6 +5,16 @@ import { authenticate, requireRole, AuthRequest } from '../middleware/auth.middl
 
 const router = Router()
 
+function parseFeatures(raw?: string | null): Record<string, boolean> | undefined {
+  if (!raw) return undefined
+  if (typeof raw === 'object') return raw as Record<string, boolean>
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return undefined
+  }
+}
+
 // GET /api/merchants
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
@@ -53,6 +63,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 
     const formatted = merchants.map((m) => ({
       ...m,
+      features: parseFeatures((m as any).features),
       branchesCount: m._count.branches,
       productsCount: m._count.products,
     }))
@@ -75,7 +86,10 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       },
     })
     if (!merchant) return res.status(404).json({ error: 'Merchant not found' })
-    res.json(merchant)
+    res.json({
+      ...merchant,
+      features: parseFeatures((merchant as any).features),
+    })
   } catch (error: any) {
     res.status(500).json({ error: error.message })
   }
@@ -84,10 +98,17 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 // POST /api/merchants (Super Admin only)
 router.post('/', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
-    const { name, email, phone, address, logo } = req.body
+    const { name, email, phone, address, logo, status, features } = req.body
     if (!name || !email) {
       return res.status(400).json({ error: 'Name and email are required' })
     }
+
+    const serializedFeatures =
+      features !== undefined
+        ? typeof features === 'string'
+          ? features
+          : JSON.stringify(features)
+        : null
 
     const merchant = await prisma.merchant.create({
       data: {
@@ -96,7 +117,8 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthReque
         phone: phone || null,
         address: address || null,
         logo: logo || null,
-        status: 'Active',
+        status: status || 'Active',
+        features: serializedFeatures,
       },
     })
 
@@ -141,6 +163,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthReque
 
     res.status(201).json({
       ...merchant,
+      features: parseFeatures((merchant as any).features),
       managerUser: {
         id: managerUser?.id,
         username: mgrUsername,
@@ -158,9 +181,18 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthReque
 router.put('/:id', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params.id as string
-    const { name, email, phone, address, logo, status } = req.body
+    const { name, email, phone, address, logo, status, features } = req.body
     const existing = await prisma.merchant.findUnique({ where: { id } })
     if (!existing) return res.status(404).json({ error: 'Merchant not found' })
+
+    const serializedFeatures =
+      features !== undefined
+        ? features === null
+          ? null
+          : typeof features === 'string'
+            ? features
+            : JSON.stringify(features)
+        : (existing as any).features
 
     const updated = await prisma.merchant.update({
       where: { id },
@@ -171,6 +203,7 @@ router.put('/:id', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthReq
         address: address !== undefined ? address : existing.address,
         logo: logo !== undefined ? logo : existing.logo,
         status: status !== undefined ? status : existing.status,
+        features: serializedFeatures,
       },
     })
 
@@ -186,7 +219,10 @@ router.put('/:id', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthReq
       },
     })
 
-    res.json(updated)
+    res.json({
+      ...updated,
+      features: parseFeatures((updated as any).features),
+    })
   } catch (error: any) {
     res.status(500).json({ error: error.message })
   }

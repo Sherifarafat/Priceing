@@ -34,6 +34,7 @@ model Merchant {
   address    String?
   logo       String?
   status     String     @default("Active") // Active | Suspended
+  features   String?    // JSON string of MerchantFeatures toggles (sidebar items + AI)
   branches   Branch[]
   products   Product[]
   categories Category[]

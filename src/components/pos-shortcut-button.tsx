@@ -4,7 +4,12 @@ import { useSaaSStore } from '@/lib/saas-store'
 
 export function PosShortcutButton() {
   const { currentUser, merchants } = useSaaSStore()
+  const currentMerchant = merchants.find((m) => m.id === currentUser.merchantId)
   const merchantId = currentUser.merchantId || merchants[0]?.id || ''
+
+  if (currentUser.role !== 'SUPER_ADMIN' && currentMerchant?.features?.pos === false) {
+    return null
+  }
 
   const handleOpenPOS = () => {
     const targetUrl = `/pos${merchantId ? `?merchantId=${merchantId}` : ''}`

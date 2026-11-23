@@ -16,13 +16,13 @@ import { useSaaSStore } from '@/lib/saas-store'
 export function AppSidebar() {
   const { collapsible, variant } = useLayout()
   const { currentUser, merchants } = useSaaSStore()
-  const navGroups = getSaaSSidebarNav(currentUser)
 
   const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false)
 
   // Scoped merchant for merchant manager / staff
   const currentMerchant = merchants.find((m) => m.id === currentUser.merchantId)
   const isMerchantUser = currentUser.role !== 'SUPER_ADMIN' && currentMerchant
+  const navGroups = getSaaSSidebarNav(currentUser, currentMerchant?.features)
 
   return (
     <>
@@ -46,7 +46,7 @@ export function AppSidebar() {
                   <span className='font-black text-base tracking-tight text-foreground truncate'>
                     {currentMerchant.name}
                   </span>
-                  <span className='text-[9px] font-bold tracking-wider uppercase text-[#3EEA85] mt-0.5'>
+                  <span className='text-[9px] font-bold tracking-wider uppercase text-neutral-600 dark:text-neutral-400 mt-0.5'>
                     Store Portal
                   </span>
                 </div>

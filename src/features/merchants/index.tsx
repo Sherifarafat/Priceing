@@ -15,6 +15,20 @@ import {
   Sparkles,
   Copy,
   LogIn,
+  LayoutDashboard,
+  Monitor,
+  Boxes,
+  FileText,
+  Receipt,
+  Users,
+  BarChart3,
+  Briefcase,
+  FileSpreadsheet,
+  SlidersHorizontal,
+  Smartphone,
+  Activity,
+  TrendingUp,
+  ScanLine,
 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -48,6 +62,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -61,8 +76,115 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitch } from '@/components/language-switch'
 import { useSaaSStore } from '@/lib/saas-store'
-import { Merchant, MerchantStatus } from '@/types/saas'
+import { api } from '@/lib/api-client'
+import {
+  Merchant,
+  MerchantStatus,
+  MerchantFeatureKey,
+  MerchantFeatures,
+  DEFAULT_MERCHANT_FEATURES,
+} from '@/types/saas'
 import { MerchantDetailsSheet } from './components/merchant-details-sheet'
+
+const MERCHANT_FEATURE_TOGGLES: Array<{
+  key: MerchantFeatureKey
+  label: string
+  description: string
+  icon: React.ComponentType<{ className?: string }>
+  isAi?: boolean
+}> = [
+  {
+    key: 'ai',
+    label: 'Maya AI Assistant',
+    description: 'Floating Ask Maya AI copilot button',
+    icon: Sparkles,
+    isAi: true,
+  },
+  {
+    key: 'dashboard',
+    label: 'Store Dashboard',
+    description: 'Store overview, KPIs & live metrics',
+    icon: LayoutDashboard,
+  },
+  {
+    key: 'pos',
+    label: 'Point of Sale (POS)',
+    description: 'Cashier terminal & top header shortcut',
+    icon: Monitor,
+  },
+  {
+    key: 'branches',
+    label: 'Store Branches',
+    description: 'Branch locations & QR code management',
+    icon: Store,
+  },
+  {
+    key: 'products',
+    label: 'Product Hub',
+    description: 'Products catalog & add-ons',
+    icon: Boxes,
+  },
+  {
+    key: 'invoices',
+    label: 'Invoices & Billing',
+    description: 'Issued invoices & invoice designer',
+    icon: FileText,
+  },
+  {
+    key: 'fees',
+    label: 'Fees & Taxes',
+    description: 'Tax rules & custom service fees',
+    icon: Receipt,
+  },
+  {
+    key: 'staff',
+    label: 'Cashiers & Staff',
+    description: 'Staff accounts, PINs & permissions',
+    icon: Users,
+  },
+  {
+    key: 'reports',
+    label: 'Reports & Analytics',
+    description: 'Revenue charts & performance reports',
+    icon: BarChart3,
+  },
+  {
+    key: 'services',
+    label: 'Services',
+    description: 'Service categories & sub-services',
+    icon: Briefcase,
+  },
+  {
+    key: 'excel',
+    label: 'Excel Operations',
+    description: 'Bulk import, edit & delete via Excel',
+    icon: FileSpreadsheet,
+  },
+  {
+    key: 'scannerButton',
+    label: 'Scanner Page Button',
+    description: 'Show "افتح صفحة الاسكانر" button in header',
+    icon: Smartphone,
+  },
+  {
+    key: 'activityFeed',
+    label: 'Activity Feed',
+    description: 'Dashboard recent transactions & activity feed',
+    icon: Activity,
+  },
+  {
+    key: 'fastSellers',
+    label: 'Catalog & Fast Sellers',
+    description: 'Dashboard top selling products table',
+    icon: TrendingUp,
+  },
+  {
+    key: 'scannerEndpoint',
+    label: 'Customer Mobile Scanner Live Endpoint',
+    description: 'Dashboard live mobile scanner launch banner',
+    icon: ScanLine,
+  },
+]
 
 export function MerchantsView() {
   const navigate = useNavigate()
@@ -105,6 +227,7 @@ export function MerchantsView() {
   const [merchantTypeId, setMerchantTypeId] = React.useState('')
   const [currencyId, setCurrencyId] = React.useState('')
   const [status, setStatus] = React.useState<MerchantStatus>('Active')
+  const [features, setFeatures] = React.useState<MerchantFeatures>({ ...DEFAULT_MERCHANT_FEATURES })
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   // Search & Filter
@@ -120,6 +243,7 @@ export function MerchantsView() {
     setMerchantTypeId(merchantTypes[0]?.id || '')
     setCurrencyId(currencies[0]?.id || '')
     setStatus('Active')
+    setFeatures({ ...DEFAULT_MERCHANT_FEATURES })
     setError(null)
   }
 
@@ -138,7 +262,24 @@ export function MerchantsView() {
     setMerchantTypeId(m.merchantTypeId)
     setCurrencyId(m.currencyId)
     setStatus(m.status)
+    setFeatures({ ...DEFAULT_MERCHANT_FEATURES, ...(m.features || {}) })
     setError(null)
+  }
+
+  const toggleFeature = (key: MerchantFeatureKey, enabled: boolean) => {
+    setFeatures((prev) => ({ ...prev, [key]: enabled }))
+  }
+
+  const enabledFeatureCount = Object.values(features).filter(Boolean).length
+  const allFeaturesEnabled = enabledFeatureCount === MERCHANT_FEATURE_TOGGLES.length
+
+  const toggleAllFeatures = () => {
+    const nextValue = !allFeaturesEnabled
+    const updated = { ...DEFAULT_MERCHANT_FEATURES }
+    for (const item of MERCHANT_FEATURE_TOGGLES) {
+      updated[item.key] = nextValue
+    }
+    setFeatures(updated)
   }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,6 +316,7 @@ export function MerchantsView() {
         merchantTypeId,
         currencyId,
         status,
+        features,
       })
       setEditingMerchant(null)
       toast.success(`Merchant "${name}" updated successfully`)
@@ -188,6 +330,7 @@ export function MerchantsView() {
         merchantTypeId: merchantTypeId || merchantTypes[0].id,
         currencyId: currencyId || currencies[0].id,
         status,
+        features,
       })
       const mgrUsername =
         email.trim().split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') ||
@@ -209,7 +352,7 @@ export function MerchantsView() {
     toast.success(`${label} copied to clipboard!`)
   }
 
-  const handleLoginAsManager = (info: { managerId: string; merchant: Merchant; username: string }) => {
+  const handleLoginAsManager = async (info: { managerId: string; merchant: Merchant; username: string }) => {
     const mgrUser =
       users.find((u) => u.merchantId === info.merchant.id && u.role === 'MERCHANT_MANAGER') ||
       users.find((u) => u.username === info.username) || {
@@ -222,6 +365,13 @@ export function MerchantsView() {
         status: 'Active' as const,
         createdAt: new Date().toISOString(),
       }
+    localStorage.removeItem('saas_auth_token')
+    try {
+      const res = await api.auth.switchDemoUser(mgrUser.id)
+      if (res?.token) {
+        localStorage.setItem('saas_auth_token', res.token)
+      }
+    } catch {}
     switchUser(mgrUser.id)
     auth.setUser({
       accountNo: mgrUser.id,
@@ -484,7 +634,7 @@ export function MerchantsView() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className='h-105 w-[calc(100%+0.75rem)] overflow-y-auto py-1 pe-3'>
+          <div className='max-h-[68vh] w-[calc(100%+0.75rem)] overflow-y-auto py-1 pe-3'>
             <form id='merchant-form' onSubmit={handleSave} className='space-y-4 px-0.5'>
               {/* Merchant Name */}
               <div className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
@@ -649,6 +799,97 @@ export function MerchantsView() {
                       </Button>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Sidebar & AI Feature Toggles (Vertical Stack) */}
+              <div className='pt-4 mt-2 border-t border-border/60 space-y-3'>
+                <div className='flex items-center justify-between gap-2'>
+                  <div className='flex items-center gap-2 min-w-0'>
+                    <div className='size-7 rounded-lg bg-muted flex items-center justify-center text-foreground shrink-0'>
+                      <SlidersHorizontal className='size-3.5' />
+                    </div>
+                    <div className='min-w-0'>
+                      <h4 className='text-xs font-bold text-foreground leading-tight'>
+                        Sidebar, Dashboard &amp; AI Access
+                      </h4>
+                      <p className='text-[11px] text-muted-foreground leading-tight mt-0.5'>
+                        Enable or disable sidebar modules, dashboard widgets, scanner &amp; Maya AI.
+                      </p>
+                    </div>
+                  </div>
+                  <div className='flex items-center gap-2 shrink-0'>
+                    <Badge
+                      variant='outline'
+                      className='text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md'
+                    >
+                      {enabledFeatureCount}/{MERCHANT_FEATURE_TOGGLES.length}
+                    </Badge>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      onClick={toggleAllFeatures}
+                      className='h-7 px-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground'
+                    >
+                      {allFeaturesEnabled ? 'Disable all' : 'Enable all'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className='rounded-2xl border border-border/80 bg-muted/20 divide-y divide-border/60 overflow-hidden'>
+                  {MERCHANT_FEATURE_TOGGLES.map((item) => {
+                    const Icon = item.icon
+                    const isChecked = features[item.key]
+                    return (
+                      <label
+                        key={item.key}
+                        htmlFor={`merchant-feature-${item.key}`}
+                        className={`flex items-center justify-between gap-3 px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-muted/40 ${
+                          !isChecked ? 'opacity-60' : ''
+                        }`}
+                      >
+                        <div className='flex items-center gap-3 min-w-0'>
+                          <div
+                            className={`size-8 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
+                              item.isAi && isChecked
+                                ? 'bg-foreground text-background border-foreground/20'
+                                : isChecked
+                                  ? 'bg-background text-foreground border-border/80 shadow-2xs'
+                                  : 'bg-muted/60 text-muted-foreground border-border/50'
+                            }`}
+                          >
+                            <Icon className='size-4' />
+                          </div>
+                          <div className='min-w-0'>
+                            <div className='flex items-center gap-1.5'>
+                              <span className='text-xs font-semibold text-foreground truncate'>
+                                {item.label}
+                              </span>
+                              {item.isAi && (
+                                <Badge
+                                  variant='secondary'
+                                  className='text-[9px] font-bold uppercase tracking-wider px-1.5 py-0 h-4 rounded-md'
+                                >
+                                  AI
+                                </Badge>
+                              )}
+                            </div>
+                            <p className='text-[11px] text-muted-foreground truncate'>
+                              {item.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Switch
+                          id={`merchant-feature-${item.key}`}
+                          checked={isChecked}
+                          onCheckedChange={(checked) => toggleFeature(item.key, checked)}
+                          className='shrink-0'
+                        />
+                      </label>
+                    )
+                  })}
                 </div>
               </div>
 
