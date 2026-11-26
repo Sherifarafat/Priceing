@@ -92,7 +92,7 @@ export function NavUser({ user: _user }: NavUserProps) {
 
   const handleSwitch = (userId: string) => {
     switchUser(userId)
-    navigate({ to: '/' })
+    navigate({ to: '/dashboard' })
   }
 
   return (

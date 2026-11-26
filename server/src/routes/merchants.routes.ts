@@ -95,6 +95,159 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   }
 })
 
+// POST /api/merchants/onboarding (Self-service Merchant Setup right after Sign Up)
+router.post('/onboarding', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, logo, phone, address, businessType, branchesCount, email } = req.body
+
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ error: 'Store name is required' })
+    }
+
+    const userId = req.user!.id
+    const dbUser = await prisma.user.findUnique({ where: { id: userId } })
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User account not found' })
+    }
+
+    const storeName = String(name).trim()
+    const contactEmail = (email || dbUser.email).trim().toLowerCase()
+    const safeBranchesCount = Math.min(Math.max(Number(branchesCount) || 1, 1), 25)
+
+    // Default scanner-focused feature set enabled for self-onboarded merchants
+    const defaultFeatures = JSON.stringify({
+      dashboard: true,
+      pos: true,
+      branches: true,
+      products: true,
+      invoices: true,
+      fees: true,
+      staff: true,
+      reports: true,
+      services: true,
+      excel: true,
+      ai: true,
+      scannerButton: true,
+      activityFeed: true,
+      fastSellers: true,
+      scannerEndpoint: true,
+    })
+
+    // Create or update merchant if user already started onboarding
+    let merchant
+    if (dbUser.merchantId) {
+      merchant = await prisma.merchant.update({
+        where: { id: dbUser.merchantId },
+        data: {
+          name: storeName,
+          email: contactEmail,
+          phone: phone ? String(phone).trim() : null,
+          address: address ? String(address).trim() : null,
+          logo: logo || null,
+          businessType: businessType ? String(businessType).trim() : null,
+          status: 'Active',
+        },
+      })
+    } else {
+      merchant = await prisma.merchant.create({
+        data: {
+          name: storeName,
+          email: contactEmail,
+          phone: phone ? String(phone).trim() : null,
+          address: address ? String(address).trim() : null,
+          logo: logo || null,
+          businessType: businessType ? String(businessType).trim() : null,
+          status: 'Active',
+          features: defaultFeatures,
+        },
+      })
+    }
+
+    // Link user to this merchant as MERCHANT_MANAGER
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        merchantId: merchant.id,
+        role: dbUser.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'MERCHANT_MANAGER',
+        name: `${storeName} Manager`,
+      },
+    })
+
+    // Auto-create requested branches (if none exist yet)
+    const existingBranches = await prisma.branch.findMany({
+      where: { merchantId: merchant.id },
+    })
+
+    const createdBranches = [...existingBranches]
+    const toCreate = Math.max(0, safeBranchesCount - existingBranches.length)
+
+    for (let i = 0; i < toCreate; i++) {
+      const idx = existingBranches.length + i + 1
+      const randomHex =
+        Math.random().toString(36).substring(2, 10) +
+        Math.random().toString(36).substring(2, 10)
+      const qrToken = `qr-${merchant.id}-${randomHex}`
+      const branch = await prisma.branch.create({
+        data: {
+          merchantId: merchant.id,
+          name: idx === 1 ? 'Main Branch' : `Branch ${idx}`,
+          address: address ? String(address).trim() : null,
+          qrToken,
+          qrStatus: 'Active',
+        },
+      })
+      createdBranches.push(branch)
+    }
+
+    // Ensure at least one default category exists for easy product creation
+    const existingCat = await prisma.category.findFirst({
+      where: { merchantId: merchant.id },
+    })
+    if (!existingCat) {
+      await prisma.category.create({
+        data: {
+          merchantId: merchant.id,
+          name: 'General',
+        },
+      })
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: userId,
+        actorEmail: dbUser.email,
+        actionType: 'MERCHANT_ONBOARDED',
+        entityType: 'Merchant',
+        entityId: merchant.id,
+        newValues: JSON.stringify({
+          name: storeName,
+          businessType,
+          branchesCount: createdBranches.length,
+        }),
+      },
+    })
+
+    res.status(201).json({
+      merchant: {
+        ...merchant,
+        features: parseFeatures((merchant as any).features),
+      },
+      branches: createdBranches,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        username: updatedUser.username,
+        name: updatedUser.name,
+        role: updatedUser.role,
+        merchantId: updatedUser.merchantId,
+        status: updatedUser.status,
+      },
+    })
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to complete store setup' })
+  }
+})
+
 // POST /api/merchants (Super Admin only)
 router.post('/', authenticate, requireRole('SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
   try {

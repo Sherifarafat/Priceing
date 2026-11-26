@@ -18,7 +18,7 @@ export function SidebarTrialCard({ onSelectPlan, onDismiss }: SidebarTrialCardPr
   }
 
   return (
-    <div className='group-data-[collapsible=icon]:hidden relative w-full rounded-2xl bg-[#161618] dark:bg-[#18181B] text-white p-3.5 shadow-lg border border-white/5 dark:border-white/10 transition-all'>
+    <div className='group-data-[collapsible=icon]:hidden relative w-full rounded-2xl bg-[#161618] dark:bg-[#1E1F20] text-white p-3.5 shadow-lg border border-white/5 dark:border-white/10 transition-all'>
       {/* Top Header */}
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-1.5 font-bold text-xs tracking-tight text-white'>

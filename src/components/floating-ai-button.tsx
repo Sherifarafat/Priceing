@@ -1,8 +1,10 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { Sparkles } from 'lucide-react'
 import { useSaaSStore } from '@/lib/saas-store'
+import { useLang } from '@/lib/i18n'
 
 export function FloatingAiButton() {
+  const { t } = useLang()
   const location = useLocation()
   const { currentUser, merchants } = useSaaSStore()
 
@@ -34,7 +36,7 @@ export function FloatingAiButton() {
         {/* Text & Live Pulse Indicator */}
         <div className='flex items-center gap-2'>
           <span className='text-xs font-bold tracking-tight'>
-            Ask Maya
+            {t('اسأل مايا AI', 'Ask Maya')}
           </span>
           <span className='flex h-2 w-2 relative'>
             <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3EEA85] opacity-75'></span>

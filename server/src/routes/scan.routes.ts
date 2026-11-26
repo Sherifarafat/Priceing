@@ -4,6 +4,79 @@ import { prisma } from '../lib/prisma.js'
 
 const router = Router()
 
+interface ParsedOffer {
+  id: string
+  merchantId: string
+  title: string
+  description: string | null
+  discountType: string
+  discountValue: number
+  productIds: string[]
+  isActive: boolean
+}
+
+function parseOfferProductIds(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function resolveBestActiveOffer(
+  product: { id: string; merchantId: string; price: number },
+  offers: ParsedOffer[]
+) {
+  const matching = offers.filter(
+    (o) => o.isActive && o.merchantId === product.merchantId && o.productIds.includes(product.id)
+  )
+  if (matching.length === 0) return null
+
+  let best: {
+    id: string
+    title: string
+    description: string | null
+    discountType: 'PERCENTAGE' | 'FIXED'
+    discountValue: number
+    originalPrice: number
+    discountedPrice: number
+    discountPercent: number
+  } | null = null
+
+  for (const offer of matching) {
+    const originalPrice = product.price
+    const type: 'PERCENTAGE' | 'FIXED' = offer.discountType === 'FIXED' ? 'FIXED' : 'PERCENTAGE'
+    const rawDiscounted =
+      type === 'PERCENTAGE'
+        ? originalPrice * (1 - offer.discountValue / 100)
+        : originalPrice - offer.discountValue
+    const discountedPrice = Math.max(0, Math.round(rawDiscounted * 100) / 100)
+    const discountPercent =
+      type === 'PERCENTAGE'
+        ? Math.round(offer.discountValue * 10) / 10
+        : originalPrice > 0
+          ? Math.round(((originalPrice - discountedPrice) / originalPrice) * 100)
+          : 0
+
+    if (!best || discountedPrice < best.discountedPrice) {
+      best = {
+        id: offer.id,
+        title: offer.title,
+        description: offer.description,
+        discountType: type,
+        discountValue: offer.discountValue,
+        originalPrice,
+        discountedPrice,
+        discountPercent,
+      }
+    }
+  }
+
+  return best
+}
+
 function getLocalLanIp(): string | null {
   const nets = os.networkInterfaces()
   const candidates: Array<{ name: string; address: string }> = []
@@ -32,10 +105,10 @@ router.get('/network-info', (_req: Request, res: Response) => {
 })
 
 // GET /api/scan/catalog
-// Public endpoint for mobile customer scanner to load live merchants, branches & products
+// Public endpoint for mobile customer scanner to load live merchants, branches, products & active offers
 router.get('/catalog', async (_req: Request, res: Response) => {
   try {
-    const [merchants, branches, products] = await Promise.all([
+    const [merchants, branches, products, rawOffers] = await Promise.all([
       prisma.merchant.findMany({
         where: { status: 'Active' },
         orderBy: { createdAt: 'desc' },
@@ -48,9 +121,23 @@ router.get('/catalog', async (_req: Request, res: Response) => {
         where: { status: 'Active' },
         orderBy: { createdAt: 'desc' },
       }),
+      prisma.offer.findMany({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+      }),
     ])
 
-    res.json({ merchants, branches, products })
+    const offers: ParsedOffer[] = rawOffers.map((o) => ({
+      ...o,
+      productIds: parseOfferProductIds(o.productIds),
+    }))
+
+    const enrichedProducts = products.map((p) => ({
+      ...p,
+      activeOffer: resolveBestActiveOffer(p, offers),
+    }))
+
+    res.json({ merchants, branches, products: enrichedProducts, offers })
   } catch (error: any) {
     res.status(500).json({ error: error.message })
   }
@@ -144,6 +231,17 @@ router.post('/lookup', async (req: Request, res: Response) => {
       return res.status(404).json({ error: `Product with barcode ${rawCode} not found.` })
     }
 
+    // Resolve best active offer for this product
+    const rawOffers = await prisma.offer.findMany({
+      where: { merchantId: product.merchantId, isActive: true },
+      orderBy: { createdAt: 'desc' },
+    })
+    const parsedOffers: ParsedOffer[] = rawOffers.map((o) => ({
+      ...o,
+      productIds: parseOfferProductIds(o.productIds),
+    }))
+    const activeOffer = resolveBestActiveOffer(product, parsedOffers)
+
     // Record scan telemetry asynchronously if branch is available
     if (branch) {
       prisma.customerScan
@@ -152,7 +250,7 @@ router.post('/lookup', async (req: Request, res: Response) => {
             branchId: branch.id,
             barcode: product.barcode,
             productName: product.name,
-            price: product.price,
+            price: activeOffer ? activeOffer.discountedPrice : product.price,
             userAgent: req.headers['user-agent'] || null,
             ipAddress: req.ip || null,
           },
@@ -172,6 +270,7 @@ router.post('/lookup', async (req: Request, res: Response) => {
       categoryId: product.categoryId,
       category: product.category?.name || 'General',
       status: product.status,
+      activeOffer,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     })

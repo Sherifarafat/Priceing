@@ -289,7 +289,7 @@ export function SaaSDashboard() {
           </Card>
 
           {/* Card 3: Pitch Black Accent Card (Like 'Avg. Pages 2.3' in the screenshot) */}
-          <Card className='p-5 rounded-2xl bg-[#09090B] dark:bg-[#121214] text-white border-neutral-800 hover:shadow-md transition-shadow'>
+          <Card className='p-5 rounded-2xl bg-[#09090B] dark:bg-[#1E1F20] text-white border-neutral-800 hover:shadow-md transition-shadow'>
             <div className='flex items-center justify-between'>
               <span className='text-xs font-semibold text-neutral-400'>Live Branches</span>
               <div className='size-8 rounded-xl bg-white/10 text-white border border-white/10 flex items-center justify-center'>

@@ -4,10 +4,20 @@ export type UserRole = 'SUPER_ADMIN' | 'MERCHANT_MANAGER' | 'CASHIER' | 'MERCHAN
 export type EntityStatus = 'Active' | 'Inactive'
 export type FeeType = 'PERCENTAGE' | 'FIXED'
 
-export type InvoiceStatus = 'PAID' | 'PENDING' | 'REFUNDED' | 'CANCELLED'
-export type InvoicePaymentMethod = 'CASH' | 'CARD' | 'ONLINE' | 'QR_SCAN'
+export type InvoiceStatus = 'PAID' | 'PARTIALLY_RETURNED' | 'PENDING' | 'REFUNDED' | 'CANCELLED'
+export type InvoicePaymentMethod = 'CASH' | 'CARD' | 'ONLINE' | 'QR_SCAN' | 'QR' | 'INSTAPAY'
 export type InvoiceLayoutStyle = 'MODERN' | 'CLASSIC' | 'THERMAL_POS'
 export type InvoicePaperSize = 'A4' | '80MM'
+
+export interface ReturnPolicy {
+  merchantId?: string | null
+  returnPolicyDays: number
+  allowPartialReturn: boolean
+  returnPolicyNotes?: string | null
+  requireManagerPin?: boolean
+  isDefaultPin?: boolean
+  managerPin?: string
+}
 
 export interface InvoiceTemplate {
   id: string
@@ -37,6 +47,9 @@ export interface InvoiceTemplate {
   qrPosition?: string
   showBarcode?: boolean
   currencyPosition?: string
+  returnPolicyDays?: number
+  allowPartialReturn?: boolean
+  returnPolicyNotes?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -48,6 +61,7 @@ export interface InvoiceItem {
   productName: string
   barcode?: string | null
   quantity: number
+  returnedQty?: number
   unitPrice: number
   totalPrice: number
   feeIds?: string[] | string | null
@@ -71,6 +85,9 @@ export interface Invoice {
   feesTotal: number
   discountTotal: number
   grandTotal: number
+  refundedTotal?: number
+  returnReason?: string | null
+  returnedAt?: string | null
   appliedFees?: any
   items?: InvoiceItem[]
   notes?: string | null
@@ -150,6 +167,7 @@ export interface Merchant {
   phone: string
   address: string
   merchantTypeId: string
+  businessType?: string
   currencyId: string
   status: MerchantStatus
   features?: Partial<MerchantFeatures>
@@ -212,6 +230,32 @@ export interface Category {
   updatedAt: string
 }
 
+export type OfferDiscountType = 'PERCENTAGE' | 'FIXED'
+
+export interface Offer {
+  id: string
+  merchantId: string
+  title: string
+  description?: string | null
+  discountType: OfferDiscountType
+  discountValue: number
+  productIds: string[]
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ProductActiveOffer {
+  id: string
+  title: string
+  description?: string | null
+  discountType: OfferDiscountType
+  discountValue: number
+  originalPrice: number
+  discountedPrice: number
+  discountPercent: number
+}
+
 export interface Product {
   id: string
   merchantId: string
@@ -224,6 +268,7 @@ export interface Product {
   categoryId?: string | null // Nullable - set to null on category deletion
   feeIds?: string[]
   status: EntityStatus
+  activeOffer?: ProductActiveOffer | null
   createdAt: string
   updatedAt: string
 }

@@ -25,6 +25,7 @@ export function DirectionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const htmlElement = document.documentElement
     htmlElement.setAttribute('dir', dir)
+    htmlElement.setAttribute('lang', dir === 'rtl' ? 'ar' : 'en')
   }, [dir])
 
   const setDir = (dir: Direction) => {

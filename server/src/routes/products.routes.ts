@@ -277,4 +277,95 @@ router.post('/bulk-excel-import', authenticate, async (req: AuthRequest, res: Re
   }
 })
 
+// POST /api/products/bulk-price
+router.post('/bulk-price', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { mode, direction, value, merchantId, categoryId, status } = req.body
+
+    if (mode !== 'FIXED' && mode !== 'PERCENTAGE') {
+      return res.status(400).json({ error: 'Invalid adjustment mode. Use FIXED or PERCENTAGE.' })
+    }
+    if (direction !== 'INCREASE' && direction !== 'DECREASE') {
+      return res.status(400).json({ error: 'Invalid direction. Use INCREASE or DECREASE.' })
+    }
+
+    const numericValue = Number(value)
+    if (!Number.isFinite(numericValue) || numericValue <= 0) {
+      return res.status(400).json({ error: 'Adjustment value must be a positive number.' })
+    }
+
+    const where: any = {}
+
+    // Multi-tenant scoping
+    if (req.user?.role !== 'SUPER_ADMIN') {
+      if (!req.user?.merchantId) {
+        return res.status(403).json({ error: 'User does not belong to any merchant.' })
+      }
+      where.merchantId = req.user.merchantId
+    } else if (merchantId && merchantId !== 'all') {
+      where.merchantId = String(merchantId)
+    }
+
+    if (categoryId && categoryId !== 'all') {
+      where.categoryId = categoryId === 'uncategorized' ? null : String(categoryId)
+    }
+
+    if (status && status !== 'all') {
+      where.status = String(status)
+    }
+
+    const matchingProducts = await prisma.product.findMany({ where })
+
+    if (matchingProducts.length === 0) {
+      return res.json({ updatedCount: 0, products: [] })
+    }
+
+    const sign = direction === 'DECREASE' ? -1 : 1
+    const computePrice = (oldPrice: number) => {
+      const raw =
+        mode === 'PERCENTAGE'
+          ? oldPrice * (1 + (sign * numericValue) / 100)
+          : oldPrice + sign * numericValue
+      return Math.max(0, Math.round(raw * 100) / 100)
+    }
+
+    const updatedProducts = await prisma.$transaction(
+      matchingProducts.map((p) =>
+        prisma.product.update({
+          where: { id: p.id },
+          data: { price: computePrice(p.price) },
+        })
+      )
+    )
+
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: req.user!.id,
+        actorEmail: req.user!.email,
+        actionType: 'PRODUCTS_BULK_PRICE_UPDATED',
+        entityType: 'Product',
+        entityId: where.merchantId || 'all-merchants',
+        newValues: JSON.stringify({
+          mode,
+          direction,
+          value: numericValue,
+          merchantId: where.merchantId || 'all',
+          categoryId: categoryId || 'all',
+          status: status || 'all',
+          updatedCount: updatedProducts.length,
+        }),
+      },
+    })
+
+    const formatted = updatedProducts.map((p) => ({
+      ...p,
+      feeIds: p.feeIds ? (() => { try { return JSON.parse(p.feeIds) } catch { return [] } })() : [],
+    }))
+
+    res.json({ updatedCount: formatted.length, products: formatted })
+  } catch (error: any) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 export default router

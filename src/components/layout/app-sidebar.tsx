@@ -12,21 +12,23 @@ import { NavGroup } from './nav-group'
 import { SidebarBottomNav } from './sidebar-bottom-nav'
 import { FeedbackDialog } from '@/components/feedback-dialog'
 import { useSaaSStore } from '@/lib/saas-store'
+import { useLang } from '@/lib/i18n'
 
 export function AppSidebar() {
   const { collapsible, variant } = useLayout()
   const { currentUser, merchants } = useSaaSStore()
+  const { lang, isAr, t } = useLang()
 
   const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false)
 
   // Scoped merchant for merchant manager / staff
   const currentMerchant = merchants.find((m) => m.id === currentUser.merchantId)
   const isMerchantUser = currentUser.role !== 'SUPER_ADMIN' && currentMerchant
-  const navGroups = getSaaSSidebarNav(currentUser, currentMerchant?.features)
+  const navGroups = getSaaSSidebarNav(currentUser, currentMerchant?.features, lang)
 
   return (
     <>
-      <Sidebar collapsible={collapsible} variant={variant}>
+      <Sidebar side={isAr ? 'right' : 'left'} collapsible={collapsible} variant={variant}>
         <SidebarHeader className='px-3.5 py-2.5 pb-2 space-y-2'>
           <div className='flex items-center gap-2.5 px-1 py-0.5'>
             {isMerchantUser ? (
@@ -47,7 +49,7 @@ export function AppSidebar() {
                     {currentMerchant.name}
                   </span>
                   <span className='text-[9px] font-bold tracking-wider uppercase text-neutral-600 dark:text-neutral-400 mt-0.5'>
-                    Store Portal
+                    {t('بوابة المتجر', 'Store Portal')}
                   </span>
                 </div>
               </>

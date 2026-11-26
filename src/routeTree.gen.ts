@@ -9,8 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as ClerkRouteRouteImport } from './routes/clerk/route'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
@@ -23,7 +25,7 @@ import { Route as errors403RouteImport } from './routes/(errors)/403'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
-import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
 import { Route as BranchTokenRouteImport } from './routes/branch/$token'
 import { Route as ClerkauthRouteRouteImport } from './routes/clerk/(auth)/route'
@@ -44,8 +46,10 @@ import { Route as AuthenticatedFeesIndexRouteImport } from './routes/_authentica
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
 import { Route as AuthenticatedInvoicesIndexRouteImport } from './routes/_authenticated/invoices/index'
 import { Route as AuthenticatedInvoicesDesignRouteImport } from './routes/_authenticated/invoices/design'
+import { Route as AuthenticatedInvoicesWhatsappRouteImport } from './routes/_authenticated/invoices/whatsapp'
 import { Route as AuthenticatedMerchantTypesIndexRouteImport } from './routes/_authenticated/merchant-types/index'
 import { Route as AuthenticatedMerchantsIndexRouteImport } from './routes/_authenticated/merchants/index'
+import { Route as AuthenticatedOffersIndexRouteImport } from './routes/_authenticated/offers/index'
 import { Route as AuthenticatedProductsIndexRouteImport } from './routes/_authenticated/products/index'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports/index'
 import { Route as AuthenticatedRolesIndexRouteImport } from './routes/_authenticated/roles/index'
@@ -64,6 +68,11 @@ import { Route as ClerkAuthenticatedUserManagementRouteImport } from './routes/c
 import { Route as AuthenticatedServicesCategoriesIndexRouteImport } from './routes/_authenticated/services/categories/index'
 import { Route as AuthenticatedServicesSubServicesIndexRouteImport } from './routes/_authenticated/services/sub-services/index'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -71,6 +80,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const ClerkRouteRoute = ClerkRouteRouteImport.update({
   id: '/clerk',
   path: '/clerk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PosRoute = PosRouteImport.update({
@@ -133,9 +147,9 @@ const errors503Route = errors503RouteImport.update({
   path: '/503',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSettingsRouteRoute =
@@ -247,6 +261,12 @@ const AuthenticatedInvoicesDesignRoute =
     path: '/invoices/design',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedInvoicesWhatsappRoute =
+  AuthenticatedInvoicesWhatsappRouteImport.update({
+    id: '/invoices/whatsapp',
+    path: '/invoices/whatsapp',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMerchantTypesIndexRoute =
   AuthenticatedMerchantTypesIndexRouteImport.update({
     id: '/merchant-types/',
@@ -257,6 +277,12 @@ const AuthenticatedMerchantsIndexRoute =
   AuthenticatedMerchantsIndexRouteImport.update({
     id: '/merchants/',
     path: '/merchants/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedOffersIndexRoute =
+  AuthenticatedOffersIndexRouteImport.update({
+    id: '/offers/',
+    path: '/offers/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedProductsIndexRoute =
@@ -357,8 +383,9 @@ const AuthenticatedServicesSubServicesIndexRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedIndexRoute
+  '/': typeof IndexRoute
   '/clerk': typeof ClerkauthRouteRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/pos': typeof PosRoute
   '/scan': typeof ScanRoute
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
@@ -372,11 +399,13 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/branch/$token': typeof BranchTokenRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/receipt/': typeof ReceiptIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/invoices/design': typeof AuthenticatedInvoicesDesignRoute
+  '/invoices/whatsapp': typeof AuthenticatedInvoicesWhatsappRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -398,6 +427,7 @@ export interface FileRoutesByFullPath {
   '/invoices/': typeof AuthenticatedInvoicesIndexRoute
   '/merchant-types/': typeof AuthenticatedMerchantTypesIndexRoute
   '/merchants/': typeof AuthenticatedMerchantsIndexRoute
+  '/offers/': typeof AuthenticatedOffersIndexRoute
   '/products/': typeof AuthenticatedProductsIndexRoute
   '/reports/': typeof AuthenticatedReportsIndexRoute
   '/roles/': typeof AuthenticatedRolesIndexRoute
@@ -410,7 +440,9 @@ export interface FileRoutesByFullPath {
   '/services/sub-services/': typeof AuthenticatedServicesSubServicesIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/clerk': typeof ClerkauthRouteRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/pos': typeof PosRoute
   '/scan': typeof ScanRoute
   '/forgot-password': typeof authForgotPasswordRoute
@@ -423,12 +455,13 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/branch/$token': typeof BranchTokenRoute
   '/receipt/$id': typeof ReceiptIdRoute
-  '/': typeof AuthenticatedIndexRoute
   '/receipt': typeof ReceiptIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/invoices/design': typeof AuthenticatedInvoicesDesignRoute
+  '/invoices/whatsapp': typeof AuthenticatedInvoicesWhatsappRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -450,6 +483,7 @@ export interface FileRoutesByTo {
   '/invoices': typeof AuthenticatedInvoicesIndexRoute
   '/merchant-types': typeof AuthenticatedMerchantTypesIndexRoute
   '/merchants': typeof AuthenticatedMerchantsIndexRoute
+  '/offers': typeof AuthenticatedOffersIndexRoute
   '/products': typeof AuthenticatedProductsIndexRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
   '/roles': typeof AuthenticatedRolesIndexRoute
@@ -463,8 +497,10 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/clerk': typeof ClerkRouteRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/pos': typeof PosRoute
   '/scan': typeof ScanRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
@@ -480,12 +516,13 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/branch/$token': typeof BranchTokenRoute
   '/receipt/$id': typeof ReceiptIdRoute
-  '/_authenticated/': typeof AuthenticatedIndexRoute
   '/receipt/': typeof ReceiptIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/invoices/design': typeof AuthenticatedInvoicesDesignRoute
+  '/_authenticated/invoices/whatsapp': typeof AuthenticatedInvoicesWhatsappRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -507,6 +544,7 @@ export interface FileRoutesById {
   '/_authenticated/invoices/': typeof AuthenticatedInvoicesIndexRoute
   '/_authenticated/merchant-types/': typeof AuthenticatedMerchantTypesIndexRoute
   '/_authenticated/merchants/': typeof AuthenticatedMerchantsIndexRoute
+  '/_authenticated/offers/': typeof AuthenticatedOffersIndexRoute
   '/_authenticated/products/': typeof AuthenticatedProductsIndexRoute
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/roles/': typeof AuthenticatedRolesIndexRoute
@@ -523,6 +561,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/clerk'
+    | '/onboarding'
     | '/pos'
     | '/scan'
     | '/settings'
@@ -536,11 +575,13 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/dashboard'
     | '/branch/$token'
     | '/receipt/$id'
     | '/receipt/'
     | '/errors/$error'
     | '/invoices/design'
+    | '/invoices/whatsapp'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -562,6 +603,7 @@ export interface FileRouteTypes {
     | '/invoices/'
     | '/merchant-types/'
     | '/merchants/'
+    | '/offers/'
     | '/products/'
     | '/reports/'
     | '/roles/'
@@ -574,7 +616,9 @@ export interface FileRouteTypes {
     | '/services/sub-services/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/clerk'
+    | '/onboarding'
     | '/pos'
     | '/scan'
     | '/forgot-password'
@@ -587,12 +631,13 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/dashboard'
     | '/branch/$token'
     | '/receipt/$id'
-    | '/'
     | '/receipt'
     | '/errors/$error'
     | '/invoices/design'
+    | '/invoices/whatsapp'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -614,6 +659,7 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/merchant-types'
     | '/merchants'
+    | '/offers'
     | '/products'
     | '/reports'
     | '/roles'
@@ -626,8 +672,10 @@ export interface FileRouteTypes {
     | '/services/sub-services'
   id:
     | '__root__'
+    | '/'
     | '/_authenticated'
     | '/clerk'
+    | '/onboarding'
     | '/pos'
     | '/scan'
     | '/_authenticated/settings'
@@ -643,12 +691,13 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
+    | '/_authenticated/dashboard'
     | '/branch/$token'
     | '/receipt/$id'
-    | '/_authenticated/'
     | '/receipt/'
     | '/_authenticated/errors/$error'
     | '/_authenticated/invoices/design'
+    | '/_authenticated/invoices/whatsapp'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
@@ -670,6 +719,7 @@ export interface FileRouteTypes {
     | '/_authenticated/invoices/'
     | '/_authenticated/merchant-types/'
     | '/_authenticated/merchants/'
+    | '/_authenticated/offers/'
     | '/_authenticated/products/'
     | '/_authenticated/reports/'
     | '/_authenticated/roles/'
@@ -683,8 +733,10 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ClerkRouteRoute: typeof ClerkRouteRouteWithChildren
+  OnboardingRoute: typeof OnboardingRoute
   PosRoute: typeof PosRoute
   ScanRoute: typeof ScanRoute
   authForgotPasswordRoute: typeof authForgotPasswordRoute
@@ -704,6 +756,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -716,6 +775,13 @@ declare module '@tanstack/react-router' {
       path: '/clerk'
       fullPath: '/clerk'
       preLoaderRoute: typeof ClerkRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pos': {
@@ -802,11 +868,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof errors503RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/': {
-      id: '/_authenticated/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings': {
@@ -949,6 +1015,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInvoicesDesignRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/invoices/whatsapp': {
+      id: '/_authenticated/invoices/whatsapp'
+      path: '/invoices/whatsapp'
+      fullPath: '/invoices/whatsapp'
+      preLoaderRoute: typeof AuthenticatedInvoicesWhatsappRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/merchant-types/': {
       id: '/_authenticated/merchant-types/'
       path: '/merchant-types'
@@ -961,6 +1034,13 @@ declare module '@tanstack/react-router' {
       path: '/merchants'
       fullPath: '/merchants/'
       preLoaderRoute: typeof AuthenticatedMerchantsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/offers/': {
+      id: '/_authenticated/offers/'
+      path: '/offers'
+      fullPath: '/offers/'
+      preLoaderRoute: typeof AuthenticatedOffersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/products/': {
@@ -1110,9 +1190,10 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedInvoicesDesignRoute: typeof AuthenticatedInvoicesDesignRoute
+  AuthenticatedInvoicesWhatsappRoute: typeof AuthenticatedInvoicesWhatsappRoute
   AuthenticatedAddOnsIndexRoute: typeof AuthenticatedAddOnsIndexRoute
   AuthenticatedAiChatIndexRoute: typeof AuthenticatedAiChatIndexRoute
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
@@ -1127,6 +1208,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInvoicesIndexRoute: typeof AuthenticatedInvoicesIndexRoute
   AuthenticatedMerchantTypesIndexRoute: typeof AuthenticatedMerchantTypesIndexRoute
   AuthenticatedMerchantsIndexRoute: typeof AuthenticatedMerchantsIndexRoute
+  AuthenticatedOffersIndexRoute: typeof AuthenticatedOffersIndexRoute
   AuthenticatedProductsIndexRoute: typeof AuthenticatedProductsIndexRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
   AuthenticatedRolesIndexRoute: typeof AuthenticatedRolesIndexRoute
@@ -1140,9 +1222,10 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedInvoicesDesignRoute: AuthenticatedInvoicesDesignRoute,
+  AuthenticatedInvoicesWhatsappRoute: AuthenticatedInvoicesWhatsappRoute,
   AuthenticatedAddOnsIndexRoute: AuthenticatedAddOnsIndexRoute,
   AuthenticatedAiChatIndexRoute: AuthenticatedAiChatIndexRoute,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
@@ -1157,6 +1240,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInvoicesIndexRoute: AuthenticatedInvoicesIndexRoute,
   AuthenticatedMerchantTypesIndexRoute: AuthenticatedMerchantTypesIndexRoute,
   AuthenticatedMerchantsIndexRoute: AuthenticatedMerchantsIndexRoute,
+  AuthenticatedOffersIndexRoute: AuthenticatedOffersIndexRoute,
   AuthenticatedProductsIndexRoute: AuthenticatedProductsIndexRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
   AuthenticatedRolesIndexRoute: AuthenticatedRolesIndexRoute,
@@ -1217,8 +1301,10 @@ const ClerkRouteRouteWithChildren = ClerkRouteRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ClerkRouteRoute: ClerkRouteRouteWithChildren,
+  OnboardingRoute: OnboardingRoute,
   PosRoute: PosRoute,
   ScanRoute: ScanRoute,
   authForgotPasswordRoute: authForgotPasswordRoute,

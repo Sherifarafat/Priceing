@@ -9,6 +9,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Footer } from '@/components/layout/footer'
 import { SkipToMain } from '@/components/skip-to-main'
 import { FloatingAiButton } from '@/components/floating-ai-button'
+import { BilingualAutoTranslator } from '@/components/bilingual-auto-translator'
 import { useSaaSStore } from '@/lib/saas-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { api } from '@/lib/api-client'
@@ -104,6 +105,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
             <Footer />
           </SidebarInset>
           <FloatingAiButton />
+          <BilingualAutoTranslator />
         </SidebarProvider>
       </LayoutProvider>
     </SearchProvider>

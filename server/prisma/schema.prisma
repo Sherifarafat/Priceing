@@ -32,12 +32,14 @@ model Merchant {
   email      String
   phone      String?
   address    String?
-  logo       String?
-  status     String     @default("Active") // Active | Suspended
+  logo         String?
+  businessType String?
+  status       String     @default("Active") // Active | Suspended
   features   String?    // JSON string of MerchantFeatures toggles (sidebar items + AI)
   branches   Branch[]
   products   Product[]
   categories Category[]
+  offers     Offer[]
   users      User[]
   invoices   Invoice[]
   invoiceTemplate InvoiceTemplate?
@@ -228,10 +230,13 @@ model InvoiceTemplate {
   watermarkText   String?  @default("PAID")
   showWatermark   Boolean  @default(false)
   qrPosition      String   @default("FOOTER_RIGHT") // HEADER_RIGHT | FOOTER_CENTER | FOOTER_RIGHT
-  showBarcode     Boolean  @default(true)
-  currencyPosition String  @default("AFTER") // BEFORE | AFTER
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  showBarcode        Boolean  @default(true)
+  currencyPosition   String   @default("AFTER") // BEFORE | AFTER
+  returnPolicyDays   Int      @default(14)      // Max days allowed for returns
+  allowPartialReturn Boolean  @default(true)    // Allow returning individual items
+  returnPolicyNotes  String?                    // Merchant return policy terms
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([merchantId])
 }
@@ -246,13 +251,16 @@ model Invoice {
   customerName    String?
   customerPhone   String?
   customerTaxNo   String?
-  paymentMethod   String        @default("CASH") // CASH | CARD | ONLINE | QR_SCAN
-  status          String        @default("PAID") // PAID | PENDING | REFUNDED | CANCELLED
+  paymentMethod   String        @default("CASH") // CASH | CARD | ONLINE | QR_SCAN | INSTAPAY
+  status          String        @default("PAID") // PAID | PARTIALLY_RETURNED | REFUNDED | PENDING | CANCELLED
   subtotal        Float         @default(0)
   taxTotal        Float         @default(0)
   feesTotal       Float         @default(0)
   discountTotal   Float         @default(0)
   grandTotal      Float         @default(0)
+  refundedTotal   Float         @default(0)
+  returnReason    String?
+  returnedAt      DateTime?
   appliedFees     String?       // JSON text of applied fees snapshots
   items           InvoiceItem[]
   notes           String?
@@ -274,10 +282,28 @@ model InvoiceItem {
   productName String
   barcode     String?
   quantity    Int      @default(1)
+  returnedQty Int      @default(0)
   unitPrice   Float    @default(0)
   totalPrice  Float    @default(0)
   feeIds      String?  // JSON text of fee IDs
   createdAt   DateTime @default(now())
 
   @@index([invoiceId])
+}
+
+model Offer {
+  id            String   @id @default(uuid())
+  merchantId    String
+  merchant      Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  discountType  String   @default("PERCENTAGE") // PERCENTAGE | FIXED
+  discountValue Float    @default(0)
+  productIds    String?  // JSON string array of assigned Product IDs
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([merchantId])
+  @@index([isActive])
 }

@@ -33,6 +33,7 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { LanguageSwitch } from '@/components/language-switch'
 import { useSaaSStore } from '@/lib/saas-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { User, UserRole, StaffPermissionKey } from '@/types/saas'
@@ -347,7 +348,7 @@ export function StaffManagementView() {
     if (targetUser.role === 'CASHIER') {
       navigate({ to: '/invoices' })
     } else {
-      navigate({ to: '/' })
+      navigate({ to: '/dashboard' })
     }
   }
 
@@ -369,6 +370,7 @@ export function StaffManagementView() {
           </Badge>
         </div>
         <div className='ms-auto flex items-center gap-2'>
+          <LanguageSwitch />
           <ThemeSwitch />
           <ProfileDropdown />
         </div>

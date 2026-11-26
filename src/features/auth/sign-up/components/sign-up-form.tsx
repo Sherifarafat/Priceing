@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import * as React from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
-import { Loader2, UserPlus } from 'lucide-react'
+import { ArrowRight, Loader2, Lock, Mail } from 'lucide-react'
 import { toast } from 'sonner'
-import { IconFacebook, IconGithub } from '@/assets/brand-icons'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api-client'
 import { useSaaSStore } from '@/lib/saas-store'
+import { useAuthStore } from '@/stores/auth-store'
+import { useDirection } from '@/context/direction-provider'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -21,31 +22,74 @@ import {
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 
-const formSchema = z
-  .object({
-    email: z.email({
-      error: (iss) =>
-        iss.input === '' ? 'Please enter your email.' : undefined,
-    }),
-    password: z
-      .string()
-      .min(1, 'Please enter your password.')
-      .min(7, 'Password must be at least 7 characters long.'),
-    confirmPassword: z.string().min(1, 'Please confirm your password.'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match.",
-    path: ['confirmPassword'],
-  })
+const formCopy = {
+  en: {
+    emailLabel: 'Email',
+    emailPlaceholder: 'store@example.com',
+    passLabel: 'Password',
+    confirmLabel: 'Confirm Password',
+    submit: 'Create Account',
+    errEmailRequired: 'Please enter your email.',
+    errPassRequired: 'Please enter your password.',
+    errPassMin: 'Password must be at least 7 characters long.',
+    errConfirmRequired: 'Please confirm your password.',
+    errMismatch: "Passwords don't match.",
+    success: (email: string) => `Account created successfully for ${email}!`,
+    fail: 'Failed to create account',
+  },
+  ar: {
+    emailLabel: 'البريد الإلكتروني',
+    emailPlaceholder: 'store@example.com',
+    passLabel: 'كلمة المرور',
+    confirmLabel: 'تأكيد كلمة المرور',
+    submit: 'إنشاء الحساب',
+    errEmailRequired: 'يرجى إدخال البريد الإلكتروني.',
+    errPassRequired: 'يرجى إدخال كلمة المرور.',
+    errPassMin: 'يجب أن تتكون كلمة المرور من 7 أحرف على الأقل.',
+    errConfirmRequired: 'يرجى تأكيد كلمة المرور.',
+    errMismatch: 'كلمتا المرور غير متطابقتين.',
+    success: (email: string) => `تم إنشاء الحساب بنجاح لـ ${email}!`,
+    fail: 'تعذّر إنشاء الحساب',
+  },
+} as const
+
+type SignUpValues = {
+  email: string
+  password: string
+  confirmPassword: string
+}
 
 export function SignUpForm({
   className,
   ...props
 }: React.HTMLAttributes<HTMLFormElement>) {
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = React.useState(false)
   const navigate = useNavigate()
+  const { dir } = useDirection()
+  const isAr = dir === 'rtl'
+  const t = formCopy[isAr ? 'ar' : 'en']
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const formSchema = React.useMemo(
+    () =>
+      z
+        .object({
+          email: z.email({
+            error: (iss) => (iss.input === '' ? t.errEmailRequired : undefined),
+          }),
+          password: z
+            .string()
+            .min(1, t.errPassRequired)
+            .min(7, t.errPassMin),
+          confirmPassword: z.string().min(1, t.errConfirmRequired),
+        })
+        .refine((data) => data.password === data.confirmPassword, {
+          message: t.errMismatch,
+          path: ['confirmPassword'],
+        }),
+    [t]
+  )
+
+  const form = useForm<SignUpValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
@@ -54,18 +98,29 @@ export function SignUpForm({
     },
   })
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
+  async function onSubmit(data: SignUpValues) {
     setIsLoading(true)
     try {
-      await api.auth.register({
+      const res = await api.auth.register({
         email: data.email,
         password: data.password,
       })
-      toast.success(`Account created successfully for ${data.email}!`)
+      if (res?.token && res?.user) {
+        localStorage.setItem('saas_auth_token', res.token)
+        const { auth } = useAuthStore.getState()
+        auth.setUser({
+          accountNo: res.user.id,
+          email: res.user.email,
+          role: [res.user.role],
+          exp: Date.now() + 24 * 60 * 60 * 1000,
+        })
+        auth.setAccessToken(res.token)
+      }
+      toast.success(t.success(data.email))
       await useSaaSStore.getState().fetchFromBackend()
-      navigate({ to: '/sign-in' })
+      navigate({ to: '/onboarding', replace: true })
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create account')
+      toast.error(err.message || t.fail)
     } finally {
       setIsLoading(false)
     }
@@ -75,7 +130,7 @@ export function SignUpForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-3', className)}
+        className={cn('space-y-4', className)}
         {...props}
       >
         <FormField
@@ -83,11 +138,20 @@ export function SignUpForm({
           name='email'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel className='text-xs font-semibold text-foreground'>
+                {t.emailLabel}
+              </FormLabel>
               <FormControl>
-                <Input placeholder='name@example.com' {...field} />
+                <div className='relative'>
+                  <Mail className='size-4 text-muted-foreground absolute start-3.5 top-1/2 -translate-y-1/2' />
+                  <Input
+                    placeholder={t.emailPlaceholder}
+                    className='ps-10 h-11 rounded-2xl text-xs bg-muted/40 dark:bg-muted/20 border-border/80 focus-visible:border-[#00D632] focus-visible:ring-[#00D632]/30'
+                    {...field}
+                  />
+                </div>
               </FormControl>
-              <FormMessage />
+              <FormMessage className='text-[11px]' />
             </FormItem>
           )}
         />
@@ -96,11 +160,20 @@ export function SignUpForm({
           name='password'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel className='text-xs font-semibold text-foreground'>
+                {t.passLabel}
+              </FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' {...field} />
+                <div className='relative'>
+                  <Lock className='size-4 text-muted-foreground absolute start-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none' />
+                  <PasswordInput
+                    placeholder='••••••••'
+                    className='[&_input]:ps-10 [&_input]:h-11 [&_input]:rounded-2xl [&_input]:text-xs [&_input]:bg-muted/40 dark:[&_input]:bg-muted/20 [&_input]:border-border/80'
+                    {...field}
+                  />
+                </div>
               </FormControl>
-              <FormMessage />
+              <FormMessage className='text-[11px]' />
             </FormItem>
           )}
         />
@@ -109,48 +182,37 @@ export function SignUpForm({
           name='confirmPassword'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
+              <FormLabel className='text-xs font-semibold text-foreground'>
+                {t.confirmLabel}
+              </FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' {...field} />
+                <div className='relative'>
+                  <Lock className='size-4 text-muted-foreground absolute start-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none' />
+                  <PasswordInput
+                    placeholder='••••••••'
+                    className='[&_input]:ps-10 [&_input]:h-11 [&_input]:rounded-2xl [&_input]:text-xs [&_input]:bg-muted/40 dark:[&_input]:bg-muted/20 [&_input]:border-border/80'
+                    {...field}
+                  />
+                </div>
               </FormControl>
-              <FormMessage />
+              <FormMessage className='text-[11px]' />
             </FormItem>
           )}
         />
-        <Button className='mt-2' disabled={isLoading}>
-          {isLoading ? <Loader2 className='animate-spin' /> : <UserPlus />}
-          Create Account
+        <Button
+          type='submit'
+          className='w-full h-12 rounded-full font-bold text-sm bg-[#061006] hover:bg-black text-white dark:bg-[#00D632] dark:hover:bg-[#19e848] dark:text-[#061006] shadow-lg active:scale-[0.99] transition-all gap-2 mt-2 cursor-pointer'
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Loader2 className='size-4 animate-spin' />
+          ) : (
+            <>
+              <span>{t.submit}</span>
+              <ArrowRight className={`size-4 ${isAr ? 'rotate-180' : ''}`} />
+            </>
+          )}
         </Button>
-
-        <div className='relative my-2'>
-          <div className='absolute inset-0 flex items-center'>
-            <span className='w-full border-t' />
-          </div>
-          <div className='relative flex justify-center text-xs uppercase'>
-            <span className='bg-background px-2 text-muted-foreground'>
-              Or continue with
-            </span>
-          </div>
-        </div>
-
-        <div className='grid grid-cols-2 gap-2'>
-          <Button
-            variant='outline'
-            className='w-full'
-            type='button'
-            disabled={isLoading}
-          >
-            <IconGithub className='h-4 w-4' /> GitHub
-          </Button>
-          <Button
-            variant='outline'
-            className='w-full'
-            type='button'
-            disabled={isLoading}
-          >
-            <IconFacebook className='h-4 w-4' /> Facebook
-          </Button>
-        </div>
       </form>
     </Form>
   )

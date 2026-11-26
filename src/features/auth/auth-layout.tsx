@@ -1,14 +1,23 @@
+import { Link } from '@tanstack/react-router'
+import { GreenScanLogo } from '@/components/green-scan-logo'
+
 type AuthLayoutProps = {
   children: React.ReactNode
 }
 
+const APPLE_FONT_STACK =
+  '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Arabic", "Plus Jakarta Sans", "Readex Pro", system-ui, sans-serif'
+
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className='container grid h-svh max-w-none items-center justify-center'>
-      <div className='mx-auto flex w-full flex-col justify-center space-y-2 py-8 sm:p-8'>
-        <div className='mb-4 flex items-center justify-center gap-2'>
-          <h1 className='text-xl font-bold tracking-tight text-foreground'>Pricing SaaS Platform</h1>
-        </div>
+    <div
+      style={{ fontFamily: APPLE_FONT_STACK }}
+      className='container grid min-h-svh max-w-none items-center justify-center bg-[#F5F6F7] dark:bg-[#061006] px-4'
+    >
+      <div className='mx-auto flex w-full flex-col items-center justify-center space-y-5 py-8 sm:p-8'>
+        <Link to='/' className='transition-transform hover:scale-105'>
+          <GreenScanLogo size='md' />
+        </Link>
         {children}
       </div>
     </div>

@@ -1,9 +1,28 @@
 import * as React from 'react'
-import { Plus, Edit2, Trash2, Tags, Package, AlertTriangle } from 'lucide-react'
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Tags,
+  Package,
+  AlertTriangle,
+  Search,
+  Store,
+  XCircle,
+} from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -16,10 +35,14 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { LanguageSwitch } from '@/components/language-switch'
+import { PosShortcutButton } from '@/components/pos-shortcut-button'
 import { useSaaSStore } from '@/lib/saas-store'
+import { useLang } from '@/lib/i18n'
 import { Category } from '@/types/saas'
 
 export function CategoriesView() {
+  const { dir, t } = useLang()
   const {
     currentUser,
     merchants,
@@ -32,176 +55,377 @@ export function CategoriesView() {
     hasPermission,
   } = useSaaSStore()
 
-  const merchantId = currentUser.merchantId || merchants[0]?.id || ''
-  const merchant = merchants.find((m) => m.id === merchantId)
-  const merchantBranches = branches.filter((b) => b.merchantId === merchantId)
+  const isSuperAdmin = currentUser.role === 'SUPER_ADMIN'
+  const defaultMerchantId = currentUser.merchantId || merchants[0]?.id || ''
+  const [selectedMerchantFilter, setSelectedMerchantFilter] = React.useState<string>(
+    isSuperAdmin ? 'all' : defaultMerchantId
+  )
+  const [searchTerm, setSearchTerm] = React.useState('')
+  const [branchFilter, setBranchFilter] = React.useState<string>('ALL')
 
-  // Scoped to current merchant
-  const merchantCategories = categories.filter((c) => c.merchantId === merchantId)
-  const merchantProducts = products.filter((p) => p.merchantId === merchantId)
+  const activeMerchantId = isSuperAdmin
+    ? selectedMerchantFilter !== 'all'
+      ? selectedMerchantFilter
+      : merchants[0]?.id || ''
+    : defaultMerchantId
+
+  // Scoped categories, products & branches
+  const scopedCategories = React.useMemo(() => {
+    return categories.filter((c) => {
+      if (isSuperAdmin) {
+        if (selectedMerchantFilter !== 'all' && c.merchantId !== selectedMerchantFilter) return false
+      } else if (c.merchantId !== defaultMerchantId) {
+        return false
+      }
+      if (branchFilter === 'GLOBAL' && c.branchId) return false
+      if (branchFilter !== 'ALL' && branchFilter !== 'GLOBAL' && c.branchId !== branchFilter) return false
+      if (searchTerm.trim() && !c.name.toLowerCase().includes(searchTerm.trim().toLowerCase())) {
+        return false
+      }
+      return true
+    })
+  }, [categories, isSuperAdmin, selectedMerchantFilter, defaultMerchantId, branchFilter, searchTerm])
+
+  const scopedProducts = React.useMemo(() => {
+    if (isSuperAdmin) {
+      return selectedMerchantFilter === 'all'
+        ? products
+        : products.filter((p) => p.merchantId === selectedMerchantFilter)
+    }
+    return products.filter((p) => p.merchantId === defaultMerchantId)
+  }, [products, isSuperAdmin, selectedMerchantFilter, defaultMerchantId])
+
+  const scopedBranches = React.useMemo(() => {
+    if (isSuperAdmin) {
+      return selectedMerchantFilter === 'all'
+        ? branches
+        : branches.filter((b) => b.merchantId === selectedMerchantFilter)
+    }
+    return branches.filter((b) => b.merchantId === defaultMerchantId)
+  }, [branches, isSuperAdmin, selectedMerchantFilter, defaultMerchantId])
 
   // Dialogs
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [editingCategory, setEditingCategory] = React.useState<Category | null>(null)
   const [deletingCategory, setDeletingCategory] = React.useState<Category | null>(null)
   const [catName, setCatName] = React.useState('')
+  const [formMerchantId, setFormMerchantId] = React.useState<string>(activeMerchantId)
   const [branchId, setBranchId] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
-  const canManage = hasPermission('categories.manage')
+  const canManage =
+    isSuperAdmin || currentUser.role === 'MERCHANT_MANAGER' || hasPermission('categories.manage')
+
+  const formBranches = branches.filter((b) => b.merchantId === (formMerchantId || activeMerchantId))
+
+  const openCreate = () => {
+    setEditingCategory(null)
+    setCatName('')
+    setFormMerchantId(activeMerchantId || merchants[0]?.id || '')
+    setBranchId(null)
+    setError(null)
+    setIsCreateOpen(true)
+  }
+
+  const openEdit = (cat: Category) => {
+    setEditingCategory(cat)
+    setCatName(cat.name)
+    setFormMerchantId(cat.merchantId)
+    setBranchId(cat.branchId || null)
+    setError(null)
+  }
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     if (!catName.trim()) {
-      setError('Category Name is required.')
+      setError(t('اسم القسم مطلوب.', 'Category name is required.'))
       return
     }
 
     if (editingCategory) {
       updateCategory(editingCategory.id, catName.trim(), branchId)
+      toast.success(t(`تم تحديث القسم "${catName.trim()}" ✓`, `Category "${catName.trim()}" updated ✓`))
       setEditingCategory(null)
     } else {
-      createCategory(catName.trim(), branchId)
+      createCategory(catName.trim(), branchId, formMerchantId || activeMerchantId)
+      toast.success(t(`تمت إضافة القسم "${catName.trim()}" ✓`, `Category "${catName.trim()}" created ✓`))
       setIsCreateOpen(false)
     }
     setCatName('')
     setBranchId(null)
   }
 
-  // Section 8.2: Category Deletion rule
   const handleDeleteConfirm = () => {
     if (deletingCategory) {
+      const name = deletingCategory.name
       deleteCategory(deletingCategory.id)
       setDeletingCategory(null)
+      toast.success(t(`تم حذف القسم "${name}"`, `Category "${name}" deleted`))
     }
   }
 
-  // Count products in deleting category
+  const uncategorizedCount = scopedProducts.filter((p) => !p.categoryId).length
+  const categorizedCount = scopedProducts.length - uncategorizedCount
   const productsAffected = deletingCategory
-    ? merchantProducts.filter((p) => p.categoryId === deletingCategory.id).length
+    ? scopedProducts.filter((p) => p.categoryId === deletingCategory.id).length
     : 0
 
   return (
     <>
-      <Header>
-        <div className='flex items-center gap-2'>
-          <h1 className='font-semibold text-sm'>Categories Management</h1>
-          <Badge variant='outline' className='text-xs'>
-            {merchant?.name}
-          </Badge>
-        </div>
+      <Header fixed>
         <div className='ms-auto flex items-center gap-2'>
+          <PosShortcutButton />
+          <LanguageSwitch />
           <ThemeSwitch />
           <ProfileDropdown />
         </div>
       </Header>
 
-      <Main className='flex flex-1 flex-col gap-5 p-4 md:p-6'>
+      <Main className='flex flex-1 flex-col gap-5 p-4 sm:p-6' dir={dir}>
+        {/* Top Title & Action Bar */}
         <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>Product Categories</h2>
-            <p className='text-xs text-muted-foreground'>
-              Organize your store items into logical sections. Deleting a category keeps all products safe as Uncategorized.
+            <div className='flex items-center gap-2'>
+              <h1 className='text-2xl font-bold tracking-tight text-foreground'>
+                {t('أقسام المنتجات', 'Product Categories')}
+              </h1>
+              <Badge variant='outline' className='text-xs font-mono font-bold bg-muted/50'>
+                {scopedCategories.length} {t('قسم', 'Categories')}
+              </Badge>
+            </div>
+            <p className='text-xs text-muted-foreground mt-1'>
+              {t(
+                'نظّم منتجاتك في أقسام واضحة — تظهر تلقائياً في شاشة إضافة المنتجات وفلاتر نقطة البيع (POS).',
+                'Organize your store products into categories — synced automatically with Add Product and POS filters.'
+              )}
             </p>
           </div>
+
           {canManage && (
             <Button
               size='sm'
-              onClick={() => {
-                setCatName('')
-                setError(null)
-                setIsCreateOpen(true)
-              }}
+              onClick={openCreate}
+              className='gap-1.5 h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-xs cursor-pointer shrink-0'
             >
-              <Plus className='mr-1.5 size-4' />
-              New Category
+              <Plus className='size-4' />
+              <span>{t('إضافة قسم جديد', 'New Category')}</span>
             </Button>
           )}
         </div>
 
-        {/* Categories Grid */}
-        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-          {merchantCategories.map((cat) => {
-            const count = merchantProducts.filter((p) => p.categoryId === cat.id).length
-            const assignedBranch = merchantBranches.find((b) => b.id === cat.branchId)
-            return (
-              <Card key={cat.id} className='hover:border-primary/50 transition-colors'>
-                <CardContent className='p-4 flex items-center justify-between'>
-                  <div className='flex items-center gap-3'>
-                    <div className='flex size-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40'>
-                      <Tags className='size-5' />
-                    </div>
-                    <div>
-                      <div className='flex items-center gap-2'>
-                        <h4 className='font-bold text-sm text-foreground'>{cat.name}</h4>
-                        {assignedBranch ? (
-                          <Badge variant='outline' className='text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border-indigo-200/50 py-0 px-1.5'>
-                            {assignedBranch.name}
-                          </Badge>
-                        ) : (
-                          <Badge variant='outline' className='text-[10px] bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-200/40 py-0 px-1.5'>
-                            All Branches
-                          </Badge>
-                        )}
-                      </div>
-                      <div className='flex items-center gap-1 text-xs text-muted-foreground mt-0.5'>
-                        <Package className='size-3' /> {count} products
-                      </div>
-                    </div>
-                  </div>
+        {/* Summary KPI Cards */}
+        <div className='grid grid-cols-1 sm:grid-cols-3 gap-3.5'>
+          <Card className='p-4 rounded-xl border-border/80 bg-card shadow-2xs flex items-center justify-between'>
+            <div>
+              <p className='text-xs text-muted-foreground font-medium'>
+                {t('إجمالي الأقسام', 'Total Categories')}
+              </p>
+              <p className='text-2xl font-bold mt-1 font-mono text-foreground'>
+                {scopedCategories.length}
+              </p>
+            </div>
+            <div className='size-10 rounded-xl bg-muted border border-border/70 flex items-center justify-center'>
+              <Tags className='size-5 text-foreground' />
+            </div>
+          </Card>
 
-                  {canManage && (
-                    <div className='flex items-center gap-1'>
-                      <Button
-                        size='icon'
-                        variant='ghost'
-                        className='size-8'
-                        onClick={() => {
-                          setEditingCategory(cat)
-                          setCatName(cat.name)
-                          setBranchId(cat.branchId || null)
-                          setError(null)
-                        }}
-                      >
-                        <Edit2 className='size-3.5' />
-                      </Button>
-                      <Button
-                        size='icon'
-                        variant='ghost'
-                        className='size-8 text-destructive hover:text-destructive'
-                        onClick={() => setDeletingCategory(cat)}
-                      >
-                        <Trash2 className='size-3.5' />
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
+          <Card className='p-4 rounded-xl border-border/80 bg-card shadow-2xs flex items-center justify-between'>
+            <div>
+              <p className='text-xs text-muted-foreground font-medium'>
+                {t('منتجات مصنّفة', 'Categorized Products')}
+              </p>
+              <p className='text-2xl font-bold mt-1 font-mono text-foreground'>
+                {categorizedCount}
+              </p>
+            </div>
+            <div className='size-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-[#3EEA85] flex items-center justify-center'>
+              <Package className='size-5' />
+            </div>
+          </Card>
+
+          <Card className='p-4 rounded-xl border-border/80 bg-card shadow-2xs flex items-center justify-between'>
+            <div>
+              <p className='text-xs text-muted-foreground font-medium'>
+                {t('منتجات بدون قسم', 'Uncategorized Products')}
+              </p>
+              <p className='text-2xl font-bold mt-1 font-mono text-foreground'>
+                {uncategorizedCount}
+              </p>
+            </div>
+            <div className='size-10 rounded-xl bg-muted border border-border/70 flex items-center justify-center'>
+              <Store className='size-5 text-muted-foreground' />
+            </div>
+          </Card>
         </div>
 
-        {/* Uncategorized products summary card */}
-        {merchantProducts.filter((p) => !p.categoryId).length > 0 && (
-          <div className='rounded-lg border border-dashed p-4 bg-muted/30 flex items-center justify-between'>
-            <div className='flex items-center gap-3'>
-              <Package className='size-5 text-muted-foreground' />
-              <div>
-                <p className='text-xs font-semibold'>Uncategorized Products</p>
-                <p className='text-[11px] text-muted-foreground'>
-                  {merchantProducts.filter((p) => !p.categoryId).length} products have no category assigned.
-                </p>
-              </div>
-            </div>
-            <Badge variant='outline' className='text-xs'>
-              {merchantProducts.filter((p) => !p.categoryId).length} items
-            </Badge>
+        {/* Search & Filter Toolbar */}
+        <div className='flex flex-col sm:flex-row items-center gap-3'>
+          <div className='relative w-full sm:w-80'>
+            <Search className='size-4 text-muted-foreground absolute start-3 top-1/2 -translate-y-1/2' />
+            <Input
+              placeholder={t('ابحث باسم القسم...', 'Search by category name...')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className='ps-9 pe-8 h-9 text-xs rounded-lg bg-card border-border/80'
+            />
+            {searchTerm && (
+              <button
+                type='button'
+                onClick={() => setSearchTerm('')}
+                className='absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer'
+              >
+                <XCircle className='size-4' />
+              </button>
+            )}
           </div>
-        )}
+
+          <div className='flex items-center gap-2 w-full sm:w-auto ms-auto flex-wrap'>
+            {isSuperAdmin && (
+              <select
+                value={selectedMerchantFilter}
+                onChange={(e) => setSelectedMerchantFilter(e.target.value)}
+                className='h-9 rounded-lg border border-border/80 bg-card px-3 text-xs text-foreground font-medium'
+              >
+                <option value='all'>{t('كل المتاجر', 'All Merchants')}</option>
+                {merchants.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className='h-9 rounded-lg border border-border/80 bg-card px-3 text-xs text-foreground font-medium'
+            >
+              <option value='ALL'>{t('كل الفروع', 'All Branches')}</option>
+              <option value='GLOBAL'>{t('عام لكل الفروع', 'Global Only')}</option>
+              {scopedBranches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Categories Data Table */}
+        <Card className='border-border/80 shadow-xs overflow-hidden bg-card rounded-xl'>
+          <div className='overflow-x-auto'>
+            <Table>
+              <TableHeader>
+                <TableRow className='border-b border-border/70 bg-muted/40 hover:bg-muted/40'>
+                  <TableHead className='ps-5 py-3 text-xs font-semibold text-foreground'>
+                    {t('اسم القسم', 'Category Name')}
+                  </TableHead>
+                  {isSuperAdmin && (
+                    <TableHead className='py-3 text-xs font-semibold text-foreground'>
+                      {t('المتجر', 'Merchant')}
+                    </TableHead>
+                  )}
+                  <TableHead className='py-3 text-xs font-semibold text-foreground'>
+                    {t('الفرع المرتبط', 'Assigned Branch')}
+                  </TableHead>
+                  <TableHead className='py-3 text-xs font-semibold text-foreground text-center'>
+                    {t('عدد المنتجات', 'Products Count')}
+                  </TableHead>
+                  <TableHead className='pe-5 py-3 text-xs font-semibold text-foreground text-end'>
+                    {t('إجراءات', 'Actions')}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {scopedCategories.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={isSuperAdmin ? 5 : 4} className='h-44 text-center text-muted-foreground'>
+                      <div className='flex flex-col items-center justify-center gap-2'>
+                        <Tags className='size-9 opacity-25' />
+                        <p className='font-semibold text-sm text-foreground'>
+                          {t('لا توجد أقسام منتجات بعد', 'No product categories found')}
+                        </p>
+                        <p className='text-xs'>
+                          {t('اضغط على "إضافة قسم جديد" لإنشاء أول قسم لمنتجاتك.', 'Click "New Category" above to create your first product category.')}
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  scopedCategories.map((cat) => {
+                    const count = scopedProducts.filter((p) => p.categoryId === cat.id).length
+                    const assignedBranch = branches.find((b) => b.id === cat.branchId)
+                    const catMerchant = merchants.find((m) => m.id === cat.merchantId)
+
+                    return (
+                      <TableRow key={cat.id} className='border-b border-border/50 hover:bg-muted/30 transition-colors'>
+                        <TableCell className='ps-5 py-3.5'>
+                          <div className='flex items-center gap-3'>
+                            <div className='size-9 rounded-lg bg-muted border border-border/70 flex items-center justify-center shrink-0'>
+                              <Tags className='size-4 text-foreground' />
+                            </div>
+                            <span className='font-bold text-xs sm:text-sm text-foreground'>
+                              {cat.name}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {isSuperAdmin && (
+                          <TableCell className='py-3.5 text-xs font-medium text-muted-foreground'>
+                            {catMerchant?.name || '—'}
+                          </TableCell>
+                        )}
+
+                        <TableCell className='py-3.5'>
+                          <Badge variant='outline' className='text-[11px] font-medium'>
+                            {assignedBranch ? assignedBranch.name : t('كل الفروع', 'All Branches')}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className='py-3.5 text-center'>
+                          <Badge variant='secondary' className='font-mono text-xs gap-1'>
+                            <Package className='size-3' />
+                            {count}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className='pe-5 py-3.5 text-end'>
+                          {canManage && (
+                            <div className='inline-flex items-center justify-end gap-1'>
+                              <Button
+                                size='icon'
+                                variant='ghost'
+                                className='size-8 text-muted-foreground hover:text-foreground cursor-pointer'
+                                onClick={() => openEdit(cat)}
+                                title={t('تعديل', 'Edit')}
+                              >
+                                <Edit2 className='size-4' />
+                              </Button>
+                              <Button
+                                size='icon'
+                                variant='ghost'
+                                className='size-8 text-muted-foreground hover:text-destructive cursor-pointer'
+                                onClick={() => setDeletingCategory(cat)}
+                                title={t('حذف', 'Delete')}
+                              >
+                                <Trash2 className='size-4' />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
       </Main>
 
-      {/* Create / Edit Dialog */}
+      {/* Create / Edit Category Dialog */}
       <Dialog
         open={isCreateOpen || !!editingCategory}
         onOpenChange={(open) => {
@@ -211,50 +435,79 @@ export function CategoriesView() {
           }
         }}
       >
-        <DialogContent className='max-w-sm'>
+        <DialogContent className='max-w-sm rounded-2xl' dir={dir}>
           <form onSubmit={handleSave}>
-            <DialogHeader>
-              <DialogTitle>{editingCategory ? 'Edit Category' : 'Create Category'}</DialogTitle>
+            <DialogHeader className='text-start'>
+              <DialogTitle className='text-base font-bold'>
+                {editingCategory
+                  ? t('تعديل القسم', 'Edit Category')
+                  : t('إضافة قسم منتجات جديد', 'New Product Category')}
+              </DialogTitle>
               <DialogDescription className='text-xs'>
-                Enter the category name for your product classification.
+                {t(
+                  'سيظهر هذا القسم تلقائياً عند إضافة المنتجات وفي فلاتر نقطة البيع.',
+                  'This category will appear automatically in Add Product and POS filters.'
+                )}
               </DialogDescription>
             </DialogHeader>
 
-            {error && <p className='text-xs text-destructive mt-2'>{error}</p>}
+            {error && <p className='text-xs text-destructive mt-2 font-medium'>{error}</p>}
 
             <div className='my-4 space-y-3.5'>
+              {isSuperAdmin && !editingCategory && (
+                <div>
+                  <label className='font-semibold text-xs block mb-1'>{t('المتجر', 'Merchant')}</label>
+                  <select
+                    value={formMerchantId}
+                    onChange={(e) => {
+                      setFormMerchantId(e.target.value)
+                      setBranchId(null)
+                    }}
+                    className='w-full h-9 rounded-lg border border-border bg-background px-3 text-xs text-foreground'
+                  >
+                    {merchants.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
-                <label className='font-semibold text-xs block mb-1'>Category Name *</label>
+                <label className='font-semibold text-xs block mb-1'>
+                  {t('اسم القسم *', 'Category Name *')}
+                </label>
                 <Input
                   required
-                  placeholder='e.g. Beverages, Bakery, Snacks...'
+                  placeholder={t('مثال: مشروبات، ألبان، مخبوزات...', 'e.g. Beverages, Dairy, Bakery...')}
                   value={catName}
                   onChange={(e) => setCatName(e.target.value)}
-                  className='text-xs'
+                  className='h-9 text-xs rounded-lg'
+                  autoFocus
                 />
               </div>
 
               <div>
-                <label className='font-semibold text-xs block mb-1'>Assign to Branch</label>
+                <label className='font-semibold text-xs block mb-1'>
+                  {t('الفرع المرتبط', 'Assign to Branch')}
+                </label>
                 <select
                   value={branchId || 'ALL'}
                   onChange={(e) => setBranchId(e.target.value === 'ALL' ? null : e.target.value)}
-                  className='w-full rounded-md border border-border/80 bg-background px-3 py-2 text-xs text-foreground'
+                  className='w-full h-9 rounded-lg border border-border bg-background px-3 text-xs text-foreground'
                 >
-                  <option value='ALL'>All Branches (Global)</option>
-                  {merchantBranches.map((b) => (
+                  <option value='ALL'>{t('كل الفروع (عام)', 'All Branches (Global)')}</option>
+                  {formBranches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
                     </option>
                   ))}
                 </select>
-                <p className='text-[10px] text-muted-foreground mt-1'>
-                  Optionally bind this category to a specific store branch.
-                </p>
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className='gap-2'>
               <Button
                 type='button'
                 variant='outline'
@@ -264,45 +517,47 @@ export function CategoriesView() {
                   setEditingCategory(null)
                 }}
               >
-                Cancel
+                {t('إلغاء', 'Cancel')}
               </Button>
-              <Button type='submit' size='sm'>
-                {editingCategory ? 'Save' : 'Create'}
+              <Button
+                type='submit'
+                size='sm'
+                className='bg-primary text-primary-foreground hover:bg-primary/90 font-bold cursor-pointer'
+              >
+                {editingCategory ? t('حفظ التعديلات', 'Save Changes') : t('إنشاء القسم', 'Create Category')}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog (Section 8.2 Safe Deletion) */}
+      {/* Delete Confirmation Dialog */}
       <Dialog open={!!deletingCategory} onOpenChange={(open) => !open && setDeletingCategory(null)}>
-        <DialogContent className='max-w-sm'>
-          <DialogHeader>
-            <DialogTitle className='flex items-center gap-2 text-destructive'>
-              <AlertTriangle className='size-5' /> Delete Category?
+        <DialogContent className='max-w-sm rounded-2xl' dir={dir}>
+          <DialogHeader className='text-start'>
+            <DialogTitle className='text-destructive flex items-center gap-2 text-base'>
+              <AlertTriangle className='size-4' />
+              <span>{t('حذف القسم؟', 'Delete Category?')}</span>
             </DialogTitle>
             <DialogDescription className='text-xs'>
-              Are you sure you want to delete category <strong>{deletingCategory?.name}</strong>?
+              {t('هل أنت متأكد من حذف القسم', 'Are you sure you want to delete')}{' '}
+              <span className='font-bold text-foreground'>"{deletingCategory?.name}"</span>?
+              {productsAffected > 0 && (
+                <span className='block mt-1.5 text-amber-600 dark:text-amber-400 font-medium'>
+                  {t(
+                    `سيتم الاحتفاظ بعدد ${productsAffected} منتج وتصنيفهم كـ "بدون قسم".`,
+                    `${productsAffected} products will be kept safely as Uncategorized.`
+                  )}
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
-
-          <div className='rounded-md bg-muted p-3 text-xs space-y-1 text-muted-foreground my-2'>
-            <p className='font-bold text-foreground'>
-              Section 8.2 Compliance Rule:
-            </p>
-            <p>
-              Deleting this category will <strong>NOT</strong> delete any products. The{' '}
-              <strong>{productsAffected}</strong> product(s) in this category will be marked as{' '}
-              <strong>Uncategorized</strong>.
-            </p>
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className='gap-2'>
             <Button variant='outline' size='sm' onClick={() => setDeletingCategory(null)}>
-              Cancel
+              {t('إلغاء', 'Cancel')}
             </Button>
             <Button variant='destructive' size='sm' onClick={handleDeleteConfirm}>
-              Confirm Delete
+              {t('حذف نهائياً', 'Delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

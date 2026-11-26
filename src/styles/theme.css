@@ -48,25 +48,25 @@
 }
 
 .dark {
-  /* Deep Luxury Jet Obsidian */
-  --background: oklch(0.12 0.008 260);
-  --foreground: oklch(0.98 0.002 260);
-  --card: oklch(0.16 0.008 260);
-  --card-foreground: oklch(0.98 0.002 260);
-  --popover: oklch(0.17 0.008 260);
-  --popover-foreground: oklch(0.98 0.002 260);
-  --primary: #E0E0E0;
-  --primary-foreground: oklch(0.10 0.01 260);
-  --secondary: oklch(0.20 0.005 260);
-  --secondary-foreground: oklch(0.98 0.002 260);
-  --muted: oklch(0.20 0.005 260);
-  --muted-foreground: oklch(0.66 0.008 260);
-  --accent: oklch(0.20 0.005 260);
-  --accent-foreground: oklch(0.98 0.002 260);
+  /* Gemini / AI Chat Smooth Charcoal Dark Palette */
+  --background: #131314;
+  --foreground: #E3E3E3;
+  --card: #1E1F20;
+  --card-foreground: #E3E3E3;
+  --popover: #1E1F20;
+  --popover-foreground: #E3E3E3;
+  --primary: #FFFFFF;
+  --primary-foreground: #131314;
+  --secondary: #282A2C;
+  --secondary-foreground: #E3E3E3;
+  --muted: #282A2C;
+  --muted-foreground: #8E918F;
+  --accent: #282A2C;
+  --accent-foreground: #FFFFFF;
   --destructive: oklch(0.65 0.23 25);
-  --border: oklch(0.23 0.005 260);
-  --input: oklch(0.19 0.005 260);
-  --ring: #E0E0E0;
+  --border: #2D2E30;
+  --input: #282A2C;
+  --ring: #8E918F;
 
   --brand-mint: #E0E0E0;
   --brand-mint-hover: #4FF493;
@@ -80,15 +80,15 @@
   --chart-4: #22C55E;
   --chart-5: #A7F3D0;
 
-  /* Sidebar: Pure deep pitch black */
-  --sidebar: oklch(0.10 0.005 260);
-  --sidebar-foreground: oklch(0.85 0.005 260);
-  --sidebar-primary: #E0E0E0;
-  --sidebar-primary-foreground: oklch(0.10 0.01 260);
-  --sidebar-accent: oklch(0.17 0.008 260);
+  /* Sidebar: Soft elevated charcoal matching AI Chat aesthetic */
+  --sidebar: #18191A;
+  --sidebar-foreground: #E3E3E3;
+  --sidebar-primary: #FFFFFF;
+  --sidebar-primary-foreground: #131314;
+  --sidebar-accent: #282A2C;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: oklch(0.19 0.005 260);
-  --sidebar-ring: #E0E0E0;
+  --sidebar-border: #2D2E30;
+  --sidebar-ring: #8E918F;
 }
 
 @theme inline {

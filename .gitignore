@@ -10,11 +10,16 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.tanstack/
 *.local
 
 .env
 server/.env
 server/node_modules
+server/whatsapp-sessions
+server/sms-config
+server/ai-config
+server/return-pins.json
 *.db
 *.db-journal
 

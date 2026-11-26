@@ -4,18 +4,19 @@ import {
   Eye,
   Save,
   Building2,
-  QrCode,
   Check,
   RotateCcw,
   Sparkles,
-  Type,
-  LayoutGrid,
   Sliders,
   ZoomIn,
   ZoomOut,
   Maximize2,
   Stamp,
-  Barcode as BarcodeIcon,
+  FileText,
+  Receipt,
+  Printer,
+  Loader2,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,81 +31,112 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitch } from '@/components/language-switch'
+import { PosShortcutButton } from '@/components/pos-shortcut-button'
+import { CustomizedInvoiceView } from '@/features/invoices/components/customized-invoice-view'
 import { useSaaSStore } from '@/lib/saas-store'
-import {
+import { useLang } from '@/lib/i18n'
+import type {
+  Invoice,
   InvoiceLayoutStyle,
   InvoicePaperSize,
+  InvoiceTemplate,
 } from '@/types/saas'
 import { toast } from 'sonner'
 
 const COLOR_PRESETS = [
-  { name: 'Electric Mint', value: '#3EEA85', class: 'bg-[#3EEA85]' },
-  { name: 'Carbon Black', value: '#09090B', class: 'bg-[#09090B]' },
-  { name: 'Indigo Corporate', value: '#4F46E5', class: 'bg-[#4F46E5]' },
-  { name: 'Emerald Fresh', value: '#059669', class: 'bg-[#059669]' },
-  { name: 'Sky Electric', value: '#0284C7', class: 'bg-[#0284C7]' },
-  { name: 'Rose Luxury', value: '#E11D48', class: 'bg-[#E11D48]' },
-  { name: 'Amber Bakery', value: '#D97706', class: 'bg-[#D97706]' },
-  { name: 'Slate Minimal', value: '#1E293B', class: 'bg-[#1E293B]' },
-  { name: 'Violet Tech', value: '#7C3AED', class: 'bg-[#7C3AED]' },
-  { name: 'Teal Modern', value: '#0D9488', class: 'bg-[#0D9488]' },
+  { name: 'Carbon Black', value: '#09090B' },
+  { name: 'Green Scan', value: '#00A828' },
+  { name: 'Emerald', value: '#059669' },
+  { name: 'Slate', value: '#1E293B' },
+  { name: 'Ocean', value: '#0284C7' },
+  { name: 'Indigo', value: '#4F46E5' },
+  { name: 'Amber', value: '#D97706' },
+  { name: 'Rose', value: '#E11D48' },
 ]
 
-const DESIGN_PRESETS = [
+interface DesignPreset {
+  id: string
+  nameAr: string
+  nameEn: string
+  descAr: string
+  descEn: string
+  primaryColor: string
+  layoutStyle: InvoiceLayoutStyle
+  paperSize: InvoicePaperSize
+  headerStyle: string
+  tableStyle: string
+  borderRadius: string
+  fontFamily: string
+}
+
+const DESIGN_PRESETS: DesignPreset[] = [
   {
-    name: 'Electric Mint & Carbon (70:30)',
+    id: 'pos-thermal',
+    nameAr: 'إيصال كاشير 80mm',
+    nameEn: 'Thermal POS 80mm',
+    descAr: 'مثالي لنقطة البيع والطابعات الحرارية',
+    descEn: 'Crisp thermal cashier receipt',
     primaryColor: '#09090B',
-    layoutStyle: 'MODERN' as InvoiceLayoutStyle,
+    layoutStyle: 'THERMAL_POS',
+    paperSize: '80MM',
     headerStyle: 'BORDER_TOP',
     tableStyle: 'STRIPED',
     borderRadius: 'ROUNDED_MD',
-    fontFamily: 'sans',
+    fontFamily: 'cairo',
   },
   {
-    name: 'Modern Indigo',
-    primaryColor: '#4F46E5',
-    layoutStyle: 'MODERN' as InvoiceLayoutStyle,
-    headerStyle: 'BORDER_TOP',
+    id: 'carbon-modern',
+    nameAr: 'مودرن احترافي A4',
+    nameEn: 'Modern Carbon A4',
+    descAr: 'تصميم عصري نظيف للفواتير الضريبية',
+    descEn: 'Clean modern tax invoice',
+    primaryColor: '#09090B',
+    layoutStyle: 'MODERN',
+    paperSize: 'A4',
+    headerStyle: 'SOLID_BANNER',
     tableStyle: 'STRIPED',
-    borderRadius: 'ROUNDED_MD',
+    borderRadius: 'ROUNDED_LG',
+    fontFamily: 'cairo',
+  },
+  {
+    id: 'emerald-soft',
+    nameAr: 'أخضر هادئ',
+    nameEn: 'Soft Emerald',
+    descAr: 'ترويسة ناعمة متناسقة مع Green Scan',
+    descEn: 'Subtle tint with emerald accent',
+    primaryColor: '#059669',
+    layoutStyle: 'MODERN',
+    paperSize: 'A4',
+    headerStyle: 'SUBTLE_TINT',
+    tableStyle: 'MINIMAL',
+    borderRadius: 'ROUNDED_LG',
     fontFamily: 'sans',
   },
   {
-    name: 'Classic Corporate',
+    id: 'classic-grid',
+    nameAr: 'كلاسيك رسمي',
+    nameEn: 'Classic Corporate',
+    descAr: 'جدول رسمي بحدود كاملة وحواف حادة',
+    descEn: 'Formal bordered corporate table',
     primaryColor: '#1E293B',
-    layoutStyle: 'CLASSIC' as InvoiceLayoutStyle,
+    layoutStyle: 'CLASSIC',
+    paperSize: 'A4',
     headerStyle: 'SOLID_BANNER',
     tableStyle: 'GRID',
     borderRadius: 'ROUNDED_NONE',
     fontFamily: 'serif',
   },
-  {
-    name: 'Emerald Minimal',
-    primaryColor: '#059669',
-    layoutStyle: 'MODERN' as InvoiceLayoutStyle,
-    headerStyle: 'SUBTLE_TINT',
-    tableStyle: 'MINIMAL',
-    borderRadius: 'ROUNDED_LG',
-    fontFamily: 'cairo',
-  },
-  {
-    name: 'Thermal Receipt 80mm',
-    primaryColor: '#18181B',
-    layoutStyle: 'THERMAL_POS' as InvoiceLayoutStyle,
-    headerStyle: 'MINIMAL',
-    tableStyle: 'MINIMAL',
-    borderRadius: 'ROUNDED_NONE',
-    fontFamily: 'mono',
-  },
 ]
 
+type DesignerTab = 'style' | 'brand' | 'elements'
+
 export function InvoiceDesigner() {
+  const { isAr, dir, t } = useLang()
   const {
     currentUser,
     merchants,
@@ -114,34 +146,45 @@ export function InvoiceDesigner() {
   } = useSaaSStore()
 
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN'
-  const merchantId = currentUser.merchantId || merchants[0]?.id || ''
-  const [selectedMerchantId, setSelectedMerchantId] = React.useState(merchantId)
+  const defaultMerchantId = currentUser.merchantId || merchants[0]?.id || ''
+  const [selectedMerchantId, setSelectedMerchantId] = React.useState(defaultMerchantId)
 
-  const currentMerchant = merchants.find((m) => m.id === selectedMerchantId)
+  React.useEffect(() => {
+    if (!selectedMerchantId && merchants.length > 0) {
+      setSelectedMerchantId(currentUser.merchantId || merchants[0].id)
+    }
+  }, [selectedMerchantId, merchants, currentUser.merchantId])
+
+  const currentMerchant = merchants.find((m) => m.id === selectedMerchantId) || merchants[0]
   const currentBranch = branches.find((b) => b.merchantId === selectedMerchantId) || branches[0]
 
-  // Form State
+  // Active tab
+  const [activeTab, setActiveTab] = React.useState<DesignerTab>('style')
+
+  // Template state
   const [templateName, setTemplateName] = React.useState('Standard Invoice')
-  const [layoutStyle, setLayoutStyle] = React.useState<InvoiceLayoutStyle>('MODERN')
-  const [paperSize, setPaperSize] = React.useState<InvoicePaperSize>('A4')
-  const [primaryColor, setPrimaryColor] = React.useState('#4F46E5')
-  const [accentColor, setAccentColor] = React.useState('#10B981')
-  const [fontFamily, setFontFamily] = React.useState('sans')
+  const [layoutStyle, setLayoutStyle] = React.useState<InvoiceLayoutStyle>('THERMAL_POS')
+  const [paperSize, setPaperSize] = React.useState<InvoicePaperSize>('80MM')
+  const [primaryColor, setPrimaryColor] = React.useState('#09090B')
+  const [accentColor, setAccentColor] = React.useState('#00A828')
+  const [fontFamily, setFontFamily] = React.useState('cairo')
   const [headerStyle, setHeaderStyle] = React.useState('BORDER_TOP')
   const [tableStyle, setTableStyle] = React.useState('STRIPED')
   const [borderRadius, setBorderRadius] = React.useState('ROUNDED_MD')
   const [currencyPosition, setCurrencyPosition] = React.useState('AFTER')
 
-  // Business Info
+  // Identity
   const [businessName, setBusinessName] = React.useState('')
   const [logoUrl, setLogoUrl] = React.useState('')
   const [showLogo, setShowLogo] = React.useState(true)
-  const [taxNumber, setTaxNumber] = React.useState('')
-  const [commercialReg, setCommercialReg] = React.useState('')
+  const [taxNumber, setTaxNumber] = React.useState('300012345678901')
+  const [commercialReg, setCommercialReg] = React.useState('1010203040')
   const [headerNotice, setHeaderNotice] = React.useState('')
-  const [footerNotice, setFooterNotice] = React.useState('')
+  const [footerNotice, setFooterNotice] = React.useState(
+    'شكراً لتسوقكم معنا • يمكن الاسترجاع خلال 14 يوماً بالفاتورة الأصلية.'
+  )
 
-  // Toggles & Details
+  // Visibility toggles
   const [showQrCode, setShowQrCode] = React.useState(true)
   const [qrPosition, setQrPosition] = React.useState('FOOTER_RIGHT')
   const [showTaxDetails, setShowTaxDetails] = React.useState(true)
@@ -151,20 +194,22 @@ export function InvoiceDesigner() {
   const [showWatermark, setShowWatermark] = React.useState(false)
   const [watermarkText, setWatermarkText] = React.useState('PAID')
 
-  // Preview zoom scale
-  const [previewScale, setPreviewScale] = React.useState<number>(0.85)
+  // Preview controls
+  const [previewScale, setPreviewScale] = React.useState<number>(1)
   const [isSaving, setIsSaving] = React.useState(false)
+  const [hasUnsaved, setHasUnsaved] = React.useState(false)
 
-  // Load template on mount or merchant change
+  // Load saved template from backend
   React.useEffect(() => {
+    if (!selectedMerchantId) return
     fetchInvoiceTemplate(selectedMerchantId).then((tpl) => {
       if (tpl) {
         setTemplateName(tpl.templateName || 'Standard Invoice')
         setLayoutStyle(tpl.layoutStyle || 'MODERN')
         setPaperSize(tpl.paperSize || 'A4')
-        setPrimaryColor(tpl.primaryColor || '#4F46E5')
-        setAccentColor(tpl.accentColor || '#10B981')
-        setFontFamily(tpl.fontFamily || 'sans')
+        setPrimaryColor(tpl.primaryColor || '#09090B')
+        setAccentColor(tpl.accentColor || '#00A828')
+        setFontFamily(tpl.fontFamily || 'cairo')
         setHeaderStyle(tpl.headerStyle || 'BORDER_TOP')
         setTableStyle(tpl.tableStyle || 'STRIPED')
         setBorderRadius(tpl.borderRadius || 'ROUNDED_MD')
@@ -174,10 +219,10 @@ export function InvoiceDesigner() {
         setShowLogo(tpl.showLogo !== undefined ? tpl.showLogo : true)
         setTaxNumber(tpl.taxNumber || '300012345678901')
         setCommercialReg(tpl.commercialReg || '1010203040')
-        setHeaderNotice(tpl.headerNotice || 'Thank you for your business!')
+        setHeaderNotice(tpl.headerNotice || '')
         setFooterNotice(
           tpl.footerNotice ||
-            'Goods can be exchanged or returned within 14 days with original receipt.'
+            'شكراً لتسوقكم معنا • يمكن الاسترجاع خلال 14 يوماً بالفاتورة الأصلية.'
         )
         setShowQrCode(tpl.showQrCode !== undefined ? tpl.showQrCode : true)
         setQrPosition(tpl.qrPosition || 'FOOTER_RIGHT')
@@ -187,24 +232,30 @@ export function InvoiceDesigner() {
         setShowBarcode(tpl.showBarcode !== undefined ? tpl.showBarcode : true)
         setShowWatermark(tpl.showWatermark !== undefined ? tpl.showWatermark : false)
         setWatermarkText(tpl.watermarkText || 'PAID')
+        setHasUnsaved(false)
       } else if (currentMerchant) {
         setBusinessName(currentMerchant.name)
         setLogoUrl(currentMerchant.logo || '')
+        setHasUnsaved(false)
       }
     })
   }, [selectedMerchantId, fetchInvoiceTemplate, currentMerchant])
 
-  const handleApplyPreset = (preset: typeof DESIGN_PRESETS[0]) => {
+  const markDirty = <T,>(setter: React.Dispatch<React.SetStateAction<T>>) => (val: T) => {
+    setter(val)
+    setHasUnsaved(true)
+  }
+
+  const handleApplyPreset = (preset: DesignPreset) => {
     setPrimaryColor(preset.primaryColor)
     setLayoutStyle(preset.layoutStyle)
+    setPaperSize(preset.paperSize)
     setHeaderStyle(preset.headerStyle)
     setTableStyle(preset.tableStyle)
     setBorderRadius(preset.borderRadius)
     setFontFamily(preset.fontFamily)
-    if (preset.layoutStyle === 'THERMAL_POS') {
-      setPaperSize('80MM')
-    }
-    toast.success(`Preset "${preset.name}" applied`)
+    setHasUnsaved(true)
+    toast.success(t(`تم تطبيق قالب "${preset.nameAr}"`, `Applied "${preset.nameEn}" preset`))
   }
 
   const handleSave = async () => {
@@ -238,31 +289,32 @@ export function InvoiceDesigner() {
         showWatermark,
         watermarkText: watermarkText.trim(),
       })
-      toast.success('Invoice template saved successfully!')
+      setHasUnsaved(false)
+      toast.success(t('تم حفظ تصميم الفاتورة بنجاح ✓', 'Invoice template saved successfully ✓'))
     } catch (err: any) {
-      toast.error(err.message || 'Failed to save template')
+      toast.error(err?.message || t('فشل حفظ التصميم', 'Failed to save template'))
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleResetDefaults = () => {
-    setLayoutStyle('MODERN')
-    setPaperSize('A4')
-    setPrimaryColor('#4F46E5')
-    setAccentColor('#10B981')
-    setFontFamily('sans')
-    setHeaderStyle('BORDER_TOP')
-    setTableStyle('STRIPED')
-    setBorderRadius('ROUNDED_MD')
+    const def = DESIGN_PRESETS[0]
+    setPrimaryColor(def.primaryColor)
+    setLayoutStyle(def.layoutStyle)
+    setPaperSize(def.paperSize)
+    setHeaderStyle(def.headerStyle)
+    setTableStyle(def.tableStyle)
+    setBorderRadius(def.borderRadius)
+    setFontFamily(def.fontFamily)
     setCurrencyPosition('AFTER')
-    setBusinessName(currentMerchant?.name || 'My Store')
+    setBusinessName(currentMerchant?.name || 'BIM')
     setLogoUrl(currentMerchant?.logo || '')
     setShowLogo(true)
     setTaxNumber('300012345678901')
     setCommercialReg('1010203040')
-    setHeaderNotice('Thank you for your business!')
-    setFooterNotice('Goods can be exchanged or returned within 14 days with original receipt.')
+    setHeaderNotice('')
+    setFooterNotice('شكراً لتسوقكم معنا • يمكن الاسترجاع خلال 14 يوماً بالفاتورة الأصلية.')
     setShowQrCode(true)
     setQrPosition('FOOTER_RIGHT')
     setShowTaxDetails(true)
@@ -271,90 +323,170 @@ export function InvoiceDesigner() {
     setShowBarcode(true)
     setShowWatermark(false)
     setWatermarkText('PAID')
-    toast.info('Template reset to default settings')
+    setHasUnsaved(true)
+    toast.info(t('تمت استعادة الإعدادات الافتراضية', 'Reset to default design'))
   }
 
-  // Sample data for preview
-  const sampleItems = [
-    { name: 'Wireless Bluetooth Earbuds Pro', qty: 1, price: 850.0, total: 850.0, barcode: '622100012345' },
-    { name: 'Organic Colombian Coffee 500g', qty: 2, price: 125.0, total: 250.0, barcode: '622100067890' },
-    { name: 'Fast Charging USB-C Cable 2M', qty: 1, price: 95.0, total: 95.0, barcode: '622100034567' },
-  ]
-  const sampleSubtotal = 1195.0
-  const sampleTax = showTaxDetails ? sampleSubtotal * 0.14 : 0
-  const sampleGrandTotal = sampleSubtotal + sampleTax
+  // Build live InvoiceTemplate object fed directly into the REAL <CustomizedInvoiceView />
+  const liveTemplate: InvoiceTemplate = React.useMemo(
+    () => ({
+      id: 'preview-template',
+      merchantId: selectedMerchantId,
+      templateName,
+      layoutStyle,
+      paperSize,
+      primaryColor,
+      accentColor,
+      fontFamily,
+      headerStyle,
+      tableStyle,
+      borderRadius,
+      currencyPosition,
+      businessName: businessName || currentMerchant?.name || 'GREEN STORE',
+      logoUrl,
+      showLogo,
+      taxNumber,
+      commercialReg,
+      headerNotice,
+      footerNotice,
+      showQrCode,
+      qrPosition,
+      showTaxDetails,
+      showBranchInfo,
+      showCashierName,
+      showBarcode,
+      showWatermark,
+      watermarkText,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }),
+    [
+      selectedMerchantId,
+      templateName,
+      layoutStyle,
+      paperSize,
+      primaryColor,
+      accentColor,
+      fontFamily,
+      headerStyle,
+      tableStyle,
+      borderRadius,
+      currencyPosition,
+      businessName,
+      currentMerchant?.name,
+      logoUrl,
+      showLogo,
+      taxNumber,
+      commercialReg,
+      headerNotice,
+      footerNotice,
+      showQrCode,
+      qrPosition,
+      showTaxDetails,
+      showBranchInfo,
+      showCashierName,
+      showBarcode,
+      showWatermark,
+      watermarkText,
+    ]
+  )
 
-  const formatPrice = (val: number) => {
-    const formatted = val.toFixed(2)
-    return currencyPosition === 'BEFORE' ? `EGP ${formatted}` : `${formatted} EGP`
-  }
-
-  // Font family class
-  const getFontFamilyClass = () => {
-    switch (fontFamily) {
-      case 'serif':
-        return 'font-serif'
-      case 'mono':
-        return 'font-mono'
-      case 'cairo':
-        return 'font-sans tracking-wide'
-      default:
-        return 'font-sans'
+  // Realistic sample invoice so preview is 100% WYSIWYG with POS & PDF
+  const sampleInvoice: Invoice = React.useMemo(() => {
+    const subtotal = 315.0
+    const taxTotal = showTaxDetails ? Math.round(subtotal * 0.14 * 100) / 100 : 0
+    return {
+      id: 'preview-inv',
+      invoiceNumber: 'INV-2026-0042',
+      merchantId: selectedMerchantId,
+      branchId: currentBranch?.id || null,
+      customerName: 'عميل نقدي (Walk-in)',
+      paymentMethod: 'INSTAPAY',
+      status: 'PAID',
+      subtotal,
+      taxTotal,
+      feesTotal: 0,
+      discountTotal: 0,
+      grandTotal: subtotal + taxTotal,
+      issuedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      items: [
+        {
+          id: 'item-1',
+          invoiceId: 'preview-inv',
+          productName: 'نسكافيه جولد 100 جم',
+          barcode: '6221000123456',
+          quantity: 1,
+          unitPrice: 185.0,
+          totalPrice: 185.0,
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'item-2',
+          invoiceId: 'preview-inv',
+          productName: 'لبن جهينة كامل الدسم 1 لتر',
+          barcode: '6221000678901',
+          quantity: 2,
+          unitPrice: 45.0,
+          totalPrice: 90.0,
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'item-3',
+          invoiceId: 'preview-inv',
+          productName: 'شيبسي عائلي جبنة متبلة',
+          barcode: '6221000345678',
+          quantity: 2,
+          unitPrice: 20.0,
+          totalPrice: 40.0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
     }
-  }
-
-  // Border radius style
-  const getBorderRadiusClass = () => {
-    switch (borderRadius) {
-      case 'ROUNDED_NONE':
-        return 'rounded-none'
-      case 'ROUNDED_LG':
-        return 'rounded-2xl'
-      default:
-        return 'rounded-xl'
-    }
-  }
+  }, [selectedMerchantId, currentBranch?.id, showTaxDetails])
 
   return (
-    <div className='flex flex-col h-screen overflow-hidden bg-background'>
+    <>
       <Header fixed>
-        <div className='flex items-center gap-2'>
-          <h1 className='font-semibold text-sm'>
-            {isSuperAdmin ? 'Platform Super Admin' : 'Store Management'}
-          </h1>
-          <Badge
-            variant='outline'
-            className='text-xs bg-emerald-500/10 text-emerald-600 dark:text-[#3EEA85] border-emerald-500/20'
-          >
-            Invoice Designer
-          </Badge>
-        </div>
         <div className='ms-auto flex items-center gap-2'>
+          <PosShortcutButton />
           <LanguageSwitch />
           <ThemeSwitch />
           <ProfileDropdown />
         </div>
       </Header>
 
-      {/* Main Single-View Studio Container */}
-      <Main className='flex-1 flex flex-col p-4 md:p-6 overflow-hidden'>
-        {/* Top Control Bar */}
-        <div className='flex items-center justify-between gap-3 pb-3 border-b border-border/60 shrink-0'>
-          <div className='flex items-center gap-2'>
-            <h2 className='text-lg font-bold tracking-tight'>Live Invoice Studio</h2>
-            <Badge variant='outline' className='text-[10px] hidden sm:inline-flex'>
-              Single-View Editor
-            </Badge>
+      <Main className='flex flex-1 flex-col gap-4 p-4 sm:p-5'>
+        {/* Top Studio Bar */}
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+          <div>
+            <div className='flex items-center gap-2'>
+              <h1 className='text-xl sm:text-2xl font-bold tracking-tight text-foreground'>
+                {t('مصمم الفاتورة', 'Invoice Designer')}
+              </h1>
+              {hasUnsaved && (
+                <Badge
+                  variant='outline'
+                  className='text-[10px] font-bold border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                >
+                  {t('تعديلات غير محفوظة', 'Unsaved changes')}
+                </Badge>
+              )}
+            </div>
+            <p className='text-xs text-muted-foreground mt-0.5'>
+              {t(
+                'صمّم شكل فاتورة متجرك مع معاينة مطابقة 100% للـ POS وملف الـ PDF المرسل للعملاء.',
+                'Design your invoice template with a 100% live WYSIWYG preview matching POS and WhatsApp PDFs.'
+              )}
+            </p>
           </div>
 
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-2 flex-wrap shrink-0'>
             {isSuperAdmin && merchants.length > 0 && (
-              <Select
-                value={selectedMerchantId}
-                onValueChange={(val) => setSelectedMerchantId(val)}
-              >
-                <SelectTrigger className='h-8 text-xs w-44'>
-                  <SelectValue placeholder='Select Merchant' />
+              <Select value={selectedMerchantId} onValueChange={setSelectedMerchantId}>
+                <SelectTrigger className='h-9 text-xs w-44 rounded-lg bg-card'>
+                  <SelectValue placeholder={t('اختر المتجر', 'Select Merchant')} />
                 </SelectTrigger>
                 <SelectContent>
                   {merchants.map((m) => (
@@ -367,753 +499,657 @@ export function InvoiceDesigner() {
             )}
 
             <Button
+              type='button'
               variant='outline'
               size='sm'
               onClick={handleResetDefaults}
-              className='gap-1.5 h-8 text-xs'
+              className='h-9 px-3 rounded-lg gap-1.5 text-xs font-semibold cursor-pointer'
             >
               <RotateCcw className='size-3.5' />
-              <span className='hidden sm:inline'>Reset Defaults</span>
+              <span className='hidden sm:inline'>{t('افتراضي', 'Reset')}</span>
             </Button>
 
             <Button
+              type='button'
+              size='sm'
               onClick={handleSave}
               disabled={isSaving}
-              size='sm'
-              className='gap-1.5 h-8 text-xs font-semibold'
+              className='h-9 px-4 rounded-lg gap-1.5 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs'
             >
-              <Save className='size-3.5' />
-              {isSaving ? 'Saving...' : 'Save Template'}
+              {isSaving ? <Loader2 className='size-3.5 animate-spin' /> : <Save className='size-3.5' />}
+              <span>{isSaving ? t('جاري الحفظ...', 'Saving...') : t('حفظ التصميم', 'Save Template')}</span>
             </Button>
           </div>
         </div>
 
-        {/* 2-Column Split Workspace (Fixed Height, No Page Scroll) */}
-        <div className='flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 pt-3 overflow-hidden'>
-          {/* LEFT: Controls Panel with Tabs (Scrolls internally) */}
-          <div className='lg:col-span-5 flex flex-col h-full overflow-hidden border border-border/60 rounded-xl bg-card shadow-2xs'>
-            <Tabs defaultValue='style' className='flex flex-col h-full'>
-              {/* Tab Header Bar */}
-              <TabsList className='grid grid-cols-4 p-1 bg-muted/60 rounded-none border-b border-border/60 shrink-0'>
-                <TabsTrigger value='style' className='text-xs gap-1 py-1.5'>
-                  <Palette className='size-3.5' />
-                  <span>Style</span>
-                </TabsTrigger>
-                <TabsTrigger value='layout' className='text-xs gap-1 py-1.5'>
-                  <LayoutGrid className='size-3.5' />
-                  <span>Layout</span>
-                </TabsTrigger>
-                <TabsTrigger value='identity' className='text-xs gap-1 py-1.5'>
-                  <Building2 className='size-3.5' />
-                  <span>Identity</span>
-                </TabsTrigger>
-                <TabsTrigger value='toggles' className='text-xs gap-1 py-1.5'>
-                  <Sliders className='size-3.5' />
-                  <span>Toggles</span>
-                </TabsTrigger>
-              </TabsList>
+        {/* 2-Column Clean Studio Workspace */}
+        <div className='grid grid-cols-1 lg:grid-cols-[390px_minmax(0,1fr)] gap-4 items-stretch flex-1 min-h-[640px] lg:h-[calc(100vh-12rem)]'>
+          {/* ── CONTROLS PANEL ── */}
+          <div className='flex flex-col rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden min-h-0'>
+            {/* Segmented Tab Switcher */}
+            <div className='p-2 border-b border-border/70 bg-muted/30 shrink-0'>
+              <div className='grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted/60'>
+                {(
+                  [
+                    { id: 'style', icon: Palette, label: t('التصميم', 'Style') },
+                    { id: 'brand', icon: Building2, label: t('الهوية', 'Brand') },
+                    { id: 'elements', icon: Sliders, label: t('العناصر', 'Elements') },
+                  ] as const
+                ).map((tab) => {
+                  const Icon = tab.icon
+                  const active = activeTab === tab.id
+                  return (
+                    <button
+                      key={tab.id}
+                      type='button'
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`h-8 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        active
+                          ? 'bg-background text-foreground shadow-2xs border border-border/60'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Icon className='size-3.5' />
+                      <span>{tab.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
-              {/* Tab Contents: Scrollable Inside This Container */}
-              <div className='flex-1 overflow-y-auto p-4 space-y-4 text-xs'>
-                {/* 1. Style & Presets */}
-                <TabsContent value='style' className='mt-0 space-y-4'>
-                  {/* Quick Theme Presets */}
-                  <div className='space-y-1.5'>
-                    <Label className='text-xs font-bold flex items-center gap-1.5'>
-                      <Sparkles className='size-3.5 text-primary' /> One-Click Theme Presets
+            {/* Scrollable Tab Body */}
+            <div className='flex-1 overflow-y-auto p-4 space-y-5 text-xs'>
+              {/* TAB 1: STYLE & LAYOUT */}
+              {activeTab === 'style' && (
+                <>
+                  {/* Ready Presets */}
+                  <div className='space-y-2'>
+                    <Label className='text-xs font-bold flex items-center gap-1.5 text-foreground'>
+                      <Sparkles className='size-3.5 text-emerald-600 dark:text-[#3EEA85]' />
+                      <span>{t('قوالب جاهزة بضغطة واحدة', 'Quick Presets')}</span>
                     </Label>
                     <div className='grid grid-cols-2 gap-2'>
-                      {DESIGN_PRESETS.map((preset) => (
-                        <button
-                          key={preset.name}
-                          type='button'
-                          onClick={() => handleApplyPreset(preset)}
-                          className='p-2 rounded-lg border border-border/80 hover:border-primary text-start transition-all hover:bg-muted/40 flex items-center gap-2 group'
-                        >
-                          <span
-                            className='size-3 rounded-full shrink-0'
-                            style={{ backgroundColor: preset.primaryColor }}
-                          />
-                          <span className='font-semibold truncate text-[11px]'>{preset.name}</span>
-                        </button>
-                      ))}
+                      {DESIGN_PRESETS.map((preset) => {
+                        const isMatch =
+                          primaryColor.toLowerCase() === preset.primaryColor.toLowerCase() &&
+                          paperSize === preset.paperSize &&
+                          headerStyle === preset.headerStyle &&
+                          tableStyle === preset.tableStyle
+                        return (
+                          <button
+                            key={preset.id}
+                            type='button'
+                            onClick={() => handleApplyPreset(preset)}
+                            className={`p-2.5 rounded-xl border text-start transition-all cursor-pointer space-y-1.5 ${
+                              isMatch
+                                ? 'border-foreground bg-muted/60 shadow-2xs'
+                                : 'border-border/80 hover:border-foreground/40 hover:bg-muted/30'
+                            }`}
+                          >
+                            <div className='flex items-center justify-between gap-2'>
+                              <span
+                                className='h-2 w-8 rounded-full'
+                                style={{ backgroundColor: preset.primaryColor }}
+                              />
+                              <span className='text-[9.5px] font-mono text-muted-foreground font-bold'>
+                                {preset.paperSize}
+                              </span>
+                            </div>
+                            <p className='font-bold text-xs text-foreground leading-tight'>
+                              {isAr ? preset.nameAr : preset.nameEn}
+                            </p>
+                            <p className='text-[10px] text-muted-foreground leading-snug line-clamp-1'>
+                              {isAr ? preset.descAr : preset.descEn}
+                            </p>
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
 
-                  {/* Primary Color Palette */}
-                  <div className='space-y-1.5 border-t pt-3'>
-                    <Label className='text-xs font-semibold'>Primary Brand Color</Label>
-                    <div className='flex items-center gap-2 flex-wrap'>
-                      {COLOR_PRESETS.map((color) => (
-                        <button
-                          key={color.value}
-                          type='button'
-                          onClick={() => setPrimaryColor(color.value)}
-                          className={`size-6 rounded-full transition-transform flex items-center justify-center ${
-                            color.class
-                          } ${
-                            primaryColor === color.value
-                              ? 'ring-2 ring-primary ring-offset-2 scale-110'
-                              : 'hover:scale-105'
-                          }`}
-                          title={color.name}
-                        >
-                          {primaryColor === color.value && (
-                            <Check className='size-3 text-white' />
-                          )}
-                        </button>
-                      ))}
-                      <div className='flex items-center gap-1 ml-auto'>
+                  {/* Paper Size Visual Cards */}
+                  <div className='space-y-2 pt-3 border-t border-border/70'>
+                    <Label className='text-xs font-bold text-foreground'>
+                      {t('مقاس الفاتورة', 'Paper Format')}
+                    </Label>
+                    <div className='grid grid-cols-2 gap-2'>
+                      <button
+                        type='button'
+                        onClick={() => {
+                          setPaperSize('80MM')
+                          setLayoutStyle('THERMAL_POS')
+                          setHasUnsaved(true)
+                        }}
+                        className={`p-3 rounded-xl border flex items-center gap-2.5 text-start transition-all cursor-pointer ${
+                          paperSize === '80MM'
+                            ? 'border-foreground bg-muted/60'
+                            : 'border-border/80 hover:bg-muted/30'
+                        }`}
+                      >
+                        <div className='size-8 rounded-lg bg-muted border border-border/70 flex items-center justify-center shrink-0'>
+                          <Receipt className='size-4' />
+                        </div>
+                        <div className='min-w-0'>
+                          <p className='font-bold text-xs'>{t('كاشير 80mm', '80mm Thermal')}</p>
+                          <p className='text-[10px] text-muted-foreground'>{t('إيصال حراري', 'POS roll')}</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type='button'
+                        onClick={() => {
+                          setPaperSize('A4')
+                          setLayoutStyle(layoutStyle === 'THERMAL_POS' ? 'MODERN' : layoutStyle)
+                          setHasUnsaved(true)
+                        }}
+                        className={`p-3 rounded-xl border flex items-center gap-2.5 text-start transition-all cursor-pointer ${
+                          paperSize === 'A4'
+                            ? 'border-foreground bg-muted/60'
+                            : 'border-border/80 hover:bg-muted/30'
+                        }`}
+                      >
+                        <div className='size-8 rounded-lg bg-muted border border-border/70 flex items-center justify-center shrink-0'>
+                          <FileText className='size-4' />
+                        </div>
+                        <div className='min-w-0'>
+                          <p className='font-bold text-xs'>{t('ورق A4', 'A4 Sheet')}</p>
+                          <p className='text-[10px] text-muted-foreground'>{t('فاتورة كاملة', 'Full page')}</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Brand Primary Color */}
+                  <div className='space-y-2 pt-3 border-t border-border/70'>
+                    <div className='flex items-center justify-between'>
+                      <Label className='text-xs font-bold text-foreground'>
+                        {t('اللون الأساسي للفاتورة', 'Primary Accent Color')}
+                      </Label>
+                      <label className='inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border bg-muted/40 cursor-pointer'>
                         <input
                           type='color'
                           value={primaryColor}
-                          onChange={(e) => setPrimaryColor(e.target.value)}
-                          className='size-6 rounded cursor-pointer border'
+                          onChange={(e) => markDirty(setPrimaryColor)(e.target.value)}
+                          className='size-4 rounded cursor-pointer border-0 bg-transparent p-0'
                         />
-                        <span className='font-mono text-[10px] uppercase text-muted-foreground'>
+                        <span className='font-mono text-[10px] uppercase font-bold text-muted-foreground'>
                           {primaryColor}
                         </span>
+                      </label>
+                    </div>
+
+                    <div className='flex items-center gap-2 flex-wrap pt-0.5'>
+                      {COLOR_PRESETS.map((c) => {
+                        const active = primaryColor.toLowerCase() === c.value.toLowerCase()
+                        return (
+                          <button
+                            key={c.value}
+                            type='button'
+                            onClick={() => markDirty(setPrimaryColor)(c.value)}
+                            style={{ backgroundColor: c.value }}
+                            className={`size-7 rounded-full flex items-center justify-center transition-transform cursor-pointer border border-black/15 dark:border-white/15 ${
+                              active ? 'ring-2 ring-foreground ring-offset-2 ring-offset-card scale-110' : 'hover:scale-105'
+                            }`}
+                            title={c.name}
+                          >
+                            {active && <Check className='size-3.5 text-white' />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Header Style Visual Wireframes */}
+                  <div className='space-y-2 pt-3 border-t border-border/70'>
+                    <Label className='text-xs font-bold text-foreground'>
+                      {t('ستايل الهيدر العلوي', 'Header Style')}
+                    </Label>
+                    <div className='grid grid-cols-2 gap-2'>
+                      {[
+                        { id: 'BORDER_TOP', label: t('شريط علوي رفيع', 'Top Accent Bar') },
+                        { id: 'SOLID_BANNER', label: t('بانر ممتلئ', 'Solid Banner') },
+                        { id: 'SUBTLE_TINT', label: t('خلفية ناعمة', 'Subtle Tint') },
+                        { id: 'MINIMAL', label: t('بسيط ونظيف', 'Minimal') },
+                      ].map((item) => {
+                        const active = headerStyle === item.id
+                        return (
+                          <button
+                            key={item.id}
+                            type='button'
+                            onClick={() => markDirty(setHeaderStyle)(item.id)}
+                            className={`p-2 rounded-xl border text-start transition-all cursor-pointer space-y-1.5 ${
+                              active
+                                ? 'border-foreground bg-muted/60'
+                                : 'border-border/80 hover:bg-muted/30'
+                            }`}
+                          >
+                            {/* Mini wireframe preview */}
+                            <div className='h-6 rounded-md border border-border/70 bg-background overflow-hidden flex flex-col'>
+                              {item.id === 'BORDER_TOP' && (
+                                <div className='h-1.5 w-full' style={{ backgroundColor: primaryColor }} />
+                              )}
+                              {item.id === 'SOLID_BANNER' && (
+                                <div className='h-full w-full' style={{ backgroundColor: primaryColor }} />
+                              )}
+                              {item.id === 'SUBTLE_TINT' && (
+                                <div
+                                  className='h-full w-full'
+                                  style={{ backgroundColor: `${primaryColor}22` }}
+                                />
+                              )}
+                            </div>
+                            <span className='block text-[11px] font-bold text-foreground'>
+                              {item.label}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Table Style & Corner Radius */}
+                  <div className='grid grid-cols-1 gap-3.5 pt-3 border-t border-border/70'>
+                    <div className='space-y-1.5'>
+                      <Label className='text-xs font-bold text-foreground'>
+                        {t('ستايل جدول الأصناف', 'Table Style')}
+                      </Label>
+                      <div className='grid grid-cols-3 gap-1.5'>
+                        {[
+                          { id: 'STRIPED', label: t('مخطط', 'Striped') },
+                          { id: 'GRID', label: t('شبكة كاملة', 'Grid') },
+                          { id: 'MINIMAL', label: t('خطوط بسيطة', 'Minimal') },
+                        ].map((st) => (
+                          <button
+                            key={st.id}
+                            type='button'
+                            onClick={() => markDirty(setTableStyle)(st.id)}
+                            className={`h-8 rounded-lg border text-[11px] font-bold transition-colors cursor-pointer ${
+                              tableStyle === st.id
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background hover:bg-muted/40 border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            {st.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className='space-y-1.5'>
+                      <Label className='text-xs font-bold text-foreground'>
+                        {t('انحناء الزوايا', 'Corner Radius')}
+                      </Label>
+                      <div className='grid grid-cols-3 gap-1.5'>
+                        {[
+                          { id: 'ROUNDED_NONE', label: t('حاد', 'Sharp') },
+                          { id: 'ROUNDED_MD', label: t('متوسط', 'Medium') },
+                          { id: 'ROUNDED_LG', label: t('دائري ناعم', 'Soft') },
+                        ].map((rad) => (
+                          <button
+                            key={rad.id}
+                            type='button'
+                            onClick={() => markDirty(setBorderRadius)(rad.id)}
+                            className={`h-8 rounded-lg border text-[11px] font-bold transition-colors cursor-pointer ${
+                              borderRadius === rad.id
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background hover:bg-muted/40 border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            {rad.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className='grid grid-cols-2 gap-2.5'>
+                      <div className='space-y-1.5'>
+                        <Label className='text-xs font-bold text-foreground'>
+                          {t('الخط', 'Font')}
+                        </Label>
+                        <Select value={fontFamily} onValueChange={markDirty(setFontFamily)}>
+                          <SelectTrigger className='h-8 text-xs rounded-lg'>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='cairo'>{t('عربي حديث (Cairo)', 'Modern Arabic')}</SelectItem>
+                            <SelectItem value='sans'>{t('نظيف (Sans)', 'Clean Sans')}</SelectItem>
+                            <SelectItem value='serif'>{t('كلاسيك (Serif)', 'Classic Serif')}</SelectItem>
+                            <SelectItem value='mono'>{t('أرقام (Mono)', 'Monospace')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className='space-y-1.5'>
+                        <Label className='text-xs font-bold text-foreground'>
+                          {t('موضع العملة', 'Currency')}
+                        </Label>
+                        <Select value={currencyPosition} onValueChange={markDirty(setCurrencyPosition)}>
+                          <SelectTrigger className='h-8 text-xs rounded-lg'>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='AFTER'>120.00 EGP</SelectItem>
+                            <SelectItem value='BEFORE'>EGP 120.00</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
+                </>
+              )}
 
-                  {/* Header Banner Style */}
-                  <div className='space-y-1.5 border-t pt-3'>
-                    <Label className='text-xs font-semibold'>Header Banner Styling</Label>
-                    <div className='grid grid-cols-2 gap-2'>
-                      {[
-                        { id: 'BORDER_TOP', label: 'Top Colored Stripe' },
-                        { id: 'SOLID_BANNER', label: 'Solid Colored Banner' },
-                        { id: 'SUBTLE_TINT', label: 'Light Pastel Tint' },
-                        { id: 'MINIMAL', label: 'Clean Minimalist' },
-                      ].map((item) => (
-                        <Button
-                          key={item.id}
-                          type='button'
-                          size='sm'
-                          variant={headerStyle === item.id ? 'default' : 'outline'}
-                          className='h-8 text-[11px] justify-start px-2 font-medium'
-                          onClick={() => setHeaderStyle(item.id)}
-                        >
-                          {item.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Table Styling */}
-                  <div className='space-y-1.5 border-t pt-3'>
-                    <Label className='text-xs font-semibold'>Items Table Styling</Label>
-                    <div className='grid grid-cols-3 gap-2'>
-                      {[
-                        { id: 'STRIPED', label: 'Zebra Striped' },
-                        { id: 'GRID', label: 'Full Grid' },
-                        { id: 'MINIMAL', label: 'Minimal Lines' },
-                      ].map((item) => (
-                        <Button
-                          key={item.id}
-                          type='button'
-                          size='sm'
-                          variant={tableStyle === item.id ? 'default' : 'outline'}
-                          className='h-8 text-[11px]'
-                          onClick={() => setTableStyle(item.id)}
-                        >
-                          {item.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Corner Roundness */}
-                  <div className='space-y-1.5 border-t pt-3'>
-                    <Label className='text-xs font-semibold'>Corners & Roundness</Label>
-                    <div className='grid grid-cols-3 gap-2'>
-                      {[
-                        { id: 'ROUNDED_NONE', label: 'Sharp 0px' },
-                        { id: 'ROUNDED_MD', label: 'Medium 8px' },
-                        { id: 'ROUNDED_LG', label: 'Soft 16px' },
-                      ].map((item) => (
-                        <Button
-                          key={item.id}
-                          type='button'
-                          size='sm'
-                          variant={borderRadius === item.id ? 'default' : 'outline'}
-                          className='h-8 text-[11px]'
-                          onClick={() => setBorderRadius(item.id)}
-                        >
-                          {item.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* 2. Layout & Typography */}
-                <TabsContent value='layout' className='mt-0 space-y-4'>
-                  {/* Layout Style */}
+              {/* TAB 2: BRAND & IDENTITY */}
+              {activeTab === 'brand' && (
+                <div className='space-y-4'>
                   <div className='space-y-1.5'>
-                    <Label className='text-xs font-semibold'>Invoice Layout Architecture</Label>
-                    <div className='grid grid-cols-3 gap-2'>
-                      <Button
-                        type='button'
-                        size='sm'
-                        variant={layoutStyle === 'MODERN' ? 'default' : 'outline'}
-                        className='h-8 text-xs'
-                        onClick={() => setLayoutStyle('MODERN')}
-                      >
-                        Modern A4
-                      </Button>
-                      <Button
-                        type='button'
-                        size='sm'
-                        variant={layoutStyle === 'CLASSIC' ? 'default' : 'outline'}
-                        className='h-8 text-xs'
-                        onClick={() => setLayoutStyle('CLASSIC')}
-                      >
-                        Classic A4
-                      </Button>
-                      <Button
-                        type='button'
-                        size='sm'
-                        variant={layoutStyle === 'THERMAL_POS' ? 'default' : 'outline'}
-                        className='h-8 text-xs'
-                        onClick={() => {
-                          setLayoutStyle('THERMAL_POS')
-                          setPaperSize('80MM')
-                        }}
-                      >
-                        POS 80mm
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Paper Format */}
-                  <div className='space-y-1.5 border-t pt-3'>
-                    <Label className='text-xs font-semibold'>Print Paper Format</Label>
-                    <Select
-                      value={paperSize}
-                      onValueChange={(val) => setPaperSize(val as InvoicePaperSize)}
-                    >
-                      <SelectTrigger className='h-8 text-xs'>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value='A4'>A4 Standard Document Sheet</SelectItem>
-                        <SelectItem value='80MM'>80mm Thermal Cashier Roll</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Typography Font */}
-                  <div className='space-y-1.5 border-t pt-3'>
-                    <Label className='text-xs font-semibold flex items-center gap-1.5'>
-                      <Type className='size-3.5 text-primary' /> Typography & Font Family
-                    </Label>
-                    <div className='grid grid-cols-2 gap-2'>
-                      {[
-                        { id: 'sans', label: 'Clean Sans-Serif' },
-                        { id: 'cairo', label: 'Modern Cairo / Arabic' },
-                        { id: 'serif', label: 'Classic Serif' },
-                        { id: 'mono', label: 'Monospace Code' },
-                      ].map((font) => (
-                        <Button
-                          key={font.id}
-                          type='button'
-                          size='sm'
-                          variant={fontFamily === font.id ? 'default' : 'outline'}
-                          className='h-8 text-[11px]'
-                          onClick={() => setFontFamily(font.id)}
-                        >
-                          {font.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Currency Symbol Position */}
-                  <div className='space-y-1.5 border-t pt-3'>
-                    <Label className='text-xs font-semibold'>Currency Position</Label>
-                    <div className='grid grid-cols-2 gap-2'>
-                      <Button
-                        type='button'
-                        size='sm'
-                        variant={currencyPosition === 'AFTER' ? 'default' : 'outline'}
-                        className='h-8 text-[11px]'
-                        onClick={() => setCurrencyPosition('AFTER')}
-                      >
-                        120.00 EGP (After)
-                      </Button>
-                      <Button
-                        type='button'
-                        size='sm'
-                        variant={currencyPosition === 'BEFORE' ? 'default' : 'outline'}
-                        className='h-8 text-[11px]'
-                        onClick={() => setCurrencyPosition('BEFORE')}
-                      >
-                        EGP 120.00 (Before)
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* 3. Store Identity & Content */}
-                <TabsContent value='identity' className='mt-0 space-y-3.5'>
-                  <div>
-                    <Label className='text-xs font-semibold'>Store / Brand Name</Label>
+                    <Label className='text-xs font-bold'>{t('اسم المتجر / النشاط', 'Store / Business Name')}</Label>
                     <Input
-                      className='h-8 text-xs mt-1'
-                      placeholder='Store Name'
+                      className='h-9 text-xs rounded-lg'
+                      placeholder={t('اسم المتجر على الفاتورة', 'Store name on invoice')}
                       value={businessName}
-                      onChange={(e) => setBusinessName(e.target.value)}
+                      onChange={(e) => markDirty(setBusinessName)(e.target.value)}
                     />
                   </div>
 
-                  <div>
-                    <Label className='text-xs font-semibold'>Store Logo URL</Label>
-                    <Input
-                      className='h-8 text-xs mt-1'
-                      placeholder='https://...'
-                      value={logoUrl}
-                      onChange={(e) => setLogoUrl(e.target.value)}
-                    />
+                  <div className='space-y-1.5'>
+                    <Label className='text-xs font-bold'>{t('رابط لوجو المتجر (Logo URL)', 'Store Logo URL')}</Label>
+                    <div className='flex items-center gap-2'>
+                      <div className='size-9 rounded-lg border border-border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0'>
+                        {logoUrl ? (
+                          <img src={logoUrl} alt='Logo' className='size-full object-contain p-0.5' />
+                        ) : (
+                          <ImageIcon className='size-4 text-muted-foreground' />
+                        )}
+                      </div>
+                      <Input
+                        dir='ltr'
+                        className='h-9 text-xs rounded-lg flex-1 font-mono'
+                        placeholder='https://...'
+                        value={logoUrl}
+                        onChange={(e) => markDirty(setLogoUrl)(e.target.value)}
+                      />
+                    </div>
                   </div>
 
                   <div className='grid grid-cols-2 gap-2.5'>
-                    <div>
-                      <Label className='text-xs font-semibold'>Tax ID (الرقم الضريبي)</Label>
+                    <div className='space-y-1.5'>
+                      <Label className='text-xs font-bold'>{t('الرقم الضريبي', 'Tax Number')}</Label>
                       <Input
-                        className='h-8 text-xs mt-1 font-mono'
+                        dir='ltr'
+                        className='h-9 text-xs rounded-lg font-mono'
                         placeholder='300012345678901'
                         value={taxNumber}
-                        onChange={(e) => setTaxNumber(e.target.value)}
+                        onChange={(e) => markDirty(setTaxNumber)(e.target.value)}
                       />
                     </div>
-                    <div>
-                      <Label className='text-xs font-semibold'>Commercial Reg (السجل)</Label>
+                    <div className='space-y-1.5'>
+                      <Label className='text-xs font-bold'>{t('السجل التجاري', 'Commercial Reg')}</Label>
                       <Input
-                        className='h-8 text-xs mt-1 font-mono'
+                        dir='ltr'
+                        className='h-9 text-xs rounded-lg font-mono'
                         placeholder='1010203040'
                         value={commercialReg}
-                        onChange={(e) => setCommercialReg(e.target.value)}
+                        onChange={(e) => markDirty(setCommercialReg)(e.target.value)}
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <Label className='text-xs font-semibold'>Header Notice / Slogan</Label>
+                  <div className='space-y-1.5'>
+                    <Label className='text-xs font-bold'>{t('رسالة ترحيب أعلى الفاتورة', 'Header Notice / Slogan')}</Label>
                     <Input
-                      className='h-8 text-xs mt-1'
-                      placeholder='e.g., Thank you for shopping with us!'
+                      className='h-9 text-xs rounded-lg'
+                      placeholder={t('مثال: أهلاً بكم في فروعنا...', 'e.g., Welcome to our store!')}
                       value={headerNotice}
-                      onChange={(e) => setHeaderNotice(e.target.value)}
+                      onChange={(e) => markDirty(setHeaderNotice)(e.target.value)}
                     />
                   </div>
 
-                  <div>
-                    <Label className='text-xs font-semibold'>Terms, Notes & Return Policy</Label>
+                  <div className='space-y-1.5'>
+                    <Label className='text-xs font-bold'>
+                      {t('تذييل الفاتورة وشروط الاسترجاع', 'Footer Notice & Return Terms')}
+                    </Label>
                     <Textarea
-                      rows={2}
-                      className='text-xs mt-1'
-                      placeholder='Return within 14 days with original receipt...'
+                      rows={3}
+                      className='text-xs rounded-lg'
+                      placeholder={t('شكراً لزيارتكم • الاسترجاع خلال 14 يوماً...', 'Thank you for visiting...')}
                       value={footerNotice}
-                      onChange={(e) => setFooterNotice(e.target.value)}
+                      onChange={(e) => markDirty(setFooterNotice)(e.target.value)}
                     />
                   </div>
-                </TabsContent>
+                </div>
+              )}
 
-                {/* 4. Toggles & Visibility */}
-                <TabsContent value='toggles' className='mt-0 space-y-3'>
-                  <div className='flex items-center justify-between py-1'>
-                    <Label htmlFor='tog-logo' className='cursor-pointer text-xs font-medium'>
-                      Display Store Logo
-                    </Label>
-                    <Switch id='tog-logo' checked={showLogo} onCheckedChange={setShowLogo} />
+              {/* TAB 3: VISIBILITY ELEMENTS */}
+              {activeTab === 'elements' && (
+                <div className='space-y-3'>
+                  <div className='rounded-xl border border-border/80 bg-muted/20 divide-y divide-border/60'>
+                    {[
+                      {
+                        id: 'tog-logo',
+                        label: t('عرض لوجو المتجر', 'Show Store Logo'),
+                        checked: showLogo,
+                        onChange: markDirty(setShowLogo),
+                      },
+                      {
+                        id: 'tog-branch',
+                        label: t('عرض اسم الفرع والعنوان', 'Show Branch & Address'),
+                        checked: showBranchInfo,
+                        onChange: markDirty(setShowBranchInfo),
+                      },
+                      {
+                        id: 'tog-cashier',
+                        label: t('عرض اسم الكاشير وطريقة الدفع', 'Show Cashier & Payment'),
+                        checked: showCashierName,
+                        onChange: markDirty(setShowCashierName),
+                      },
+                      {
+                        id: 'tog-tax',
+                        label: t('عرض تفاصيل ضريبة القيمة المضافة', 'Show Tax / VAT Breakdown'),
+                        checked: showTaxDetails,
+                        onChange: markDirty(setShowTaxDetails),
+                      },
+                      {
+                        id: 'tog-barcode',
+                        label: t('عرض باركود الفاتورة بالأسفل', 'Show Footer Barcode'),
+                        checked: showBarcode,
+                        onChange: markDirty(setShowBarcode),
+                      },
+                    ].map((row) => (
+                      <div key={row.id} className='px-3.5 py-2.5 flex items-center justify-between gap-2'>
+                        <Label htmlFor={row.id} className='text-xs font-semibold cursor-pointer'>
+                          {row.label}
+                        </Label>
+                        <Switch id={row.id} checked={row.checked} onCheckedChange={row.onChange} />
+                      </div>
+                    ))}
                   </div>
 
-                  <div className='flex items-center justify-between py-1 border-t pt-2'>
-                    <Label htmlFor='tog-qr' className='cursor-pointer text-xs font-medium'>
-                      Display QR Verification Code
-                    </Label>
-                    <Switch id='tog-qr' checked={showQrCode} onCheckedChange={setShowQrCode} />
-                  </div>
-
-                  {showQrCode && (
-                    <div className='space-y-1.5 pl-4 border-l-2 border-primary/30'>
-                      <Label className='text-[11px] text-muted-foreground'>QR Code Position</Label>
-                      <Select value={qrPosition} onValueChange={setQrPosition}>
-                        <SelectTrigger className='h-7 text-xs'>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value='FOOTER_RIGHT'>Footer Right</SelectItem>
-                          <SelectItem value='FOOTER_CENTER'>Footer Center</SelectItem>
-                          <SelectItem value='HEADER_RIGHT'>Header Top Right</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  {/* QR Code Card */}
+                  <div className='rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2.5'>
+                    <div className='flex items-center justify-between'>
+                      <Label htmlFor='tog-qr' className='text-xs font-bold cursor-pointer'>
+                        {t('كود التحقق الإلكتروني (QR Code)', 'Electronic QR Code')}
+                      </Label>
+                      <Switch id='tog-qr' checked={showQrCode} onCheckedChange={markDirty(setShowQrCode)} />
                     </div>
-                  )}
-
-                  <div className='flex items-center justify-between py-1 border-t pt-2'>
-                    <Label htmlFor='tog-tax' className='cursor-pointer text-xs font-medium'>
-                      Display Tax Breakdown & VAT
-                    </Label>
-                    <Switch
-                      id='tog-tax'
-                      checked={showTaxDetails}
-                      onCheckedChange={setShowTaxDetails}
-                    />
+                    {showQrCode && (
+                      <div className='grid grid-cols-3 gap-1.5 pt-1'>
+                        {[
+                          { id: 'FOOTER_RIGHT', label: t('أسفل جانب', 'Footer Side') },
+                          { id: 'FOOTER_CENTER', label: t('أسفل وسط', 'Footer Center') },
+                          { id: 'HEADER_RIGHT', label: t('أعلى الهيدر', 'Top Header') },
+                        ].map((pos) => (
+                          <button
+                            key={pos.id}
+                            type='button'
+                            onClick={() => markDirty(setQrPosition)(pos.id)}
+                            className={`h-7 rounded-lg border text-[10.5px] font-bold transition-colors cursor-pointer ${
+                              qrPosition === pos.id
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background hover:bg-muted/40 border-border text-muted-foreground'
+                            }`}
+                          >
+                            {pos.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className='flex items-center justify-between py-1 border-t pt-2'>
-                    <Label htmlFor='tog-branch' className='cursor-pointer text-xs font-medium'>
-                      Display Branch Location & Address
-                    </Label>
-                    <Switch
-                      id='tog-branch'
-                      checked={showBranchInfo}
-                      onCheckedChange={setShowBranchInfo}
-                    />
-                  </div>
-
-                  <div className='flex items-center justify-between py-1 border-t pt-2'>
-                    <Label htmlFor='tog-cashier' className='cursor-pointer text-xs font-medium'>
-                      Display Cashier Name
-                    </Label>
-                    <Switch
-                      id='tog-cashier'
-                      checked={showCashierName}
-                      onCheckedChange={setShowCashierName}
-                    />
-                  </div>
-
-                  <div className='flex items-center justify-between py-1 border-t pt-2'>
-                    <Label htmlFor='tog-barcode' className='cursor-pointer text-xs font-medium'>
-                      Display Invoice Barcode
-                    </Label>
-                    <Switch
-                      id='tog-barcode'
-                      checked={showBarcode}
-                      onCheckedChange={setShowBarcode}
-                    />
-                  </div>
-
-                  <div className='flex items-center justify-between py-1 border-t pt-2'>
-                    <Label htmlFor='tog-watermark' className='cursor-pointer text-xs font-medium flex items-center gap-1.5'>
-                      <Stamp className='size-3.5 text-primary' /> Diagonal Watermark Stamp
-                    </Label>
-                    <Switch
-                      id='tog-watermark'
-                      checked={showWatermark}
-                      onCheckedChange={setShowWatermark}
-                    />
-                  </div>
-
-                  {showWatermark && (
-                    <div className='space-y-1.5 pl-4 border-l-2 border-primary/30'>
-                      <Label className='text-[11px] text-muted-foreground'>Watermark Text</Label>
-                      <Input
-                        className='h-7 text-xs font-bold uppercase'
-                        placeholder='PAID / مدفوع'
-                        value={watermarkText}
-                        onChange={(e) => setWatermarkText(e.target.value)}
+                  {/* Watermark Card */}
+                  <div className='rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2.5'>
+                    <div className='flex items-center justify-between'>
+                      <Label htmlFor='tog-wm' className='text-xs font-bold cursor-pointer flex items-center gap-1.5'>
+                        <Stamp className='size-3.5' />
+                        <span>{t('علامة مائية خلفية (Watermark)', 'Background Watermark')}</span>
+                      </Label>
+                      <Switch
+                        id='tog-wm'
+                        checked={showWatermark}
+                        onCheckedChange={markDirty(setShowWatermark)}
                       />
                     </div>
-                  )}
-                </TabsContent>
-              </div>
-            </Tabs>
+                    {showWatermark && (
+                      <Input
+                        className='h-8 text-xs font-bold uppercase rounded-lg bg-background'
+                        placeholder='PAID / مدفوعة'
+                        value={watermarkText}
+                        onChange={(e) => markDirty(setWatermarkText)(e.target.value)}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* RIGHT: Live Preview Panel (Pinned & Perfectly Centered in Viewport) */}
-          <div className='lg:col-span-7 flex flex-col h-full overflow-hidden border border-border/60 rounded-xl bg-muted/30 shadow-2xs'>
-            {/* Preview Toolbar */}
-            <div className='p-2.5 px-4 border-b border-border/60 bg-muted/60 flex items-center justify-between shrink-0'>
+          {/* ── LIVE WYSIWYG PREVIEW CANVAS ── */}
+          <div className='flex flex-col rounded-2xl border border-border/80 bg-muted/30 dark:bg-[#131314] shadow-xs overflow-hidden min-h-0'>
+            {/* Canvas Top Toolbar */}
+            <div className='px-4 py-2.5 border-b border-border/70 bg-card flex items-center justify-between gap-2 flex-wrap shrink-0'>
               <div className='flex items-center gap-2'>
-                <Eye className='size-3.5 text-primary' />
-                <span className='font-bold text-xs'>Live Invoice Preview</span>
-                <Badge variant='outline' className='text-[10px] py-0 px-1 font-mono uppercase'>
-                  {layoutStyle} • {paperSize}
-                </Badge>
+                <span className='size-2 rounded-full bg-[#00d632]' />
+                <Eye className='size-3.5 text-muted-foreground' />
+                <span className='font-bold text-xs text-foreground'>
+                  {t('معاينة حية مطابقة للـ POS والـ PDF', 'Live WYSIWYG Preview')}
+                </span>
               </div>
 
-              {/* Zoom Controls */}
-              <div className='flex items-center gap-1.5'>
+              {/* Quick Paper Toggle + Zoom + Print */}
+              <div className='flex items-center gap-2'>
+                <div className='hidden sm:flex items-center rounded-lg border border-border/80 p-0.5 bg-muted/40'>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setPaperSize('80MM')
+                      setLayoutStyle('THERMAL_POS')
+                      setHasUnsaved(true)
+                    }}
+                    className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold cursor-pointer transition-colors ${
+                      paperSize === '80MM'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    80mm
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setPaperSize('A4')
+                      setLayoutStyle(layoutStyle === 'THERMAL_POS' ? 'MODERN' : layoutStyle)
+                      setHasUnsaved(true)
+                    }}
+                    className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold cursor-pointer transition-colors ${
+                      paperSize === 'A4'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    A4
+                  </button>
+                </div>
+
+                <div className='flex items-center gap-0.5 rounded-lg border border-border/80 bg-background px-1 py-0.5'>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    className='size-6'
+                    onClick={() => setPreviewScale((s) => Math.max(0.7, Math.round((s - 0.1) * 10) / 10))}
+                    title={t('تصغير', 'Zoom Out')}
+                  >
+                    <ZoomOut className='size-3.5' />
+                  </Button>
+                  <span className='text-[11px] font-mono w-10 text-center font-bold text-muted-foreground'>
+                    {Math.round(previewScale * 100)}%
+                  </span>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    className='size-6'
+                    onClick={() => setPreviewScale((s) => Math.min(1.2, Math.round((s + 0.1) * 10) / 10))}
+                    title={t('تكبير', 'Zoom In')}
+                  >
+                    <ZoomIn className='size-3.5' />
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    className='size-6'
+                    onClick={() => setPreviewScale(1)}
+                    title={t('الحجم الطبيعي', 'Reset Zoom')}
+                  >
+                    <Maximize2 className='size-3' />
+                  </Button>
+                </div>
+
                 <Button
-                  variant='ghost'
-                  size='icon'
-                  className='size-7'
-                  onClick={() => setPreviewScale((s) => Math.max(0.6, s - 0.05))}
-                  title='Zoom Out'
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={() => window.print()}
+                  className='h-7 px-2.5 text-[11px] font-bold gap-1 rounded-lg cursor-pointer'
                 >
-                  <ZoomOut className='size-3.5' />
-                </Button>
-                <span className='text-[11px] font-mono w-10 text-center font-semibold text-muted-foreground'>
-                  {Math.round(previewScale * 100)}%
-                </span>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  className='size-7'
-                  onClick={() => setPreviewScale((s) => Math.min(1.2, s + 0.05))}
-                  title='Zoom In'
-                >
-                  <ZoomIn className='size-3.5' />
-                </Button>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  className='size-7'
-                  onClick={() => setPreviewScale(0.85)}
-                  title='Fit View'
-                >
-                  <Maximize2 className='size-3.5' />
+                  <Printer className='size-3.5' />
+                  <span className='hidden sm:inline'>{t('تجربة طباعة', 'Test Print')}</span>
                 </Button>
               </div>
             </div>
 
-            {/* Scrollable / Centered Preview Canvas */}
-            <div className='flex-1 overflow-auto p-4 flex items-start justify-center'>
+            {/* Subtle Dot-Grid Stage with Real <CustomizedInvoiceView /> */}
+            <div
+              dir={dir}
+              className='flex-1 overflow-auto p-6 flex items-start justify-center'
+              style={{
+                backgroundImage:
+                  'radial-gradient(circle, rgba(128,128,128,0.18) 1px, transparent 1px)',
+                backgroundSize: '18px 18px',
+              }}
+            >
               <div
                 style={{
                   transform: `scale(${previewScale})`,
                   transformOrigin: 'top center',
                   transition: 'transform 0.15s ease',
                 }}
-                className={`relative bg-white text-zinc-900 shadow-xl border border-zinc-200 p-6 sm:p-7 shrink-0 ${getFontFamilyClass()} ${getBorderRadiusClass()} ${
-                  paperSize === '80MM' || layoutStyle === 'THERMAL_POS'
-                    ? 'w-[360px] text-xs'
-                    : 'w-[580px] text-xs'
-                }`}
+                className='flex justify-center'
               >
-                {/* Optional Watermark */}
-                {showWatermark && (
-                  <div className='absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden'>
-                    <span className='text-zinc-200/70 font-black text-6xl tracking-widest -rotate-45 uppercase border-4 border-dashed border-zinc-200/60 p-4 rounded-xl'>
-                      {watermarkText || 'PAID'}
-                    </span>
-                  </div>
-                )}
-
-                {/* Header Banner according to headerStyle */}
-                {headerStyle === 'BORDER_TOP' && (
-                  <div
-                    className='h-1.5 -mx-6 -mt-6 sm:-mx-7 sm:-mt-7 mb-4'
-                    style={{ backgroundColor: primaryColor }}
-                  />
-                )}
-
-                {headerStyle === 'SOLID_BANNER' && (
-                  <div
-                    className='-mx-6 -mt-6 sm:-mx-7 sm:-mt-7 p-4 mb-4 text-white flex items-center justify-between'
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    <div>
-                      <h3 className='font-bold text-base'>
-                        {businessName || currentMerchant?.name || 'My Store'}
-                      </h3>
-                      <p className='text-[10px] text-white/80'>Official Sales Receipt</p>
-                    </div>
-                    <span className='font-mono font-bold text-xs bg-white/20 px-2 py-0.5 rounded'>
-                      #INV-2026-001
-                    </span>
-                  </div>
-                )}
-
-                {headerStyle === 'SUBTLE_TINT' && (
-                  <div
-                    className='-mx-6 -mt-6 sm:-mx-7 sm:-mt-7 p-4 mb-4 border-b flex items-center justify-between'
-                    style={{ backgroundColor: `${primaryColor}12` }}
-                  >
-                    <div>
-                      <h3 className='font-bold text-base' style={{ color: primaryColor }}>
-                        {businessName || currentMerchant?.name || 'My Store'}
-                      </h3>
-                      <p className='text-[10px] text-zinc-500'>Tax Sales Invoice</p>
-                    </div>
-                    <span
-                      className='font-mono font-bold text-xs px-2 py-0.5 rounded'
-                      style={{ color: primaryColor, backgroundColor: `${primaryColor}25` }}
-                    >
-                      #INV-2026-001
-                    </span>
-                  </div>
-                )}
-
-                {/* Main Header Info (if not solid banner) */}
-                {headerStyle !== 'SOLID_BANNER' && headerStyle !== 'SUBTLE_TINT' && (
-                  <div className='flex items-start justify-between border-b pb-3.5 border-zinc-200'>
-                    <div className='flex items-center gap-3'>
-                      {showLogo && logoUrl && (
-                        <img
-                          src={logoUrl}
-                          alt='Logo'
-                          className='size-11 object-contain rounded border border-zinc-200'
-                          onError={(e) => {
-                            ;(e.target as HTMLElement).style.display = 'none'
-                          }}
-                        />
-                      )}
-                      <div>
-                        <h3 className='text-base font-bold' style={{ color: primaryColor }}>
-                          {businessName || currentMerchant?.name || 'My Store'}
-                        </h3>
-                        {showBranchInfo && currentBranch && (
-                          <p className='text-[10px] text-zinc-500'>
-                            {currentBranch.name} • {currentBranch.address || 'Cairo, Egypt'}
-                          </p>
-                        )}
-                        {taxNumber && (
-                          <p className='text-[9px] text-zinc-500 font-mono'>Tax ID: {taxNumber}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className='text-right'>
-                      <div
-                        className='inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold text-white'
-                        style={{ backgroundColor: primaryColor }}
-                      >
-                        TAX INVOICE
-                      </div>
-                      <p className='font-mono font-bold text-xs mt-1'>#INV-2026-001</p>
-                      <p className='text-[9px] text-zinc-400'>
-                        Date: {new Date().toLocaleDateString('en-GB')}
-                      </p>
-                      {showQrCode && qrPosition === 'HEADER_RIGHT' && (
-                        <div className='size-10 bg-zinc-100 border p-0.5 mt-1 ml-auto flex items-center justify-center rounded'>
-                          <QrCode className='size-9 text-zinc-800' />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Slogan / Notice */}
-                {headerNotice && (
-                  <div className='py-1.5 text-center text-[10px] font-medium text-zinc-600 bg-zinc-50 border-b border-zinc-100 my-2 rounded'>
-                    {headerNotice}
-                  </div>
-                )}
-
-                {/* Customer Details Box */}
-                <div className='my-2.5 p-2 bg-zinc-50 rounded border border-zinc-200 text-[10px] flex justify-between items-center'>
-                  <div>
-                    <span className='text-zinc-400'>Billed To: </span>
-                    <span className='font-bold text-zinc-800'>Hassan Ibrahim</span>
-                    <span className='text-zinc-400 ml-1.5'>• 01099887766</span>
-                  </div>
-                  {showCashierName && (
-                    <span className='text-zinc-500 font-medium'>Cashier: Omar K.</span>
-                  )}
-                </div>
-
-                {/* Items Table with Selected Table Style */}
-                <table className='w-full my-2.5 border-collapse text-left text-[11px]'>
-                  <thead>
-                    <tr
-                      className={`text-[10px] font-bold ${
-                        tableStyle === 'GRID'
-                          ? 'border border-zinc-300 bg-zinc-100'
-                          : 'border-b border-zinc-300'
-                      }`}
-                      style={{ color: primaryColor }}
-                    >
-                      <th className='py-1.5 px-2'>Item Name</th>
-                      <th className='py-1.5 px-2 text-center'>Qty</th>
-                      <th className='py-1.5 px-2 text-right'>Price</th>
-                      <th className='py-1.5 px-2 text-right'>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody
-                    className={
-                      tableStyle === 'STRIPED'
-                        ? 'divide-y divide-zinc-100 text-zinc-700'
-                        : tableStyle === 'GRID'
-                        ? 'border border-zinc-300 divide-y divide-zinc-200 text-zinc-700'
-                        : 'divide-y divide-zinc-100 text-zinc-700'
-                    }
-                  >
-                    {sampleItems.map((item, idx) => (
-                      <tr
-                        key={idx}
-                        className={
-                          tableStyle === 'STRIPED' && idx % 2 === 1 ? 'bg-zinc-50/70' : ''
-                        }
-                      >
-                        <td className='py-1 px-2 font-medium'>
-                          <div>{item.name}</div>
-                          <div className='text-[8px] text-zinc-400 font-mono'>{item.barcode}</div>
-                        </td>
-                        <td className='py-1 px-2 text-center font-mono'>{item.qty}</td>
-                        <td className='py-1 px-2 text-right font-mono'>{formatPrice(item.price)}</td>
-                        <td className='py-1 px-2 text-right font-mono font-bold'>
-                          {formatPrice(item.total)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* Summary / Totals */}
-                <div className='border-t border-zinc-200 pt-2 flex flex-col items-end space-y-1 text-[10px]'>
-                  <div className='flex justify-between w-44 text-zinc-600'>
-                    <span>Subtotal:</span>
-                    <span className='font-mono font-semibold'>{formatPrice(sampleSubtotal)}</span>
-                  </div>
-                  {showTaxDetails && (
-                    <div className='flex justify-between w-44 text-zinc-600'>
-                      <span>VAT (14%):</span>
-                      <span className='font-mono font-semibold'>{formatPrice(sampleTax)}</span>
-                    </div>
-                  )}
-                  <div
-                    className='flex justify-between w-44 pt-1 border-t border-zinc-300 font-bold text-xs text-zinc-900'
-                    style={{ color: primaryColor }}
-                  >
-                    <span>Grand Total:</span>
-                    <span className='font-mono text-sm'>{formatPrice(sampleGrandTotal)}</span>
-                  </div>
-                </div>
-
-                {/* Footer Notes & QR & Barcode */}
-                <div className='mt-4 pt-3 border-t border-dashed border-zinc-300 flex flex-col gap-2'>
-                  <div
-                    className={`flex items-center justify-between text-[9px] text-zinc-500 ${
-                      qrPosition === 'FOOTER_CENTER' ? 'flex-col text-center gap-2' : ''
-                    }`}
-                  >
-                    {footerNotice && (
-                      <p className='max-w-[280px] leading-relaxed'>{footerNotice}</p>
-                    )}
-                    {showQrCode && qrPosition !== 'HEADER_RIGHT' && (
-                      <div className='flex flex-col items-center shrink-0'>
-                        <div className='size-12 bg-zinc-50 border p-0.5 rounded flex items-center justify-center'>
-                          <QrCode className='size-10 text-zinc-800' />
-                        </div>
-                        <span className='text-[7px] text-zinc-400 mt-0.5 font-mono'>
-                          ZATCA E-Invoice
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Printable Barcode */}
-                  {showBarcode && (
-                    <div className='pt-2 flex flex-col items-center justify-center border-t border-zinc-100'>
-                      <div className='flex items-center gap-1 text-zinc-700 opacity-80'>
-                        <BarcodeIcon className='h-6 w-36' />
-                      </div>
-                      <span className='text-[8px] font-mono text-zinc-400 tracking-widest'>
-                        *INV-2026-001*
-                      </span>
-                    </div>
-                  )}
-                </div>
+                <CustomizedInvoiceView
+                  invoice={sampleInvoice}
+                  template={liveTemplate}
+                  merchant={currentMerchant}
+                  branch={currentBranch}
+                  cashierName={currentUser.name}
+                  className='shadow-xl overflow-hidden'
+                />
               </div>
             </div>
           </div>
         </div>
       </Main>
-    </div>
+    </>
   )
 }

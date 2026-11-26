@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Globe, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDirection } from '@/context/direction-provider'
-import { getCookie, setCookie } from '@/lib/cookies'
+import { setCookie } from '@/lib/cookies'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -14,17 +14,14 @@ import {
 const LANG_COOKIE = 'app_language'
 
 export function LanguageSwitch() {
-  const { setDir } = useDirection()
-  const [currentLang, setCurrentLang] = React.useState<'en' | 'ar'>(() => {
-    return (getCookie(LANG_COOKIE) as 'en' | 'ar') || 'en'
-  })
+  const { dir, setDir } = useDirection()
+  const currentLang: 'en' | 'ar' = dir === 'rtl' ? 'ar' : 'en'
 
   React.useEffect(() => {
     document.documentElement.lang = currentLang
   }, [currentLang])
 
   const switchLanguage = (lang: 'en' | 'ar') => {
-    setCurrentLang(lang)
     setCookie(LANG_COOKIE, lang, 60 * 60 * 24 * 365)
     document.documentElement.lang = lang
     if (lang === 'ar') {

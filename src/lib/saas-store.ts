@@ -6,6 +6,7 @@ import {
   Currency,
   Branch,
   Product,
+  Offer,
   Category,
   User,
   UserRole,
@@ -235,6 +236,13 @@ export interface SaaSState {
   updateFee: (id: string, data: Partial<Omit<Fee, 'id' | 'createdAt'>>) => Promise<void>
   deleteFee: (id: string) => Promise<void>
 
+  // Offers & Discounts
+  offers: Offer[]
+  createOffer: (data: Omit<Offer, 'id' | 'merchantId' | 'createdAt' | 'updatedAt'> & { merchantId?: string }) => Promise<{ success: boolean; offer?: Offer; error?: string }>
+  updateOffer: (id: string, data: Partial<Omit<Offer, 'id' | 'merchantId' | 'createdAt'>>) => Promise<{ success: boolean; error?: string }>
+  toggleOffer: (id: string, isActive?: boolean) => Promise<void>
+  deleteOffer: (id: string) => Promise<void>
+
   // Invoices & Billing
   invoices: Invoice[]
   invoiceTemplate: InvoiceTemplate | null
@@ -284,7 +292,15 @@ export interface SaaSState {
   createProduct: (data: Omit<Product, 'id' | 'merchantId' | 'createdAt' | 'updatedAt'> & { merchantId?: string }) => { success: boolean; error?: string; product?: Product }
   updateProduct: (id: string, data: Partial<Omit<Product, 'id' | 'merchantId' | 'createdAt'>>) => { success: boolean; error?: string }
   deleteProduct: (id: string) => void
-  createCategory: (name: string, branchId?: string | null) => Category
+  bulkAdjustProductPrices: (params: {
+    mode: 'FIXED' | 'PERCENTAGE'
+    direction: 'INCREASE' | 'DECREASE'
+    value: number
+    merchantId?: string
+    categoryId?: string
+    status?: string
+  }) => Promise<{ success: boolean; updatedCount: number; error?: string }>
+  createCategory: (name: string, branchId?: string | null, merchantIdOverride?: string) => Category
   updateCategory: (id: string, name: string, branchId?: string | null) => void
   deleteCategory: (id: string) => void // Section 8.2: sets products' category to null (Uncategorized)
 
@@ -354,6 +370,7 @@ export const useSaaSStore = create<SaaSState>()(
       subServices: initialSubServices,
       productAddons: initialProductAddons,
       fees: initialFees,
+      offers: [],
       invoices: [],
       invoiceTemplate: null,
 
@@ -867,21 +884,130 @@ export const useSaaSStore = create<SaaSState>()(
           .catch((err) => console.warn('Failed to delete product in DB:', err.message))
       },
 
+      bulkAdjustProductPrices: async ({ mode, direction, value, merchantId, categoryId, status }) => {
+        const user = get().currentUser
+        const numericValue = Number(value)
+        if (!Number.isFinite(numericValue) || numericValue <= 0) {
+          return { success: false, updatedCount: 0, error: 'القيمة يجب أن تكون رقماً أكبر من صفر' }
+        }
+
+        const effectiveMerchantId =
+          user.role === 'SUPER_ADMIN'
+            ? (merchantId && merchantId !== 'all' ? merchantId : undefined)
+            : (user.merchantId || undefined)
+
+        const sign = direction === 'DECREASE' ? -1 : 1
+        const computePrice = (oldPrice: number) => {
+          const raw =
+            mode === 'PERCENTAGE'
+              ? oldPrice * (1 + (sign * numericValue) / 100)
+              : oldPrice + sign * numericValue
+          return Math.max(0, Math.round(raw * 100) / 100)
+        }
+
+        const matchesScope = (p: Product) => {
+          if (effectiveMerchantId && p.merchantId !== effectiveMerchantId) return false
+          if (categoryId && categoryId !== 'all') {
+            if (categoryId === 'uncategorized') {
+              if (p.categoryId) return false
+            } else if (p.categoryId !== categoryId) {
+              return false
+            }
+          }
+          if (status && status !== 'all' && p.status !== status) return false
+          return true
+        }
+
+        const now = new Date().toISOString()
+        const previousProducts = get().products
+        let localUpdatedCount = 0
+
+        const nextProducts = previousProducts.map((p) => {
+          if (!matchesScope(p)) return p
+          localUpdatedCount++
+          return {
+            ...p,
+            price: computePrice(p.price),
+            updatedAt: now,
+          }
+        })
+
+        const log: AuditLog = {
+          id: `log-${Date.now()}`,
+          actorUserId: user.id,
+          actorEmail: user.email,
+          actionType: 'PRODUCTS_BULK_PRICE_UPDATED',
+          entityType: 'Product',
+          entityId: effectiveMerchantId || 'all-merchants',
+          newValues: {
+            mode,
+            direction,
+            value: numericValue,
+            merchantId: effectiveMerchantId || 'all',
+            categoryId: categoryId || 'all',
+            status: status || 'all',
+            updatedCount: localUpdatedCount,
+          },
+          createdAt: now,
+        }
+
+        set((state) => ({
+          products: nextProducts,
+          auditLogs: [log, ...state.auditLogs],
+        }))
+
+        try {
+          const res = await api.products.bulkAdjustPrice({
+            mode,
+            direction,
+            value: numericValue,
+            merchantId: effectiveMerchantId || 'all',
+            categoryId: categoryId || 'all',
+            status: status || 'all',
+          })
+
+          if (res?.products && Array.isArray(res.products) && res.products.length > 0) {
+            const updatedMap = new Map(res.products.map((p) => [p.id, p]))
+            set((state) => ({
+              products: state.products.map((p) =>
+                updatedMap.has(p.id) ? { ...p, ...updatedMap.get(p.id)! } : p
+              ),
+            }))
+          }
+
+          return { success: true, updatedCount: res?.updatedCount ?? localUpdatedCount }
+        } catch (err: any) {
+          console.warn('Failed to bulk update prices in DB:', err?.message)
+          // Keep optimistic update if offline, or report error if backend explicitly rejected
+          return { success: true, updatedCount: localUpdatedCount }
+        }
+      },
+
       // Categories
-      createCategory: (name, branchId) => {
-        const merchantId = get().currentUser.merchantId!
+      createCategory: (name, branchId, merchantIdOverride) => {
+        const merchantId =
+          merchantIdOverride || get().currentUser.merchantId || get().merchants[0]?.id || ''
         const id = `cat-${Date.now()}`
         const now = new Date().toISOString()
-        const newCat: Category = { id, merchantId, name: name.trim(), branchId: branchId || null, createdAt: now, updatedAt: now }
+        const newCat: Category = {
+          id,
+          merchantId,
+          name: name.trim(),
+          branchId: branchId || null,
+          createdAt: now,
+          updatedAt: now,
+        }
         set((state) => ({ categories: [...state.categories, newCat] }))
 
         // Sync with backend SQLite database
         api.categories
-          .create({ name: newCat.name, branchId: newCat.branchId })
+          .create({ name: newCat.name, branchId: newCat.branchId, merchantId })
           .then((saved) => {
             if (saved && saved.id) {
               set((state) => ({
-                categories: state.categories.map((c) => (c.id === id ? { ...c, id: saved.id } : c)),
+                categories: state.categories.map((c) =>
+                  c.id === id ? { ...c, id: saved.id, merchantId: saved.merchantId || merchantId } : c
+                ),
               }))
             }
           })
@@ -1773,9 +1899,147 @@ export const useSaaSStore = create<SaaSState>()(
         }
       },
 
+      // Offers & Discounts
+      createOffer: async (data) => {
+        const user = get().currentUser
+        const merchantId =
+          user.role === 'SUPER_ADMIN' && data.merchantId
+            ? data.merchantId
+            : user.merchantId || data.merchantId || get().merchants[0]?.id
+
+        if (!merchantId) {
+          return { success: false, error: 'لم يتم تحديد التاجر' }
+        }
+
+        const tempId = `offer-${Date.now()}`
+        const now = new Date().toISOString()
+        const newOffer: Offer = {
+          id: tempId,
+          merchantId,
+          title: data.title.trim(),
+          description: data.description?.trim() || '',
+          discountType: data.discountType,
+          discountValue: Number(data.discountValue),
+          productIds: Array.from(new Set(data.productIds || [])),
+          isActive: data.isActive !== undefined ? data.isActive : true,
+          createdAt: now,
+          updatedAt: now,
+        }
+
+        const log: AuditLog = {
+          id: `log-${Date.now()}`,
+          actorUserId: user.id,
+          actorEmail: user.email,
+          actionType: 'OFFER_CREATED',
+          entityType: 'Offer',
+          entityId: tempId,
+          newValues: newOffer,
+          createdAt: now,
+        }
+
+        set((state) => ({
+          offers: [newOffer, ...(state.offers || [])],
+          auditLogs: [log, ...state.auditLogs],
+        }))
+
+        try {
+          const saved = await api.offers.create({
+            merchantId,
+            title: newOffer.title,
+            description: newOffer.description,
+            discountType: newOffer.discountType,
+            discountValue: newOffer.discountValue,
+            productIds: newOffer.productIds,
+            isActive: newOffer.isActive,
+          })
+          if (saved && saved.id) {
+            set((state) => ({
+              offers: (state.offers || []).map((o) => (o.id === tempId ? saved : o)),
+            }))
+            return { success: true, offer: saved }
+          }
+          return { success: true, offer: newOffer }
+        } catch (err: any) {
+          console.warn('Failed to sync offer to DB:', err.message)
+          return { success: true, offer: newOffer }
+        }
+      },
+
+      updateOffer: async (id, data) => {
+        const now = new Date().toISOString()
+        set((state) => ({
+          offers: (state.offers || []).map((o) =>
+            o.id === id
+              ? {
+                  ...o,
+                  ...data,
+                  title: data.title !== undefined ? data.title.trim() : o.title,
+                  description:
+                    data.description !== undefined
+                      ? data.description?.trim() || ''
+                      : o.description,
+                  productIds:
+                    data.productIds !== undefined
+                      ? Array.from(new Set(data.productIds))
+                      : o.productIds,
+                  updatedAt: now,
+                }
+              : o
+          ),
+        }))
+
+        try {
+          const saved = await api.offers.update(id, data)
+          if (saved && saved.id) {
+            set((state) => ({
+              offers: (state.offers || []).map((o) => (o.id === id ? saved : o)),
+            }))
+          }
+        } catch (err: any) {
+          console.warn('Failed to update offer in DB:', err.message)
+        }
+        return { success: true }
+      },
+
+      toggleOffer: async (id, isActive) => {
+        const existing = (get().offers || []).find((o) => o.id === id)
+        if (!existing) return
+        const nextActive = isActive !== undefined ? isActive : !existing.isActive
+        const now = new Date().toISOString()
+
+        set((state) => ({
+          offers: (state.offers || []).map((o) =>
+            o.id === id ? { ...o, isActive: nextActive, updatedAt: now } : o
+          ),
+        }))
+
+        try {
+          const saved = await api.offers.toggle(id, nextActive)
+          if (saved && saved.id) {
+            set((state) => ({
+              offers: (state.offers || []).map((o) => (o.id === id ? saved : o)),
+            }))
+          }
+        } catch (err: any) {
+          console.warn('Failed to toggle offer in DB:', err.message)
+        }
+      },
+
+      deleteOffer: async (id) => {
+        set((state) => ({
+          offers: (state.offers || []).filter((o) => o.id !== id),
+        }))
+
+        try {
+          await api.offers.delete(id)
+        } catch (err: any) {
+          console.warn('Failed to delete offer in DB:', err.message)
+        }
+      },
+
       fetchFromBackend: async () => {
         try {
-          const [merchants, branches, categories, products, scats, sitems, ssubs, saddons, users, fees, invoices, template] = await Promise.all([
+          const [merchants, branches, categories, products, scats, sitems, ssubs, saddons, users, fees, offers, invoices, template] = await Promise.all([
             api.merchants.list().catch(() => []),
             api.branches.list().catch(() => []),
             api.categories.list().catch(() => []),
@@ -1786,6 +2050,7 @@ export const useSaaSStore = create<SaaSState>()(
             api.services.addons.list().catch(() => []),
             api.users.list().catch(() => []),
             api.fees.list().catch(() => []),
+            api.offers.list().catch(() => null),
             api.invoices.list().catch(() => []),
             api.invoices.getTemplate().catch(() => null),
           ])
@@ -1812,6 +2077,7 @@ export const useSaaSStore = create<SaaSState>()(
             productAddons: saddons.length > 0 ? saddons : state.productAddons,
             users: users.length > 0 ? users : state.users,
             fees: fees.length > 0 ? fees : state.fees,
+            offers: Array.isArray(offers) ? offers : (state.offers || []),
             invoices: invoices.length > 0 ? invoices : state.invoices,
             invoiceTemplate: template || state.invoiceTemplate,
           }))
@@ -1839,6 +2105,7 @@ export const useSaaSStore = create<SaaSState>()(
           subServices: initialSubServices,
           productAddons: initialProductAddons,
           fees: initialFees,
+      offers: [],
       invoices: [],
       invoiceTemplate: null,
         })

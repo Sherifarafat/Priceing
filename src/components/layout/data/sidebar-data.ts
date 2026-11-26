@@ -17,14 +17,20 @@ import {
   FileText,
   Palette,
   Monitor,
+  BadgePercent,
+  MessageCircle,
 } from 'lucide-react'
 import { User, UserRole, StaffPermissionKey, MerchantFeatureKey, MerchantFeatures } from '@/types/saas'
 import { type SidebarData, type NavGroup, type NavItem } from '../types'
 
 export function getSaaSSidebarNav(
   userOrRole: User | UserRole,
-  merchantFeatures?: Partial<MerchantFeatures>
+  merchantFeatures?: Partial<MerchantFeatures>,
+  lang: 'ar' | 'en' = 'en'
 ): NavGroup[] {
+  const isAr = lang === 'ar'
+  const t = (ar: string, en: string) => (isAr ? ar : en)
+
   const role: UserRole = typeof userOrRole === 'string' ? userOrRole : userOrRole.role
   const user: User | null = typeof userOrRole === 'object' ? userOrRole : null
 
@@ -51,106 +57,121 @@ export function getSaaSSidebarNav(
         title: '',
         items: [
           {
-            title: 'Platform Dashboard',
-            url: '/',
+            title: t('لوحة التحكم', 'Platform Dashboard'),
+            url: '/dashboard',
             icon: LayoutDashboard,
           },
           {
-            title: 'نقطة البيع (POS)',
+            title: t('نقطة البيع (POS)', 'POS Terminal'),
             url: '/pos',
             icon: Monitor,
           },
           {
-            title: 'Merchants',
+            title: t('التجار والمتاجر', 'Merchants'),
             url: '/merchants',
             icon: Building2,
           },
           {
-            title: 'Branches',
+            title: t('الفروع', 'Branches'),
             url: '/branches',
             icon: Store,
           },
           {
-            title: 'Product Hub',
+            title: t('إدارة المنتجات', 'Product Hub'),
             icon: Boxes,
             items: [
               {
-                title: 'Products',
+                title: t('المنتجات', 'Products'),
                 url: '/products',
                 icon: Package,
               },
               {
-                title: 'Add-ons',
+                title: t('أقسام المنتجات', 'Categories'),
+                url: '/categories',
+                icon: Tags,
+              },
+              {
+                title: t('الإضافات', 'Add-ons'),
                 url: '/add-ons',
                 icon: PackagePlus,
               },
             ],
           },
           {
-            title: 'Services',
+            title: t('العروض والخصومات', 'Offers'),
+            url: '/offers',
+            icon: BadgePercent,
+          },
+          {
+            title: t('الخدمات', 'Services'),
             icon: Briefcase,
             items: [
               {
-                title: 'Category',
+                title: t('التصنيفات', 'Categories'),
                 url: '/services/categories',
                 icon: Tags,
               },
               {
-                title: 'Services',
+                title: t('الخدمات', 'Services'),
                 url: '/services',
                 icon: Briefcase,
               },
               {
-                title: 'Sub Services',
+                title: t('الخدمات الفرعية', 'Sub Services'),
                 url: '/services/sub-services',
                 icon: GitFork,
               },
             ],
           },
           {
-            title: 'Reports & Analytics',
+            title: t('التقارير والتحليلات', 'Reports & Analytics'),
             url: '/reports',
             icon: BarChart3,
           },
           {
-            title: 'Fees & Taxes',
+            title: t('الرسوم والضرائب', 'Fees & Taxes'),
             url: '/fees',
             icon: Receipt,
           },
           {
-            title: 'Invoices',
+            title: t('الفواتير', 'Invoices'),
             icon: FileText,
             items: [
               {
-                title: 'Issued Invoices',
+                title: t('الفواتير المصدرة', 'Issued Invoices'),
                 url: '/invoices',
                 icon: FileText,
               },
               {
-                title: 'Invoice Designer',
+                title: t('تصميم الفاتورة', 'Invoice Designer'),
                 url: '/invoices/design',
                 icon: Palette,
+              },
+              {
+                title: t('فواتير واتساب', 'WhatsApp Receipts'),
+                url: '/invoices/whatsapp',
+                icon: MessageCircle,
               },
             ],
           },
           {
-            title: 'Roles & Users',
+            title: t('الأدوار والمستخدمين', 'Roles & Users'),
             icon: ShieldCheck,
             items: [
               {
-                title: 'Roles',
+                title: t('الأدوار والصلاحيات', 'Roles'),
                 url: '/roles',
                 icon: ShieldCheck,
               },
               {
-                title: 'Users',
+                title: t('المستخدمين', 'Users'),
                 url: '/users',
                 icon: Users,
               },
             ],
           },
           {
-            title: 'Audit Logs',
+            title: t('سجل العمليات', 'Audit Logs'),
             url: '/audit-logs',
             icon: ScrollText,
           },
@@ -159,105 +180,120 @@ export function getSaaSSidebarNav(
     ]
   }
 
-  // 2. Merchant Store Manager / Owner - Full Store Authority (filtered by Merchant Feature Toggles)
+  // 2. Merchant Store Manager / Owner
   if (role === 'MERCHANT_MANAGER') {
     const managerItems: NavItem[] = []
 
     if (isFeatureEnabled('dashboard')) {
       managerItems.push({
-        title: 'Store Dashboard',
-        url: '/',
+        title: t('لوحة المتجر', 'Store Dashboard'),
+        url: '/dashboard',
         icon: LayoutDashboard,
       })
     }
     if (isFeatureEnabled('pos')) {
       managerItems.push({
-        title: 'نقطة البيع (POS)',
+        title: t('نقطة البيع (POS)', 'POS Terminal'),
         url: '/pos',
         icon: Monitor,
       })
     }
     if (isFeatureEnabled('branches')) {
       managerItems.push({
-        title: 'Store Branches',
+        title: t('فروع المتجر', 'Store Branches'),
         url: '/branches',
         icon: Store,
       })
     }
     if (isFeatureEnabled('products')) {
       managerItems.push({
-        title: 'Product Hub',
+        title: t('إدارة المنتجات', 'Product Hub'),
         icon: Boxes,
         items: [
           {
-            title: 'Products',
+            title: t('المنتجات', 'Products'),
             url: '/products',
             icon: Package,
           },
           {
-            title: 'Add-ons',
+            title: t('أقسام المنتجات', 'Categories'),
+            url: '/categories',
+            icon: Tags,
+          },
+          {
+            title: t('الإضافات', 'Add-ons'),
             url: '/add-ons',
             icon: PackagePlus,
           },
         ],
       })
+      managerItems.push({
+        title: t('العروض والخصومات', 'Offers'),
+        url: '/offers',
+        icon: BadgePercent,
+      })
     }
     if (isFeatureEnabled('invoices')) {
       managerItems.push({
-        title: 'Invoices & Billing',
+        title: t('الفواتير والمبيعات', 'Invoices & Billing'),
         icon: FileText,
         items: [
           {
-            title: 'Issued Invoices',
+            title: t('الفواتير المصدرة', 'Issued Invoices'),
             url: '/invoices',
             icon: FileText,
           },
           {
-            title: 'Invoice Designer',
+            title: t('تصميم الفاتورة', 'Invoice Designer'),
             url: '/invoices/design',
             icon: Palette,
+          },
+          {
+            title: t('فواتير واتساب', 'WhatsApp Receipts'),
+            url: '/invoices/whatsapp',
+            icon: MessageCircle,
           },
         ],
       })
     }
     if (isFeatureEnabled('fees')) {
       managerItems.push({
-        title: 'Fees & Taxes',
+        title: t('الرسوم والضرائب', 'Fees & Taxes'),
         url: '/fees',
         icon: Receipt,
       })
     }
     if (isFeatureEnabled('staff')) {
       managerItems.push({
-        title: 'Cashiers & Staff',
+        title: t('الكاشير والموظفين', 'Cashiers & Staff'),
         url: '/staff',
         icon: Users,
       })
     }
     if (isFeatureEnabled('reports')) {
       managerItems.push({
-        title: 'Reports & Analytics',
+        title: t('التقارير والتحليلات', 'Reports & Analytics'),
         url: '/reports',
         icon: BarChart3,
       })
     }
     if (isFeatureEnabled('services')) {
       managerItems.push({
-        title: 'Services',
+        title: t('الخدمات', 'Services'),
         icon: Briefcase,
         items: [
           {
-            title: 'Category',
+            title: t('التصنيفات', 'Categories'),
             url: '/services/categories',
             icon: Tags,
           },
           {
-            title: 'Services',
+            title: t('الخدمات', 'Services'),
             url: '/services',
             icon: Briefcase,
           },
           {
-            title: 'Sub Services',
+            title: t('الخدمات الفرعية', 'Sub Services'),
             url: '/services/sub-services',
             icon: GitFork,
           },
@@ -266,7 +302,7 @@ export function getSaaSSidebarNav(
     }
     if (isFeatureEnabled('excel')) {
       managerItems.push({
-        title: 'Excel Operations',
+        title: t('عمليات الإكسل', 'Excel Operations'),
         url: '/excel',
         icon: FileSpreadsheet,
       })
@@ -274,19 +310,19 @@ export function getSaaSSidebarNav(
 
     return [
       {
-        title: 'Store Operations',
+        title: t('إدارة المتجر', 'Store Operations'),
         items: managerItems,
       },
     ]
   }
 
-  // 3. Cashier or Merchant Staff - Strictly Filtered by Granular Permissions & Merchant Features
+  // 3. Cashier or Merchant Staff
   const staffItems: NavItem[] = []
 
   if (isFeatureEnabled('dashboard') && hasPerm('dashboard.view')) {
     staffItems.push({
-      title: 'Store Dashboard',
-      url: '/',
+      title: t('لوحة المتجر', 'Store Dashboard'),
+      url: '/dashboard',
       icon: LayoutDashboard,
     })
   }
@@ -294,14 +330,14 @@ export function getSaaSSidebarNav(
   if (hasPerm('invoices.view') || hasPerm('invoices.issue') || role === 'CASHIER') {
     if (isFeatureEnabled('pos')) {
       staffItems.push({
-        title: 'نقطة البيع (POS)',
+        title: t('نقطة البيع (POS)', 'POS Terminal'),
         url: '/pos',
         icon: Monitor,
       })
     }
     if (isFeatureEnabled('invoices')) {
       staffItems.push({
-        title: 'الفواتير والمبيعات',
+        title: t('الفواتير المصدرة', 'Issued Invoices'),
         url: '/invoices',
         icon: FileText,
       })
@@ -310,15 +346,20 @@ export function getSaaSSidebarNav(
 
   if (isFeatureEnabled('products') && (hasPerm('products.view') || role === 'CASHIER')) {
     staffItems.push({
-      title: 'Products & Lookup',
+      title: t('المنتجات والبحث', 'Products & Lookup'),
       url: '/products',
       icon: Package,
+    })
+    staffItems.push({
+      title: t('العروض والخصومات', 'Offers'),
+      url: '/offers',
+      icon: BadgePercent,
     })
   }
 
   if (isFeatureEnabled('branches') && hasPerm('branches.view')) {
     staffItems.push({
-      title: 'Branches',
+      title: t('الفروع', 'Branches'),
       url: '/branches',
       icon: Store,
     })
@@ -326,7 +367,7 @@ export function getSaaSSidebarNav(
 
   if (isFeatureEnabled('invoices') && hasPerm('invoices.design')) {
     staffItems.push({
-      title: 'Invoice Designer',
+      title: t('تصميم الفاتورة', 'Invoice Designer'),
       url: '/invoices/design',
       icon: Palette,
     })
@@ -334,7 +375,7 @@ export function getSaaSSidebarNav(
 
   if (isFeatureEnabled('fees') && hasPerm('fees.manage')) {
     staffItems.push({
-      title: 'Fees & Taxes',
+      title: t('الرسوم والضرائب', 'Fees & Taxes'),
       url: '/fees',
       icon: Receipt,
     })
@@ -342,7 +383,7 @@ export function getSaaSSidebarNav(
 
   if (isFeatureEnabled('reports') && hasPerm('reports.view')) {
     staffItems.push({
-      title: 'Reports',
+      title: t('التقارير', 'Reports'),
       url: '/reports',
       icon: BarChart3,
     })
@@ -350,7 +391,7 @@ export function getSaaSSidebarNav(
 
   if (isFeatureEnabled('excel') && (hasPerm('excel.import') || hasPerm('excel.bulk_edit'))) {
     staffItems.push({
-      title: 'Excel Operations',
+      title: t('عمليات الإكسل', 'Excel Operations'),
       url: '/excel',
       icon: FileSpreadsheet,
     })
@@ -358,7 +399,10 @@ export function getSaaSSidebarNav(
 
   return [
     {
-      title: role === 'CASHIER' ? 'Cashier Terminal' : 'Staff Workspace',
+      title:
+        role === 'CASHIER'
+          ? t('نقطة الكاشير', 'Cashier Terminal')
+          : t('مساحة الموظف', 'Staff Workspace'),
       items: staffItems,
     },
   ]

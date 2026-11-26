@@ -38,10 +38,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useSaaSStore } from '@/lib/saas-store'
+import { useLang } from '@/lib/i18n'
 import { ServiceCategory, EntityStatus } from '@/types/saas'
 import { toast } from 'sonner'
 
 export function ServiceCategoriesView() {
+  const { t } = useLang()
   const {
     serviceCategories,
     serviceItems,
@@ -140,23 +142,26 @@ export function ServiceCategoriesView() {
           <div>
             <div className='flex items-center gap-2'>
               <h1 className='text-2xl font-bold tracking-tight text-foreground'>
-                Service Categories
+                {t('تصنيفات الخدمات', 'Service Categories')}
               </h1>
               <Badge variant='outline' className='text-xs font-mono font-bold bg-muted/50'>
-                {filteredCategories.length} Categories
+                {filteredCategories.length} {t('تصنيف', 'Categories')}
               </Badge>
             </div>
             <p className='text-xs text-muted-foreground mt-1'>
-              Organize and classify all platform services, technical installations, and branch assignments.
+              {t(
+                'تنظيم وتصنيف جميع خدمات المنصة والربط بالفروع.',
+                'Organize and classify all platform services, technical installations, and branch assignments.'
+              )}
             </p>
           </div>
 
           <Button
             onClick={openCreateDialog}
-            className='gap-2 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold shadow-xs h-9 px-4 rounded-lg'
+            className='gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-xs h-9 px-4 rounded-lg cursor-pointer'
           >
             <Plus className='size-4' />
-            Add Category
+            {t('إضافة تصنيف', 'Add Category')}
           </Button>
         </div>
 
@@ -253,7 +258,7 @@ export function ServiceCategoriesView() {
                       >
                         <TableCell className='ps-5 py-3.5 font-semibold text-xs text-foreground'>
                           <div className='flex items-center gap-2.5'>
-                            <div className='size-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 flex items-center justify-center font-bold shrink-0 border border-indigo-100 dark:border-indigo-900/40'>
+                            <div className='size-8 rounded-lg bg-muted text-foreground flex items-center justify-center font-bold shrink-0 border border-border'>
                               <Tags className='size-4' />
                             </div>
                             <div>
@@ -428,8 +433,8 @@ export function ServiceCategoriesView() {
                 >
                   Cancel
                 </Button>
-                <Button type='submit' size='sm' className='gap-1.5 bg-[#4F46E5] hover:bg-indigo-700 text-white'>
-                  {editingCategory ? 'Save Changes' : 'Create Category'}
+                <Button type='submit' size='sm' className='gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'>
+                  {editingCategory ? t('حفظ التعديلات', 'Save Changes') : t('إنشاء التصنيف', 'Create Category')}
                 </Button>
               </DialogFooter>
             </form>

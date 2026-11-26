@@ -14,6 +14,7 @@ import {
   Maximize2,
   Minimize2,
   Loader2,
+  Tag,
 } from 'lucide-react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { Button } from '@/components/ui/button'
@@ -34,7 +35,58 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useSaaSStore } from '@/lib/saas-store'
-import { Branch, Merchant, Product, ShoppingItem } from '@/types/saas'
+import { Branch, Merchant, Offer, Product, ProductActiveOffer, ShoppingItem } from '@/types/saas'
+
+function resolveClientProductOffer(
+  product: Product,
+  offersList: Offer[] | null | undefined,
+  preferOffersList = false
+): ProductActiveOffer | null {
+  if (!preferOffersList && product.activeOffer) return product.activeOffer
+  if (!Array.isArray(offersList) || offersList.length === 0) {
+    return preferOffersList ? null : (product.activeOffer ?? null)
+  }
+  const matching = offersList.filter(
+    (o) =>
+      o &&
+      o.isActive &&
+      o.merchantId === product.merchantId &&
+      Array.isArray(o.productIds) &&
+      o.productIds.includes(product.id)
+  )
+  if (matching.length === 0) return null
+
+  const originalPrice = Number(product.price) || 0
+  let best: ProductActiveOffer | null = null
+  for (const offer of matching) {
+    const discountValue = Number(offer.discountValue) || 0
+    const rawDiscounted =
+      offer.discountType === 'PERCENTAGE'
+        ? originalPrice * (1 - discountValue / 100)
+        : originalPrice - discountValue
+    const discountedPrice = Math.max(0, Math.round(rawDiscounted * 100) / 100)
+    const discountPercent =
+      offer.discountType === 'PERCENTAGE'
+        ? Math.round(discountValue * 10) / 10
+        : originalPrice > 0
+          ? Math.round(((originalPrice - discountedPrice) / originalPrice) * 100)
+          : 0
+
+    if (!best || discountedPrice < best.discountedPrice) {
+      best = {
+        id: offer.id,
+        title: offer.title,
+        description: offer.description || null,
+        discountType: offer.discountType,
+        discountValue,
+        originalPrice,
+        discountedPrice,
+        discountPercent,
+      }
+    }
+  }
+  return best
+}
 
 interface CustomerScanViewProps {
   qrToken?: string
@@ -85,7 +137,7 @@ const SCAN_FORMATS = [
 const CAM_DIV_ID = 'barcode-camera-feed'
 
 export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps) {
-  const { branches, merchants, products, recordCustomerScan, recordShoppingSession } =
+  const { branches, merchants, products, offers = [], recordCustomerScan, recordShoppingSession } =
     useSaaSStore()
 
   // Detect device language for Add to Cart button label
@@ -101,28 +153,46 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
   const [liveMerchants, setLiveMerchants] = React.useState<Merchant[]>([])
   const [liveBranches, setLiveBranches] = React.useState<Branch[]>([])
   const [liveProducts, setLiveProducts] = React.useState<Product[]>([])
+  const [liveOffers, setLiveOffers] = React.useState<Offer[] | null>(null)
 
-  React.useEffect(() => {
-    let cancelled = false
+  const refreshLiveCatalog = React.useCallback(() => {
     fetch('/api/scan/catalog')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (cancelled || !data) return
+        if (!data) return
         if (Array.isArray(data.merchants) && data.merchants.length > 0) setLiveMerchants(data.merchants)
         if (Array.isArray(data.branches) && data.branches.length > 0) setLiveBranches(data.branches)
         if (Array.isArray(data.products) && data.products.length > 0) setLiveProducts(data.products)
+        if (Array.isArray(data.offers)) setLiveOffers(data.offers)
       })
       .catch(() => {
         // Offline / fallback to store
       })
-    return () => {
-      cancelled = true
-    }
   }, [])
+
+  React.useEffect(() => {
+    refreshLiveCatalog()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshLiveCatalog()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [refreshLiveCatalog])
 
   const activeBranches = liveBranches.length > 0 ? liveBranches : branches
   const activeMerchants = liveMerchants.length > 0 ? liveMerchants : merchants
-  const activeProducts = liveProducts.length > 0 ? liveProducts : products
+  const safeStoreOffers = Array.isArray(offers) ? offers : []
+  const activeOffers = liveOffers !== null ? liveOffers : safeStoreOffers
+  const activeProducts = React.useMemo(() => {
+    const base = liveProducts.length > 0 ? liveProducts : products
+    return (Array.isArray(base) ? base : []).map((p) => ({
+      ...p,
+      price: Number(p.price) || 0,
+      activeOffer: resolveClientProductOffer(p, activeOffers, liveOffers !== null),
+    }))
+  }, [liveProducts, products, activeOffers, liveOffers])
 
   const defaultBranch: Branch = {
     id: 'branch-17951314',
@@ -184,6 +254,7 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
   const [showSearch, setShowSearch] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isFullscreen, setIsFullscreen] = React.useState(false)
+  const [introPhase, setIntroPhase] = React.useState<'enter' | 'exit' | 'done'>('enter')
 
   // ── Scanner ref ─────────────────────────────────────────────────────────────
   const rootRef           = React.useRef<HTMLDivElement | null>(null)
@@ -193,6 +264,7 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
   const lastBarcode       = React.useRef('')
   const lastTime          = React.useRef(0)
   const scannedProductRef = React.useRef<Product | null>(null)
+  const introPhaseRef     = React.useRef<'enter' | 'exit' | 'done'>('enter')
   const touchStartYRef    = React.useRef<number | null>(null)
 
   React.useEffect(() => {
@@ -200,9 +272,89 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
   }, [scannedProduct])
 
   React.useEffect(() => {
-    mountedRef.current = true
-    return () => { mountedRef.current = false }
+    introPhaseRef.current = introPhase
+  }, [introPhase])
+
+  // Signature full-screen green brand intro animation sequence
+  React.useEffect(() => {
+    const exitTimer = setTimeout(() => {
+      setIntroPhase('exit')
+    }, 1450)
+    const doneTimer = setTimeout(() => {
+      setIntroPhase('done')
+    }, 2150)
+    return () => {
+      clearTimeout(exitTimer)
+      clearTimeout(doneTimer)
+    }
   }, [])
+
+  React.useEffect(() => {
+    mountedRef.current = true
+    const prevBodyBg = document.body.style.backgroundColor
+    const prevHtmlBg = document.documentElement.style.backgroundColor
+    const prevBodyOverflow = document.body.style.overflow
+    document.body.style.backgroundColor = '#000000'
+    document.documentElement.style.backgroundColor = '#000000'
+    document.body.style.overflow = 'hidden'
+    return () => {
+      mountedRef.current = false
+      document.body.style.backgroundColor = prevBodyBg
+      document.documentElement.style.backgroundColor = prevHtmlBg
+      document.body.style.overflow = prevBodyOverflow
+    }
+  }, [])
+
+  // Dynamic PWA manifest & app title so "Add to Home Screen" preserves this exact store URL & Green Scan green icon
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const prevTitle = document.title
+    const appName = merchant?.name ? `${merchant.name} — Green Scan` : 'Green Scan'
+    document.title = appName
+
+    const origin = window.location.origin
+    const manifestObj = {
+      name: appName,
+      short_name: 'Green Scan',
+      description: 'Smart Instant Barcode Price Scanner',
+      start_url: window.location.href,
+      scope: `${origin}/`,
+      display: 'standalone',
+      orientation: 'portrait',
+      background_color: '#00D632',
+      theme_color: '#00D632',
+      icons: [
+        {
+          src: `${origin}/images/icon-192.png?v=3`,
+          sizes: '192x192',
+          type: 'image/png',
+          purpose: 'any maskable',
+        },
+        {
+          src: `${origin}/images/icon-512.png?v=3`,
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'any maskable',
+        },
+      ],
+    }
+
+    const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' })
+    const blobUrl = URL.createObjectURL(blob)
+    const linkEl = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+    const prevHref = linkEl?.getAttribute('href') || '/manifest.webmanifest?v=3'
+    if (linkEl) {
+      linkEl.setAttribute('href', blobUrl)
+    }
+
+    return () => {
+      document.title = prevTitle
+      if (linkEl) {
+        linkEl.setAttribute('href', prevHref)
+      }
+      URL.revokeObjectURL(blobUrl)
+    }
+  }, [merchant?.name])
 
   // Track browser fullscreen state
   React.useEffect(() => {
@@ -273,8 +425,9 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
     const mp = activeProducts.filter((p) => p.merchantId === merchant.id)
     for (const item of shoppingList) {
       const live = mp.find((p) => p.id === item.productId)
-      if (live && live.price !== item.confirmedPrice && !item.priceChanged) {
-        setPriceChangeItem({ item, newPrice: live.price })
+      const effectiveLivePrice = live?.activeOffer ? live.activeOffer.discountedPrice : live?.price
+      if (live && effectiveLivePrice !== undefined && effectiveLivePrice !== item.confirmedPrice && !item.priceChanged) {
+        setPriceChangeItem({ item, newPrice: effectiveLivePrice })
         break
       }
     }
@@ -283,8 +436,8 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
   // ── Barcode handler ──────────────────────────────────────────────────────────
   const onBarcode = React.useCallback(
     async (raw: string, fromManual = false) => {
-      // Do not overwrite an open result sheet from background camera scans
-      if (!fromManual && scannedProductRef.current) return
+      // Do not overwrite an open result sheet or fire during the brand intro curtain
+      if (!fromManual && (scannedProductRef.current || introPhaseRef.current !== 'done')) return
       const val = raw.trim()
       if (!val) return
       const now = Date.now()
@@ -356,6 +509,28 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
       if (found) {
         setScannedProduct(found)
         setNotFoundBarcode(null)
+        // Silently sync freshest price & active offer from backend in background
+        fetch('/api/scan/lookup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            qrToken: qrToken || undefined,
+            merchantId: merchantId || (qrToken ? merchant?.id : undefined),
+            barcode: val,
+          }),
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((fresh: Product | null) => {
+            if (fresh && fresh.id) {
+              setScannedProduct((cur) => (cur && cur.id === fresh.id ? fresh : cur))
+              setLiveProducts((prev) =>
+                prev.some((p) => p.id === fresh.id)
+                  ? prev.map((p) => (p.id === fresh.id ? fresh : p))
+                  : [fresh, ...prev]
+              )
+            }
+          })
+          .catch(() => {})
       } else {
         setNotFoundBarcode(val)
         setScannedProduct(null)
@@ -394,10 +569,11 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
   }
 
   // ── Start camera ─────────────────────────────────────────────────────────────
-  //   Fixes the original dimming bug:
+  //   Fixes camera transition races & laptop webcam fallback:
   //   1. Lock prevents concurrent calls (StrictMode double-fire)
   //   2. If already scanning → just surface the active state
-  //   3. Catch only resets UI on REAL errors, not "already scanning"
+  //   3. Falls back from rear ('environment') to front ('user') / first camera on laptops
+  //   4. Catch only resets UI on REAL errors, not "already scanning"
   const startCamera = React.useCallback(
     async (mode: 'environment' | 'user' = 'environment') => {
       if (startLockRef.current) return
@@ -412,18 +588,58 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
 
       if (mountedRef.current) { setCameraError(null); setCamPhase('starting') }
 
-      try {
+      const scanConfig = {
+        fps: 25,
+        qrbox: { width: 280, height: 160 },
+      }
+
+      const tryStart = async (cameraConfig: any) => {
         const scanner = getScanner()
         await scanner.start(
-          { facingMode: mode },
-          {
-            fps: 25,
-            qrbox: { width: 280, height: 160 },
-            aspectRatio: 1.777778,
-          },
+          cameraConfig,
+          scanConfig,
           (text) => onBarcodeRef.current(text),
           () => { /* scan error per frame — normal */ }
         )
+      }
+
+      try {
+        try {
+          await tryStart({ facingMode: mode })
+        } catch (primaryErr: any) {
+          const pMsg = String(primaryErr?.message || primaryErr || '')
+          const isAlready =
+            scannerRef.current?.isScanning ||
+            pMsg.toLowerCase().includes('already') ||
+            pMsg.toLowerCase().includes('active')
+          if (isAlready) {
+            if (mountedRef.current) setCamPhase('active')
+            return
+          }
+          // If rear camera isn't available (e.g. desktop/laptop), fall back to user camera or device list
+          if (
+            mode === 'environment' &&
+            (pMsg.includes('Overconstrained') ||
+              pMsg.includes('NotFound') ||
+              pMsg.includes('Requested device not found') ||
+              pMsg.includes('Constraint'))
+          ) {
+            scannerRef.current = null
+            try {
+              await tryStart({ facingMode: 'user' })
+            } catch {
+              const cameras = await Html5Qrcode.getCameras().catch(() => [])
+              if (cameras.length > 0) {
+                scannerRef.current = null
+                await tryStart(cameras[0].id)
+              } else {
+                throw primaryErr
+              }
+            }
+          } else {
+            throw primaryErr
+          }
+        }
         if (mountedRef.current) setCamPhase('active')
       } catch (err: any) {
         const msg = String(err?.message || err || '')
@@ -490,28 +706,36 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onBarcode])
 
-  // ── Auto-start (StrictMode safe) ─────────────────────────────────────────────
+  // ── Auto-start (StrictMode safe — run once on mount, never restart when liveBranches loads) ──
+  const isScannerAllowed =
+    (!qrToken || (branch && branch.qrStatus !== 'Revoked')) &&
+    merchant?.status === 'Active'
+
   React.useEffect(() => {
-    if (branch?.qrStatus === 'Active' && merchant?.status === 'Active') {
+    if (isScannerAllowed) {
       startCamera('environment')
     }
     return () => {
-      // StrictMode cleanup: stop synchronously if possible
       startLockRef.current = false
       stopScanner()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch?.id])
+  }, [isScannerAllowed])
 
   // ── Cart helpers ─────────────────────────────────────────────────────────────
   const addToCart = (prod: Product, qty: number) => {
+    const effectivePrice = prod.activeOffer ? prod.activeOffer.discountedPrice : prod.price
     setShoppingList((prev) => {
       const idx = prev.findIndex((i) => i.productId === prod.id)
       const next =
         idx !== -1
-          ? prev.map((i, n) => n === idx ? { ...i, quantity: i.quantity + qty } : i)
+          ? prev.map((i, n) =>
+              n === idx
+                ? { ...i, price: effectivePrice, confirmedPrice: effectivePrice, quantity: i.quantity + qty }
+                : i
+            )
           : [{ productId: prod.id, barcode: prod.barcode, name: prod.name,
-                imageUrl: prod.imageUrl, price: prod.price, confirmedPrice: prod.price,
+                imageUrl: prod.imageUrl, price: effectivePrice, confirmedPrice: effectivePrice,
                 quantity: qty, priceStatus: 'CONFIRMED' as const }, ...prev]
       saveSession(next)
       return next
@@ -608,38 +832,130 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
   return (
     <div
       ref={rootRef}
-      className='fixed inset-0 w-screen h-[100dvh] bg-black overflow-hidden select-none touch-none'
+      className='fixed inset-0 w-full h-full bg-black overflow-hidden select-none touch-none'
     >
 
       {/* ── Camera container: Html5Qrcode renders <video> inside here ── */}
       <div
         id={CAM_DIV_ID}
-        className='absolute inset-0 w-full h-full [&>video]:!w-full [&>video]:!h-full [&>video]:!object-cover'
+        className='absolute inset-0 w-full h-full bg-black overflow-hidden'
         style={{ display: isActive ? 'block' : 'none' }}
       />
 
-      {/* ── Overlay when not active ── */}
+      {/* ── Signature Full-Screen Green Brand Intro Curtain ── */}
+      {introPhase !== 'done' && (
+        <div
+          className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#00d632] text-[#061006] overflow-hidden will-change-transform transition-all duration-[680ms] ease-[cubic-bezier(0.76,0,0.24,1)] ${
+            introPhase === 'exit'
+              ? '-translate-y-full rounded-b-[48px] shadow-[0_24px_60px_rgba(0,0,0,0.45)]'
+              : 'translate-y-0 rounded-b-none'
+          }`}
+        >
+          {/* Ambient Rippling Rings */}
+          <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
+            <div
+              className='size-52 rounded-full border-2 border-[#061006]/15'
+              style={{ animation: 'scannerRipple 1.5s cubic-bezier(0.22,1,0.36,1) infinite' }}
+            />
+            <div
+              className='absolute size-52 rounded-full border-2 border-[#061006]/10'
+              style={{ animation: 'scannerRipple 1.5s cubic-bezier(0.22,1,0.36,1) 0.45s infinite' }}
+            />
+          </div>
+
+          {/* Center Brand Identity Mark */}
+          <div
+            className={`relative z-10 flex flex-col items-center text-center px-6 transition-all duration-300 ${
+              introPhase === 'exit' ? 'opacity-0 scale-90 -translate-y-4' : 'opacity-100 scale-100'
+            }`}
+          >
+            {/* Animated Dark Squircle Viewfinder Emblem */}
+            <div
+              className='relative size-24 rounded-[28px] bg-[#061006] shadow-[0_20px_50px_rgba(6,16,6,0.35)] flex items-center justify-center overflow-hidden mb-5'
+              style={{ animation: 'scannerBadgePop 0.65s cubic-bezier(0.22,1,0.36,1) forwards' }}
+            >
+              {/* Minimalist Viewfinder Corner Brackets */}
+              <div className='relative size-12'>
+                <span className='absolute top-0 left-0 w-3.5 h-3.5 border-t-[3px] border-l-[3px] border-[#00d632] rounded-tl-md' />
+                <span className='absolute top-0 right-0 w-3.5 h-3.5 border-t-[3px] border-r-[3px] border-[#00d632] rounded-tr-md' />
+                <span className='absolute bottom-0 left-0 w-3.5 h-3.5 border-b-[3px] border-l-[3px] border-[#00d632] rounded-bl-md' />
+                <span className='absolute bottom-0 right-0 w-3.5 h-3.5 border-b-[3px] border-r-[3px] border-[#00d632] rounded-br-md' />
+
+                {/* Sweeping Green Laser Line */}
+                <div
+                  className='absolute inset-x-0.5 h-[3px] rounded-full bg-[#00d632] shadow-[0_0_12px_#00d632]'
+                  style={{ animation: 'scannerLaserSweep 1.15s ease-in-out infinite' }}
+                />
+              </div>
+            </div>
+
+            {/* Brand Title */}
+            <div
+              className='space-y-1.5'
+              style={{ animation: 'scannerFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.18s both' }}
+            >
+              <h1 className='text-3xl font-black tracking-tight text-[#061006]'>
+                Green Scan
+              </h1>
+              <p className='text-xs font-extrabold uppercase tracking-[0.22em] text-[#061006]/70'>
+                {isArabicDevice ? 'امسح واعرف السعر فوراً' : 'Smart Instant Scanner'}
+              </p>
+            </div>
+
+            {/* Merchant Store Identity Pill */}
+            <div
+              className='mt-6 inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#061006]/10 border border-[#061006]/15 backdrop-blur-xs'
+              style={{ animation: 'scannerFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.32s both' }}
+            >
+              {merchant.logo ? (
+                <img
+                  src={merchant.logo}
+                  alt={merchant.name}
+                  className='size-6 rounded-full object-cover border border-[#061006]/20'
+                />
+              ) : (
+                <div className='size-6 rounded-full bg-[#061006] text-[#00d632] flex items-center justify-center text-[11px] font-black'>
+                  {merchant.name?.[0]?.toUpperCase() || 'S'}
+                </div>
+              )}
+              <span className='text-xs font-black text-[#061006]'>{merchant.name}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Overlay when not active (On-brand Green Theme) ── */}
       {!isActive && (
-        <div className='absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white bg-slate-950 z-10'>
+        <div className='absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-[#061006] bg-[#00d632] z-10'>
           {isStarting ? (
             <>
-              <Loader2 className='size-12 text-primary animate-spin mb-4' />
-              <p className='text-sm text-slate-300'>جارٍ تشغيل الكاميرا…</p>
+              <Loader2 className='size-12 text-[#061006] animate-spin mb-4' />
+              <p className='text-sm font-bold text-[#061006]/80'>
+                {isArabicDevice ? 'جارٍ تشغيل الكاميرا…' : 'Starting camera…'}
+              </p>
             </>
           ) : (
             <>
-              <div className='size-16 rounded-full bg-white/10 flex items-center justify-center mb-4'>
-                <Camera className='size-8 text-primary' />
+              <div className='size-20 rounded-3xl bg-[#061006] text-[#00d632] flex items-center justify-center mb-5 shadow-xl'>
+                <Camera className='size-9' />
               </div>
-              <h2 className='text-lg font-bold'>كاميرا المسح الضوئي</h2>
-              <p className='text-xs text-slate-400 max-w-xs mt-1 mb-5'>
-                اضغط الزر لتفعيل الكاميرا ومسح باركود المنتجات.
+              <h2 className='text-xl font-black text-[#061006]'>
+                {isArabicDevice ? 'كاميرا المسح الضوئي' : 'Barcode Scanner'}
+              </h2>
+              <p className='text-xs font-semibold text-[#061006]/75 max-w-xs mt-1.5 mb-6'>
+                {isArabicDevice
+                  ? 'اضغط الزر لتفعيل الكاميرا ومسح باركود المنتجات.'
+                  : 'Tap below to enable the camera and scan product barcodes.'}
               </p>
-              <Button onClick={() => startCamera()} className='gap-2 shadow-lg'>
-                <Camera className='size-4' /> تشغيل الكاميرا الآن
+              <Button
+                onClick={() => startCamera()}
+                className='h-12 px-6 rounded-2xl bg-[#061006] hover:bg-black text-white font-black gap-2 shadow-xl'
+              >
+                <Camera className='size-4' />{' '}
+                {isArabicDevice ? 'تشغيل الكاميرا الآن' : 'Enable Camera'}
               </Button>
               {cameraError && (
-                <p className='text-xs text-red-400 mt-3 bg-red-950/60 p-2 rounded max-w-xs'>
+                <p className='text-xs font-semibold text-white mt-4 bg-[#061006]/85 px-4 py-2.5 rounded-xl max-w-xs'>
                   {cameraError}
                 </p>
               )}
@@ -748,12 +1064,34 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
                   className='w-full py-2 px-2 flex items-center justify-between text-start hover:bg-white/10 rounded-lg transition-colors cursor-pointer'
                 >
                   <div className='min-w-0'>
-                    <p className='text-xs font-bold text-white truncate'>{p.name}</p>
+                    <div className='flex items-center gap-1.5'>
+                      <p className='text-xs font-bold text-white truncate'>{p.name}</p>
+                      {p.activeOffer && (
+                        <span className='px-1.5 py-0.5 rounded-full bg-[#00d632] text-[#061006] text-[9px] font-black shrink-0'>
+                          -{p.activeOffer.discountType === 'PERCENTAGE'
+                            ? `${p.activeOffer.discountValue}%`
+                            : `${p.activeOffer.discountValue} ${currencyLabel}`}
+                        </span>
+                      )}
+                    </div>
                     <p className='text-[10px] font-mono text-white/60'>{p.barcode}</p>
                   </div>
-                  <span className='text-xs font-mono font-bold text-[#00d632] shrink-0 ms-3'>
-                    {p.price.toFixed(2)} {currencyLabel}
-                  </span>
+                  <div className='flex flex-col items-end shrink-0 ms-3'>
+                    {p.activeOffer ? (
+                      <>
+                        <span className='text-[10px] font-mono line-through text-white/45'>
+                          {p.activeOffer.originalPrice.toFixed(2)} {currencyLabel}
+                        </span>
+                        <span className='text-xs font-mono font-bold text-[#00d632]'>
+                          {p.activeOffer.discountedPrice.toFixed(2)} {currencyLabel}
+                        </span>
+                      </>
+                    ) : (
+                      <span className='text-xs font-mono font-bold text-[#00d632]'>
+                        {p.price.toFixed(2)} {currencyLabel}
+                      </span>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
@@ -770,10 +1108,48 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
         </div>
       )}
 
-      {/* Style html5-qrcode's built-in box to match project green */}
+      {/* Style html5-qrcode's built-in box & Brand Intro Animations */}
       <style>{`
+        #barcode-camera-feed {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: #000000 !important;
+        }
+        #barcode-camera-feed video {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          background: #000000 !important;
+        }
+        #barcode-camera-feed #qr-shaded-region {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+        }
         #barcode-camera-feed #qr-shaded-region div {
           border-color: #00d632 !important;
+        }
+        @keyframes scannerBadgePop {
+          0%   { transform: scale(0.55); opacity: 0; }
+          65%  { transform: scale(1.06); opacity: 1; }
+          100% { transform: scale(1);    opacity: 1; }
+        }
+        @keyframes scannerFadeUp {
+          0%   { transform: translateY(14px); opacity: 0; }
+          100% { transform: translateY(0);    opacity: 1; }
+        }
+        @keyframes scannerLaserSweep {
+          0%, 100% { top: 4px; opacity: 0.9; }
+          50%      { top: calc(100% - 7px); opacity: 1; }
+        }
+        @keyframes scannerRipple {
+          0%   { transform: scale(0.7); opacity: 0.7; }
+          100% { transform: scale(2.15); opacity: 0; }
         }
       `}</style>
 
@@ -800,32 +1176,103 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
             <div className='w-14 h-1.5 rounded-full bg-[#061006]/25' />
           </div>
 
-          {/* Middle Content: Product Name and Price in large font */}
+          {/* Middle Content: Product Name, Offer Details (if active), and Price in large font */}
           <div className='flex-1 flex flex-col items-center justify-center text-center px-2'>
-            {scannedProduct && (
-              <>
-                {/* Product Name */}
-                <h2 className='text-3xl sm:text-4xl font-black text-[#061006] leading-tight max-w-md line-clamp-3 mb-2'>
-                  {scannedProduct.name}
-                </h2>
+            {scannedProduct && (() => {
+              const offer = scannedProduct.activeOffer
+              const savings = offer
+                ? Math.max(0, Math.round((offer.originalPrice - offer.discountedPrice) * 100) / 100)
+                : 0
+              return (
+                <>
+                  {/* Active Offer Pill */}
+                  {offer && (
+                    <div className='mb-4 flex flex-col items-center gap-1.5 animate-in zoom-in-95 duration-200'>
+                      <div className='inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#061006] text-[#00d632] shadow-lg'>
+                        <Tag className='size-4' />
+                        <span className='text-xs sm:text-sm font-black tracking-wide'>
+                          {offer.discountType === 'PERCENTAGE'
+                            ? isArabicDevice
+                              ? `عرض خاص • خصم ${offer.discountValue}%`
+                              : `SPECIAL OFFER • ${offer.discountValue}% OFF`
+                            : isArabicDevice
+                              ? `عرض خاص • خصم ${offer.discountValue} ${currencyLabel}`
+                              : `SPECIAL OFFER • SAVE ${offer.discountValue} ${currencyLabel}`}
+                        </span>
+                      </div>
+                      <p className='text-sm sm:text-base font-extrabold text-[#061006]'>
+                        {offer.title}
+                      </p>
+                      {offer.description && (
+                        <p className='text-xs font-semibold text-[#061006]/75 max-w-xs line-clamp-2'>
+                          {offer.description}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-                {/* Product Price with LE */}
-                <div className='my-4 flex items-baseline justify-center gap-2' dir='ltr'>
-                  <span className='text-6xl sm:text-7xl font-mono font-black text-[#061006] tracking-tight'>
-                    {scannedProduct.price.toFixed(2)}
-                  </span>
-                  <span className='text-2xl sm:text-3xl font-black text-[#061006]/85'>
-                    {currencyLabel}
-                  </span>
-                </div>
+                  {/* Product Name */}
+                  <h2 className='text-3xl sm:text-4xl font-black text-[#061006] leading-tight max-w-md line-clamp-3 mb-2'>
+                    {scannedProduct.name}
+                  </h2>
 
-                {scannedProduct.barcode && (
-                  <div className='text-xs font-mono font-bold text-[#061006]/70 bg-[#061006]/10 px-3.5 py-1 rounded-full inline-block mt-1'>
-                    {scannedProduct.barcode}
-                  </div>
-                )}
-              </>
-            )}
+                  {/* Price Section: Before & After when offer is active */}
+                  {offer ? (
+                    <div className='my-3 flex flex-col items-center'>
+                      {/* Before Price */}
+                      <div className='flex items-center gap-2 text-[#061006]/65'>
+                        <span className='text-xs font-extrabold'>
+                          {isArabicDevice ? 'قبل الخصم' : 'Was'}
+                        </span>
+                        <span
+                          className='text-xl sm:text-2xl font-mono font-bold line-through decoration-2 decoration-[#061006]/70'
+                          dir='ltr'
+                        >
+                          {offer.originalPrice.toFixed(2)} {currencyLabel}
+                        </span>
+                      </div>
+
+                      {/* After Price */}
+                      <div className='mt-1 flex items-baseline justify-center gap-2' dir='ltr'>
+                        <span className='text-6xl sm:text-7xl font-mono font-black text-[#061006] tracking-tight'>
+                          {offer.discountedPrice.toFixed(2)}
+                        </span>
+                        <span className='text-2xl sm:text-3xl font-black text-[#061006]/85'>
+                          {currencyLabel}
+                        </span>
+                      </div>
+
+                      {/* Savings Pill */}
+                      {savings > 0 && (
+                        <div className='mt-2 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#061006]/12 text-[#061006] text-xs font-black'>
+                          <span>
+                            {isArabicDevice
+                              ? `وفّرت ${savings.toFixed(2)} ${currencyLabel} (${offer.discountPercent}%)`
+                              : `You save ${savings.toFixed(2)} ${currencyLabel} (${offer.discountPercent}%)`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Regular Product Price with LE */
+                    <div className='my-4 flex items-baseline justify-center gap-2' dir='ltr'>
+                      <span className='text-6xl sm:text-7xl font-mono font-black text-[#061006] tracking-tight'>
+                        {scannedProduct.price.toFixed(2)}
+                      </span>
+                      <span className='text-2xl sm:text-3xl font-black text-[#061006]/85'>
+                        {currencyLabel}
+                      </span>
+                    </div>
+                  )}
+
+                  {scannedProduct.barcode && (
+                    <div className='text-xs font-mono font-bold text-[#061006]/70 bg-[#061006]/10 px-3.5 py-1 rounded-full inline-block mt-1'>
+                      {scannedProduct.barcode}
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
 
           {/* Bottom Action: Add to Cart anchored at the bottom */}
@@ -867,9 +1314,9 @@ export function CustomerScanView({ qrToken, merchantId }: CustomerScanViewProps)
       )}
 
       {/* ── Cart FAB ── */}
-      <div className='absolute bottom-8 inset-x-0 flex items-center justify-center z-30 pointer-events-auto'>
+      <div className='pointer-events-none absolute bottom-5 inset-x-0 flex items-center justify-center z-30 pb-[env(safe-area-inset-bottom)]'>
         <button onClick={() => setIsCartOpen(true)}
-          className='relative flex items-center justify-center size-16 rounded-full bg-primary text-primary-foreground shadow-[0_8px_30px_rgba(0,0,0,0.5)] border-4 border-white/20 active:scale-95 transition-all hover:scale-105 group'
+          className='pointer-events-auto relative flex items-center justify-center size-16 rounded-full bg-primary text-primary-foreground shadow-[0_8px_30px_rgba(0,0,0,0.5)] border-4 border-white/20 active:scale-95 transition-all hover:scale-105 group cursor-pointer'
           aria-label='عربة التسوق'>
           <ShoppingCart className='size-7 group-hover:scale-110 transition-transform' />
           {totalCount > 0 && (

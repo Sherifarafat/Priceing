@@ -12,6 +12,11 @@ import reportsRoutes from './routes/reports.routes.js'
 import usersRoutes from './routes/users.routes.js'
 import feesRoutes from './routes/fees.routes.js'
 import invoicesRoutes from './routes/invoices.routes.js'
+import offersRoutes from './routes/offers.routes.js'
+import whatsappRoutes from './routes/whatsapp.routes.js'
+import ttsRoutes from './routes/tts.routes.js'
+import aiRoutes from './routes/ai.routes.js'
+import { restoreExistingWhatsAppSessions } from './services/whatsapp.service.js'
 
 dotenv.config()
 
@@ -48,6 +53,10 @@ app.use('/api/reports', reportsRoutes)
 app.use('/api/users', usersRoutes)
 app.use('/api/fees', feesRoutes)
 app.use('/api/invoices', invoicesRoutes)
+app.use('/api/offers', offersRoutes)
+app.use('/api/whatsapp', whatsappRoutes)
+app.use('/api/tts', ttsRoutes)
+app.use('/api/ai', aiRoutes)
 
 // Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -58,4 +67,5 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 app.listen(PORT, () => {
   console.log(`🚀 Priceing SaaS Backend Server running on http://localhost:${PORT}`)
   console.log(`📡 Health Check: http://localhost:${PORT}/api/health`)
+  restoreExistingWhatsAppSessions()
 })

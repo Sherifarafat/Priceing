@@ -381,7 +381,7 @@ export function MerchantsView() {
     })
     auth.setAccessToken(`auth-token-${mgrUser.id}`)
     toast.success(`Logged in as ${info.merchant.name} Store Manager!`)
-    navigate({ to: '/' })
+    navigate({ to: '/dashboard' })
   }
 
   const filteredMerchants = merchants.filter((m) => {

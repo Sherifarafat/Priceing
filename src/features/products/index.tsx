@@ -11,6 +11,17 @@ import {
   XCircle,
   FileSpreadsheet,
   Camera,
+  Percent,
+  Banknote,
+  TrendingUp,
+  TrendingDown,
+  ArrowRight,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Check,
 } from 'lucide-react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { toast } from 'sonner'
@@ -38,7 +49,10 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { LanguageSwitch } from '@/components/language-switch'
 import { useSaaSStore } from '@/lib/saas-store'
+import { useLang } from '@/lib/i18n'
+import { getPageNumbers } from '@/lib/utils'
 import { Product, EntityStatus } from '@/types/saas'
 
 function playBeep() {
@@ -59,6 +73,7 @@ function playBeep() {
 }
 
 export function ProductsView() {
+  const { t } = useLang()
   const {
     currentUser,
     merchants,
@@ -66,9 +81,11 @@ export function ProductsView() {
     categories,
     products,
     fees,
+    createCategory,
     createProduct,
     updateProduct,
     deleteProduct,
+    bulkAdjustProductPrices,
     hasPermission,
   } = useSaaSStore()
 
@@ -92,8 +109,24 @@ export function ProductsView() {
     : products.filter((p) => p.merchantId === merchantId)
 
   const merchantCategories = isSuperAdmin
-    ? categories
+    ? selectedMerchantFilter === 'all'
+      ? categories
+      : categories.filter((c) => c.merchantId === selectedMerchantFilter)
     : categories.filter((c) => c.merchantId === merchantId)
+
+  const [quickModalCatName, setQuickModalCatName] = React.useState('')
+  const [showQuickModalCat, setShowQuickModalCat] = React.useState(false)
+
+  const handleQuickCreateModalCategory = () => {
+    const trimmed = quickModalCatName.trim()
+    if (!trimmed) return
+    const mId = isSuperAdmin ? targetMerchantId || merchants[0]?.id || '' : merchantId
+    const created = createCategory(trimmed, null, mId)
+    setFormCategoryId(created.id)
+    setQuickModalCatName('')
+    setShowQuickModalCat(false)
+    toast.success(t(`تم إنشاء وتحديد القسم "${trimmed}" ✓`, `Category "${trimmed}" created & selected ✓`))
+  }
 
   const applicableFees = (fees || []).filter(
     (f) => f.status === 'Active' && (!f.merchantId || f.merchantId === currentActiveMerchantId)
@@ -104,11 +137,99 @@ export function ProductsView() {
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all')
   const [selectedStatus, setSelectedStatus] = React.useState<string>('all')
 
+  // Pagination
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [pageSize, setPageSize] = React.useState(10)
+
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedCategory, selectedStatus, selectedMerchantFilter, pageSize])
+
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [editingProduct, setEditingProduct] = React.useState<Product | null>(null)
   const [deletingProduct, setDeletingProduct] = React.useState<Product | null>(null)
   const [formError, setFormError] = React.useState<string | null>(null)
+
+  // Bulk Price Update Modal state
+  const [isBulkPriceOpen, setIsBulkPriceOpen] = React.useState(false)
+  const [bulkPriceMode, setBulkPriceMode] = React.useState<'PERCENTAGE' | 'FIXED'>('PERCENTAGE')
+  const [bulkPriceDirection, setBulkPriceDirection] = React.useState<'INCREASE' | 'DECREASE'>('INCREASE')
+  const [bulkPriceValue, setBulkPriceValue] = React.useState('')
+  const [bulkPriceCategoryId, setBulkPriceCategoryId] = React.useState<string>('all')
+  const [isBulkPriceSaving, setIsBulkPriceSaving] = React.useState(false)
+  const [bulkPriceError, setBulkPriceError] = React.useState<string | null>(null)
+
+  const openBulkPriceDialog = () => {
+    setBulkPriceMode('PERCENTAGE')
+    setBulkPriceDirection('INCREASE')
+    setBulkPriceValue('')
+    setBulkPriceCategoryId('all')
+    setBulkPriceError(null)
+    setIsBulkPriceOpen(true)
+  }
+
+  const bulkTargetProducts = React.useMemo(() => {
+    return merchantProducts.filter((p) => {
+      if (bulkPriceCategoryId === 'all') return true
+      if (bulkPriceCategoryId === 'uncategorized') return !p.categoryId
+      return p.categoryId === bulkPriceCategoryId
+    })
+  }, [merchantProducts, bulkPriceCategoryId])
+
+  const parsedBulkValue = parseFloat(bulkPriceValue)
+  const isBulkValueValid = Number.isFinite(parsedBulkValue) && parsedBulkValue > 0
+
+  const computeBulkPreviewPrice = (oldPrice: number) => {
+    if (!isBulkValueValid) return oldPrice
+    const sign = bulkPriceDirection === 'DECREASE' ? -1 : 1
+    const raw =
+      bulkPriceMode === 'PERCENTAGE'
+        ? oldPrice * (1 + (sign * parsedBulkValue) / 100)
+        : oldPrice + sign * parsedBulkValue
+    return Math.max(0, Math.round(raw * 100) / 100)
+  }
+
+  const handleBulkPriceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBulkPriceError(null)
+
+    if (!isBulkValueValid) {
+      setBulkPriceError('من فضلك أدخل قيمة صحيحة أكبر من صفر.')
+      return
+    }
+    if (bulkTargetProducts.length === 0) {
+      setBulkPriceError('لا توجد منتجات في هذا النطاق لتعديل سعرها.')
+      return
+    }
+
+    setIsBulkPriceSaving(true)
+    try {
+      const res = await bulkAdjustProductPrices({
+        mode: bulkPriceMode,
+        direction: bulkPriceDirection,
+        value: parsedBulkValue,
+        merchantId: isSuperAdmin ? selectedMerchantFilter : merchantId,
+        categoryId: bulkPriceCategoryId,
+        status: 'all',
+      })
+
+      if (!res.success) {
+        setBulkPriceError(res.error || 'حدث خطأ أثناء تعديل الأسعار.')
+        return
+      }
+
+      const labelValue =
+        bulkPriceMode === 'PERCENTAGE'
+          ? `${parsedBulkValue}%`
+          : `${parsedBulkValue} ${currency.symbol}`
+      const labelDir = bulkPriceDirection === 'INCREASE' ? 'زيادة' : 'خصم'
+      toast.success(`تم تطبيق ${labelDir} بقيمة ${labelValue} على ${res.updatedCount} منتج بنجاح`)
+      setIsBulkPriceOpen(false)
+    } finally {
+      setIsBulkPriceSaving(false)
+    }
+  }
 
   // Form Fields
   const [formName, setFormName] = React.useState('')
@@ -334,8 +455,9 @@ export function ProductsView() {
       const activeEl = document.activeElement
       if (
         activeEl &&
-        activeEl.tagName === 'INPUT' &&
-        activeEl.getAttribute('type') === 'text' &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.tagName === 'SELECT') &&
         !activeEl.classList.contains('barcode-search-input')
       ) {
         return
@@ -398,6 +520,16 @@ export function ProductsView() {
     return matchesSearch && matchesCat && matchesStatus
   })
 
+  // Pagination calculation
+  const totalProducts = filteredProducts.length
+  const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+  const startIndex = (safeCurrentPage - 1) * pageSize
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + pageSize)
+  const pageNumbers = getPageNumbers(safeCurrentPage, totalPages)
+  const showingFrom = totalProducts === 0 ? 0 : startIndex + 1
+  const showingTo = Math.min(startIndex + pageSize, totalProducts)
+
   // Permissions
   const canCreate = hasPermission('products.create')
   const canEdit = hasPermission('products.edit')
@@ -413,6 +545,7 @@ export function ProductsView() {
           </Badge>
         </div>
         <div className='ms-auto flex items-center gap-2'>
+          <LanguageSwitch />
           <ThemeSwitch />
           <ProfileDropdown />
         </div>
@@ -427,15 +560,37 @@ export function ProductsView() {
               Manage products, barcodes, and prices for {merchant?.name}. Catalog is shared across all branches.
             </p>
           </div>
-          <div className='flex items-center gap-2'>
-            <Button asChild variant='outline' size='sm'>
+          <div className='flex flex-wrap items-center gap-2'>
+            {canEdit && (
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={openBulkPriceDialog}
+                disabled={merchantProducts.length === 0}
+                className='gap-1.5 bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900 font-semibold cursor-pointer'
+              >
+                <Percent className='size-3.5' />
+                <span>تعديل الأسعار</span>
+              </Button>
+            )}
+            <Button
+              asChild
+              variant='outline'
+              size='sm'
+              className='bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900'
+            >
               <Link to='/excel'>
-                <FileSpreadsheet className='mr-1.5 size-4 text-emerald-600' />
+                <FileSpreadsheet className='mr-1.5 size-4' />
                 Bulk Operations
               </Link>
             </Button>
             {canCreate && (
-              <Button size='sm' onClick={openCreateDialog}>
+              <Button
+                size='sm'
+                onClick={openCreateDialog}
+                className='bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 cursor-pointer'
+              >
                 <Plus className='mr-1.5 size-4' />
                 Add Product
               </Button>
@@ -471,7 +626,7 @@ export function ProductsView() {
                 variant='outline'
                 size='sm'
                 onClick={() => setIsScannerOpen(true)}
-                className='h-9 gap-1.5 text-xs shrink-0 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold cursor-pointer'
+                className='h-9 gap-1.5 text-xs shrink-0 bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900 font-bold cursor-pointer'
                 title='مسح باركود بالكاميرا'
               >
                 <Camera className='size-3.5' />
@@ -534,14 +689,14 @@ export function ProductsView() {
                 </tr>
               </thead>
               <tbody className='divide-y'>
-                {filteredProducts.length === 0 ? (
+                {paginatedProducts.length === 0 ? (
                   <tr>
                     <td colSpan={6} className='p-8 text-center text-muted-foreground'>
                       No products found. Click &quot;Add Product&quot; or &quot;Bulk Operations&quot; to populate catalog.
                     </td>
                   </tr>
                 ) : (
-                  filteredProducts.map((prod) => {
+                  paginatedProducts.map((prod) => {
                     const cat = categories.find((c) => c.id === prod.categoryId)
                     return (
                       <tr key={prod.id} className='hover:bg-muted/30 transition-colors'>
@@ -652,6 +807,116 @@ export function ProductsView() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Footer */}
+          {totalProducts > 0 && (
+            <div className='flex flex-col sm:flex-row items-center justify-between gap-3 border-t bg-muted/20 px-4 py-3 text-xs'>
+              <div className='flex flex-wrap items-center gap-3 text-muted-foreground'>
+                <span>
+                  Showing{' '}
+                  <span className='font-semibold text-foreground'>
+                    {showingFrom}–{showingTo}
+                  </span>{' '}
+                  of <span className='font-semibold text-foreground'>{totalProducts}</span> products
+                </span>
+                <div className='flex items-center gap-1.5'>
+                  <span>Rows:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className='h-7 rounded-md border bg-background px-2 text-xs font-medium text-foreground shadow-2xs cursor-pointer'
+                  >
+                    {[10, 20, 30, 50, 100].map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className='flex items-center gap-1.5'>
+                <span className='hidden md:inline text-muted-foreground mr-2'>
+                  Page <span className='font-semibold text-foreground'>{safeCurrentPage}</span> of{' '}
+                  <span className='font-semibold text-foreground'>{totalPages}</span>
+                </span>
+
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='icon'
+                  className='size-7 hidden sm:inline-flex bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900 cursor-pointer'
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safeCurrentPage <= 1}
+                  title='First page'
+                >
+                  <ChevronsLeft className='size-3.5' />
+                </Button>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='icon'
+                  className='size-7 bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900 cursor-pointer'
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safeCurrentPage <= 1}
+                  title='Previous page'
+                >
+                  <ChevronLeft className='size-3.5' />
+                </Button>
+
+                <div className='flex items-center gap-1'>
+                  {pageNumbers.map((pageNumber, idx) =>
+                    pageNumber === '...' ? (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className='px-1.5 text-muted-foreground select-none'
+                      >
+                        ...
+                      </span>
+                    ) : (
+                      <Button
+                        key={pageNumber}
+                        type='button'
+                        variant={safeCurrentPage === pageNumber ? 'default' : 'outline'}
+                        size='sm'
+                        className={`h-7 min-w-7 px-2 text-xs font-mono cursor-pointer ${
+                          safeCurrentPage === pageNumber
+                            ? 'bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200'
+                            : 'bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900'
+                        }`}
+                        onClick={() => setCurrentPage(pageNumber as number)}
+                      >
+                        {pageNumber}
+                      </Button>
+                    )
+                  )}
+                </div>
+
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='icon'
+                  className='size-7 bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900 cursor-pointer'
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safeCurrentPage >= totalPages}
+                  title='Next page'
+                >
+                  <ChevronRight className='size-3.5' />
+                </Button>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='icon'
+                  className='size-7 hidden sm:inline-flex bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900 cursor-pointer'
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safeCurrentPage >= totalPages}
+                  title='Last page'
+                >
+                  <ChevronsRight className='size-3.5' />
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </Main>
 
@@ -745,19 +1010,55 @@ export function ProductsView() {
               {/* Category & Status */}
               <div className='grid grid-cols-2 gap-3'>
                 <div>
-                  <label className='font-semibold block mb-1'>Category</label>
-                  <select
-                    value={formCategoryId}
-                    onChange={(e) => setFormCategoryId(e.target.value)}
-                    className='w-full rounded-md border bg-background px-3 py-2 text-xs text-foreground shadow-2xs'
-                  >
-                    <option value=''>Uncategorized</option>
-                    {merchantCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className='flex items-center justify-between mb-1'>
+                    <label className='font-semibold block'>{t('القسم', 'Category')}</label>
+                    <button
+                      type='button'
+                      onClick={() => setShowQuickModalCat((v) => !v)}
+                      className='text-[10.5px] font-bold text-foreground underline underline-offset-2 cursor-pointer flex items-center gap-0.5'
+                    >
+                      <Plus className='size-3' />
+                      <span>{t('قسم جديد', 'New')}</span>
+                    </button>
+                  </div>
+                  {showQuickModalCat ? (
+                    <div className='flex items-center gap-1'>
+                      <Input
+                        value={quickModalCatName}
+                        onChange={(e) => setQuickModalCatName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleQuickCreateModalCategory()
+                          }
+                        }}
+                        placeholder={t('اسم القسم...', 'Category name...')}
+                        className='h-8.5 text-xs flex-1'
+                        autoFocus
+                      />
+                      <Button
+                        type='button'
+                        size='sm'
+                        onClick={handleQuickCreateModalCategory}
+                        className='h-8.5 px-2.5 bg-primary text-primary-foreground text-xs cursor-pointer'
+                      >
+                        <Check className='size-3.5' />
+                      </Button>
+                    </div>
+                  ) : (
+                    <select
+                      value={formCategoryId}
+                      onChange={(e) => setFormCategoryId(e.target.value)}
+                      className='w-full rounded-md border bg-background px-3 py-2 text-xs text-foreground shadow-2xs'
+                    >
+                      <option value=''>{t('بدون قسم', 'Uncategorized')}</option>
+                      {merchantCategories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className='font-semibold block mb-1'>Status</label>
@@ -861,6 +1162,7 @@ export function ProductsView() {
                 type='button'
                 variant='outline'
                 size='sm'
+                className='bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900 cursor-pointer'
                 onClick={() => {
                   setIsCreateOpen(false)
                   setEditingProduct(null)
@@ -868,7 +1170,11 @@ export function ProductsView() {
               >
                 Cancel
               </Button>
-              <Button type='submit' size='sm'>
+              <Button
+                type='submit'
+                size='sm'
+                className='bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 cursor-pointer'
+              >
                 {editingProduct ? 'Save Changes' : 'Create Product'}
               </Button>
             </DialogFooter>
@@ -902,7 +1208,7 @@ export function ProductsView() {
         <DialogContent className='sm:max-w-md p-5 rounded-2xl'>
           <DialogHeader className='text-center'>
             <DialogTitle className='flex items-center justify-center gap-2 text-base font-black'>
-              <Camera className='size-5 text-emerald-600' />
+              <Camera className='size-5 text-foreground' />
               <span>مسح باركود المنتج بالكاميرا</span>
             </DialogTitle>
             <DialogDescription className='text-xs'>
@@ -952,6 +1258,256 @@ export function ProductsView() {
               إلغاء
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk Price Adjustment Dialog ── */}
+      <Dialog open={isBulkPriceOpen} onOpenChange={(open) => !isBulkPriceSaving && setIsBulkPriceOpen(open)}>
+        <DialogContent className='max-w-md' dir='rtl'>
+          <form onSubmit={handleBulkPriceSubmit}>
+            <DialogHeader className='text-right'>
+              <DialogTitle className='flex items-center gap-2 text-base font-bold'>
+                <div className='size-8 rounded-lg bg-black text-white dark:bg-white dark:text-black flex items-center justify-center shrink-0'>
+                  <Percent className='size-4' />
+                </div>
+                <span>تعديل أسعار المنتجات جماعياً</span>
+              </DialogTitle>
+              <DialogDescription className='text-xs text-right'>
+                عدّل أسعار كل المنتجات دفعة واحدة بمبلغ ثابت ({currency.symbol}) أو بنسبة مئوية (%).
+              </DialogDescription>
+            </DialogHeader>
+
+            {bulkPriceError && (
+              <div className='my-3 rounded-md bg-destructive/15 p-2.5 text-xs text-destructive font-medium'>
+                {bulkPriceError}
+              </div>
+            )}
+
+            <div className='space-y-4 my-4 text-xs'>
+              {/* Adjustment Mode */}
+              <div>
+                <label className='font-semibold block mb-1.5 text-foreground'>نوع التعديل</label>
+                <div className='grid grid-cols-2 gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setBulkPriceMode('PERCENTAGE')
+                      setBulkPriceError(null)
+                    }}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                      bulkPriceMode === 'PERCENTAGE'
+                        ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black shadow-2xs'
+                        : 'border-neutral-300 bg-white text-black hover:bg-neutral-100 dark:border-neutral-700 dark:bg-black dark:text-white dark:hover:bg-neutral-900'
+                    }`}
+                  >
+                    <Percent className='size-3.5' />
+                    <span>نسبة مئوية (%)</span>
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setBulkPriceMode('FIXED')
+                      setBulkPriceError(null)
+                    }}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                      bulkPriceMode === 'FIXED'
+                        ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black shadow-2xs'
+                        : 'border-neutral-300 bg-white text-black hover:bg-neutral-100 dark:border-neutral-700 dark:bg-black dark:text-white dark:hover:bg-neutral-900'
+                    }`}
+                  >
+                    <Banknote className='size-3.5' />
+                    <span>مبلغ ثابت ({currency.symbol})</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Direction */}
+              <div>
+                <label className='font-semibold block mb-1.5 text-foreground'>اتجاه التعديل</label>
+                <div className='grid grid-cols-2 gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => setBulkPriceDirection('INCREASE')}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                      bulkPriceDirection === 'INCREASE'
+                        ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black shadow-2xs'
+                        : 'border-neutral-300 bg-white text-black hover:bg-neutral-100 dark:border-neutral-700 dark:bg-black dark:text-white dark:hover:bg-neutral-900'
+                    }`}
+                  >
+                    <TrendingUp className='size-3.5' />
+                    <span>زيادة (+)</span>
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => setBulkPriceDirection('DECREASE')}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                      bulkPriceDirection === 'DECREASE'
+                        ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black shadow-2xs'
+                        : 'border-neutral-300 bg-white text-black hover:bg-neutral-100 dark:border-neutral-700 dark:bg-black dark:text-white dark:hover:bg-neutral-900'
+                    }`}
+                  >
+                    <TrendingDown className='size-3.5' />
+                    <span>خصم / تقليل (-)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Value Input & Quick Presets */}
+              <div>
+                <label className='font-semibold block mb-1.5 text-foreground'>
+                  {bulkPriceMode === 'PERCENTAGE'
+                    ? 'قيمة النسبة المئوية (%)'
+                    : `قيمة المبلغ الثابت (${currency.symbol})`}
+                </label>
+                <div className='relative'>
+                  <Input
+                    type='number'
+                    step='0.01'
+                    min='0.01'
+                    max={bulkPriceMode === 'PERCENTAGE' && bulkPriceDirection === 'DECREASE' ? '100' : undefined}
+                    placeholder={bulkPriceMode === 'PERCENTAGE' ? 'مثال: 10' : 'مثال: 25'}
+                    value={bulkPriceValue}
+                    onChange={(e) => {
+                      setBulkPriceValue(e.target.value)
+                      setBulkPriceError(null)
+                    }}
+                    className='pl-14 text-sm font-mono font-bold'
+                    dir='ltr'
+                    autoFocus
+                  />
+                  <span className='absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground'>
+                    {bulkPriceMode === 'PERCENTAGE' ? '%' : currency.symbol}
+                  </span>
+                </div>
+                <div className='flex flex-wrap items-center gap-1.5 mt-2'>
+                  {(bulkPriceMode === 'PERCENTAGE' ? [5, 10, 15, 20, 25] : [5, 10, 25, 50, 100]).map(
+                    (preset) => (
+                      <button
+                        key={preset}
+                        type='button'
+                        onClick={() => {
+                          setBulkPriceValue(String(preset))
+                          setBulkPriceError(null)
+                        }}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-semibold border transition-colors cursor-pointer ${
+                          bulkPriceValue === String(preset)
+                            ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white'
+                            : 'bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900'
+                        }`}
+                      >
+                        {bulkPriceDirection === 'INCREASE' ? '+' : '-'}
+                        {preset}
+                        {bulkPriceMode === 'PERCENTAGE' ? '%' : ` ${currency.symbol}`}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Scope Selector */}
+              <div>
+                <div className='flex items-center justify-between mb-1.5'>
+                  <label className='font-semibold text-foreground'>تطبيق على</label>
+                  <Badge variant='secondary' className='text-[10px] font-semibold'>
+                    {bulkTargetProducts.length} منتج
+                  </Badge>
+                </div>
+                <select
+                  value={bulkPriceCategoryId}
+                  onChange={(e) => setBulkPriceCategoryId(e.target.value)}
+                  className='w-full rounded-md border bg-background px-3 py-2 text-xs text-foreground shadow-2xs font-medium'
+                >
+                  <option value='all'>كل المنتجات ({merchantProducts.length})</option>
+                  <option value='uncategorized'>
+                    بدون تصنيف ({merchantProducts.filter((p) => !p.categoryId).length})
+                  </option>
+                  {merchantCategories.map((c) => {
+                    const count = merchantProducts.filter((p) => p.categoryId === c.id).length
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({count})
+                      </option>
+                    )
+                  })}
+                </select>
+                {isSuperAdmin && (
+                  <p className='text-[10px] text-muted-foreground mt-1'>
+                    نطاق التاجر:{' '}
+                    <span className='font-semibold text-foreground'>
+                      {selectedMerchantFilter === 'all'
+                        ? 'كل التجار'
+                        : merchants.find((m) => m.id === selectedMerchantFilter)?.name || 'التاجر المحدد'}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* Live Preview */}
+              {isBulkValueValid && bulkTargetProducts.length > 0 && (
+                <div className='rounded-xl border bg-muted/30 p-3 space-y-2'>
+                  <div className='flex items-center justify-between text-[11px] font-semibold text-muted-foreground'>
+                    <span>معاينة الأسعار قبل وبعد التعديل</span>
+                    <span>
+                      {bulkPriceDirection === 'INCREASE' ? '+' : '-'}
+                      {parsedBulkValue}
+                      {bulkPriceMode === 'PERCENTAGE' ? '%' : ` ${currency.symbol}`}
+                    </span>
+                  </div>
+                  <div className='divide-y divide-border/50'>
+                    {bulkTargetProducts.slice(0, 3).map((prod) => {
+                      const nextPrice = computeBulkPreviewPrice(prod.price)
+                      return (
+                        <div
+                          key={prod.id}
+                          className='py-1.5 flex items-center justify-between gap-2 text-xs'
+                        >
+                          <span className='truncate font-medium text-foreground max-w-[160px]'>
+                            {prod.name}
+                          </span>
+                          <div className='flex items-center gap-1.5 font-mono shrink-0' dir='ltr'>
+                            <span className='text-muted-foreground line-through text-[11px]'>
+                              {prod.price.toFixed(2)}
+                            </span>
+                            <ArrowRight className='size-3 text-muted-foreground' />
+                            <span className='font-bold text-foreground'>
+                              {nextPrice.toFixed(2)} {currency.symbol}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {bulkTargetProducts.length > 3 && (
+                    <div className='text-[10px] text-muted-foreground text-center pt-1'>
+                      و {bulkTargetProducts.length - 3} منتج آخر سيتم تحديث سعره بنفس القاعدة
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className='gap-2 sm:justify-start'>
+              <Button
+                type='submit'
+                size='sm'
+                disabled={!isBulkValueValid || bulkTargetProducts.length === 0 || isBulkPriceSaving}
+                className='gap-1.5 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 cursor-pointer'
+              >
+                {isBulkPriceSaving && <Loader2 className='size-3.5 animate-spin' />}
+                <span>تطبيق على {bulkTargetProducts.length} منتج</span>
+              </Button>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                disabled={isBulkPriceSaving}
+                onClick={() => setIsBulkPriceOpen(false)}
+                className='bg-white text-black border-neutral-300 hover:bg-neutral-100 dark:bg-black dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-900 cursor-pointer'
+              >
+                إلغاء
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>

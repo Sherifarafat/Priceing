@@ -1,4 +1,4 @@
-import { Branch, Category, Merchant, Product, ServiceCategory, ServiceItem, SubService, ProductAddon, User, AuditLog, Fee, Invoice, InvoiceTemplate } from '@/types/saas'
+import { Branch, Category, Merchant, Product, Offer, ServiceCategory, ServiceItem, SubService, ProductAddon, User, AuditLog, Fee, Invoice, InvoiceTemplate, ReturnPolicy } from '@/types/saas'
 
 const BASE_URL = '/api'
 
@@ -69,6 +69,19 @@ export const api = {
     get: (id: string) => request<Merchant>(`/merchants/${id}`),
     create: (data: Partial<Merchant>) =>
       request<Merchant>('/merchants', { method: 'POST', body: JSON.stringify(data) }),
+    onboarding: (data: {
+      name: string
+      logo?: string
+      phone?: string
+      address?: string
+      businessType?: string
+      branchesCount: number
+      email?: string
+    }) =>
+      request<{ merchant: Merchant; branches: Branch[]; user: User }>('/merchants/onboarding', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     update: (id: string, data: Partial<Merchant>) =>
       request<Merchant>(`/merchants/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
@@ -128,6 +141,18 @@ export const api = {
       request<{ imported: number; updated: number; skipped: number }>('/products/bulk-excel-import', {
         method: 'POST',
         body: JSON.stringify({ rows, duplicateDecisions }),
+      }),
+    bulkAdjustPrice: (data: {
+      mode: 'FIXED' | 'PERCENTAGE'
+      direction: 'INCREASE' | 'DECREASE'
+      value: number
+      merchantId?: string
+      categoryId?: string
+      status?: string
+    }) =>
+      request<{ updatedCount: number; products: Product[] }>('/products/bulk-price', {
+        method: 'POST',
+        body: JSON.stringify(data),
       }),
   },
 
@@ -226,6 +251,35 @@ export const api = {
       request<InvoiceTemplate>(`/invoices/template${params?.merchantId ? `?merchantId=${params.merchantId}` : ''}`),
     updateTemplate: (data: Partial<InvoiceTemplate> & { merchantId?: string }) =>
       request<InvoiceTemplate>('/invoices/template', { method: 'PUT', body: JSON.stringify(data) }),
+    getReturnPolicy: (merchantId?: string) =>
+      request<ReturnPolicy>(
+        `/invoices/return-policy${merchantId && merchantId !== 'all' ? `?merchantId=${encodeURIComponent(merchantId)}` : ''}`
+      ),
+    saveReturnPolicy: (data: ReturnPolicy) =>
+      request<ReturnPolicy>('/invoices/return-policy', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    verifyReturnPin: (data: { merchantId?: string; pin: string }) =>
+      request<{ valid: boolean }>('/invoices/verify-return-pin', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    returnItems: (
+      id: string,
+      data: {
+        items?: Array<{ itemId: string; quantity: number }>
+        reason?: string
+        restock?: boolean
+      }
+    ) =>
+      request<{ invoice: Invoice; refundAmount: number; isFullReturn: boolean }>(
+        `/invoices/${id}/return`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }
+      ),
     list: (params?: { merchantId?: string; branchId?: string; status?: string; search?: string }) => {
       const query = new URLSearchParams()
       if (params?.merchantId) query.set('merchantId', params.merchantId)
@@ -243,4 +297,196 @@ export const api = {
     delete: (id: string) =>
       request<{ success: boolean; message: string }>(`/invoices/${id}`, { method: 'DELETE' }),
   },
+
+  // Offers & Discounts
+  offers: {
+    list: (params?: { merchantId?: string; isActive?: boolean }) => {
+      const query = new URLSearchParams()
+      if (params?.merchantId) query.set('merchantId', params.merchantId)
+      if (params?.isActive !== undefined) query.set('isActive', String(params.isActive))
+      const qs = query.toString()
+      return request<Offer[]>(`/offers${qs ? `?${qs}` : ''}`)
+    },
+    create: (data: Partial<Offer>) =>
+      request<Offer>('/offers', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Offer>) =>
+      request<Offer>(`/offers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    toggle: (id: string, isActive?: boolean) =>
+      request<Offer>(`/offers/${id}/toggle`, {
+        method: 'PUT',
+        body: JSON.stringify(isActive !== undefined ? { isActive } : {}),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/offers/${id}`, { method: 'DELETE' }),
+  },
+
+  // Direct Backend WhatsApp Integration (Baileys)
+  whatsapp: {
+    getStatus: (merchantId?: string) => {
+      const qs = merchantId ? `?merchantId=${encodeURIComponent(merchantId)}` : ''
+      return request<{
+        status: 'disconnected' | 'connecting' | 'qr' | 'connected'
+        qrDataUrl: string | null
+        phoneNumber: string | null
+        name: string | null
+        lastError: string | null
+      }>(`/whatsapp/status${qs}`)
+    },
+    connect: (merchantId?: string) =>
+      request<{
+        status: 'disconnected' | 'connecting' | 'qr' | 'connected'
+        qrDataUrl: string | null
+        phoneNumber: string | null
+        name: string | null
+        lastError: string | null
+      }>('/whatsapp/connect', {
+        method: 'POST',
+        body: JSON.stringify({ merchantId }),
+      }),
+    disconnect: (merchantId?: string) =>
+      request<{ success: boolean }>('/whatsapp/disconnect', {
+        method: 'POST',
+        body: JSON.stringify({ merchantId }),
+      }),
+    send: (data: { merchantId?: string; phone: string; message: string }) =>
+      request<{ success: boolean; messageId?: string; to: string }>('/whatsapp/send', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    sendDocument: (data: {
+      merchantId?: string
+      phone: string
+      pdfBase64: string
+      fileName: string
+      caption?: string
+    }) =>
+      request<{ success: boolean; messageId?: string; to: string }>('/whatsapp/send-document', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Live DB-grounded AI Copilot (Free Zero-Key + Groq/Gemini/OpenRouter/Ollama)
+  ai: {
+    getConfig: (merchantId?: string) => {
+      const qs = merchantId ? `?merchantId=${encodeURIComponent(merchantId)}` : ''
+      return request<AiConfigDto>(`/ai/config${qs}`)
+    },
+    saveConfig: (data: {
+      merchantId?: string
+      provider?: AiProviderType
+      model?: string
+      apiKey?: string
+      ollamaUrl?: string
+    }) =>
+      request<AiConfigDto>('/ai/config', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    getSummary: (merchantId?: string) => {
+      const qs = merchantId ? `?merchantId=${encodeURIComponent(merchantId)}` : ''
+      return request<AiSystemSummaryDto>(`/ai/summary${qs}`)
+    },
+    chat: (data: {
+      merchantId?: string
+      message: string
+      history?: { role: 'user' | 'assistant'; content: string }[]
+      provider?: AiProviderType
+      model?: string
+    }) =>
+      request<AiChatResponseDto>('/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+}
+
+export type SmsProviderType = 'DEMO' | 'SMSMISR' | 'TWILIO' | 'ANDROID_GATEWAY' | 'CUSTOM_WEBHOOK'
+
+export interface SmsGatewayConfigDto {
+  enabled: boolean
+  provider: SmsProviderType
+  senderName: string
+  smsmisrUsername?: string
+  smsmisrPassword?: string
+  smsmisrSenderId?: string
+  smsmisrEnvironment?: '1' | '2'
+  twilioAccountSid?: string
+  twilioAuthToken?: string
+  twilioFromNumber?: string
+  androidGatewayUrl?: string
+  androidGatewayFormat?: 'CAPCOM' | 'TRACCAR'
+  androidUsername?: string
+  androidPassword?: string
+  androidApiKey?: string
+  customWebhookUrl?: string
+  customMethod?: 'POST' | 'GET'
+  customAuthHeader?: string
+  customBodyTemplate?: string
+  updatedAt?: string
+}
+
+export interface SmsLogEntryDto {
+  id: string
+  to: string
+  message: string
+  invoiceNumber?: string
+  provider: SmsProviderType
+  status: 'SENT' | 'DEMO_SENT' | 'FAILED'
+  messageId?: string
+  error?: string
+  createdAt: string
+}
+
+export type AiProviderType =
+  | 'FREE_POLLINATIONS'
+  | 'GROQ'
+  | 'GEMINI'
+  | 'OPENROUTER'
+  | 'OLLAMA'
+
+export interface AiConfigDto {
+  provider: AiProviderType
+  model: string
+  ollamaUrl?: string
+  hasApiKey: boolean
+  updatedAt?: string
+}
+
+export interface AiSystemSummaryDto {
+  scope: string
+  totalRevenue: number
+  todayRevenue: number
+  invoiceCount: number
+  productsCount: number
+  lowStockCount: number
+  branchesCount: number
+  activeOffersCount: number
+  totalScans: number
+  generatedAt: string
+}
+
+export interface AiKpiCardDto {
+  label: string
+  value: string
+  hint?: string
+}
+
+export interface AiChartSpecDto {
+  id: string
+  title: string
+  type: 'bar' | 'area' | 'pie'
+  valueSuffix?: string
+  data: { name: string; value: number; secondary?: number }[]
+}
+
+export interface AiChatResponseDto {
+  reply: string
+  providerUsed: string
+  modelUsed: string
+  fallbackUsed: boolean
+  kpis?: AiKpiCardDto[]
+  charts?: AiChartSpecDto[]
+  suggestions?: string[]
+  generatedAt: string
 }

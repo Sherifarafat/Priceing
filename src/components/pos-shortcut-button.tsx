@@ -1,8 +1,10 @@
 import { Monitor, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSaaSStore } from '@/lib/saas-store'
+import { useLang } from '@/lib/i18n'
 
 export function PosShortcutButton() {
+  const { t } = useLang()
   const { currentUser, merchants } = useSaaSStore()
   const currentMerchant = merchants.find((m) => m.id === currentUser.merchantId)
   const merchantId = currentUser.merchantId || merchants[0]?.id || ''
@@ -30,7 +32,7 @@ export function PosShortcutButton() {
       className='h-8.5 gap-2 rounded-xl bg-black text-[#3EEA85] hover:bg-neutral-900 border border-[#3EEA85]/40 font-bold text-xs shadow-xs hover:border-[#3EEA85] transition-all hover:scale-[1.02] cursor-pointer'
     >
       <Monitor className='size-3.5 text-[#3EEA85]' />
-      <span className='font-bold'>شاشة الكاشير (POS)</span>
+      <span className='font-bold'>{t('شاشة الكاشير (POS)', 'POS Terminal')}</span>
       <ExternalLink className='size-3 text-neutral-400' />
     </Button>
   )
